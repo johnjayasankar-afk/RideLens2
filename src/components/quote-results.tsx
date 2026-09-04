@@ -1,0 +1,1117 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  Freshness,
+  NormalizedQuote,
+  QuoteSession,
+  RankingMode,
+  RideCategory,
+} from "@/lib/domain/types";
+import {
+  formatQuotePrice,
+  formatMoneyMinor,
+  quoteTypeLabel,
+} from "@/lib/domain/money";
+import { freshnessLabel, freshnessStatus, computeFreshness, expiryCountdown } from "@/lib/domain/freshness";
+import { categoryLabel } from "@/lib/domain/taxonomy";
+import { rankQuotes } from "@/lib/domain/ranking";
+import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
+import { ProviderLogo } from "@/components/provider-logo";
+import { RouteMap, type MapRoute } from "@/components/route-map";
+import type { PlaceValue } from "@/components/place-field";
+
+function liveFreshness(q: NormalizedQuote, now: Date): Freshness {
+  return computeFreshness(q.receivedAt, q.expiresAt, now);
+}
+
+function freshnessLine(q: NormalizedQuote, now = new Date()): string {
+  const fresh = liveFreshness(q, now);
+  const status = freshnessStatus(fresh);
+  const age = freshnessLabel(fresh, q.receivedAt, now);
+  if (age === "just now") return status;
+  return `${status} · ${age}`;
+}
+
+function statusDotClass(q: NormalizedQuote, now = new Date()): string {
+  const status = freshnessStatus(liveFreshness(q, now));
+  if (status === "Fresh") return "status-dot is-fresh";
+  if (status === "Recent") return "status-dot is-recent";
+  if (status === "Expired") return "status-dot is-expired";
+  return "status-dot is-aging";
+}
+
+function humanizeSourceId(sourceId: string): string {
+  const lower = sourceId.toLowerCase();
+  if (lower.includes("uber")) return "Uber";
+  if (lower.includes("lyft")) return "Lyft";
+  if (lower.includes("empower") || lower.includes("obi")) return "Empower";
+  if (lower.includes("curb")) return "Curb";
+  if (lower.includes("rate")) return "Rate cards";
+  return sourceId.replace(/[_-]+/g, " ");
+}
+
+function formatTripMins(seconds: number | null | undefined): string {
+  if (seconds == null) return "—";
+  const m = Math.round(seconds / 60);
+  if (m < 1) return "<1 min";
+  return `~${m} min`;
+}
+
+function formatClock(from: Date, addSeconds: number): string {
+  const d = new Date(from.getTime() + addSeconds * 1000);
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function providerLabel(q: NormalizedQuote): string {
+  return q.provider.charAt(0).toUpperCase() + q.provider.slice(1);
+}
+
+function formatWaitRange(
+  mid: number | null | undefined,
+  low?: number | null,
+  high?: number | null,
+): string {
+  if (mid == null) return "—";
+  if (low != null && high != null && high > low) {
+    const lo = Math.max(1, Math.round(low / 60));
+    const hi = Math.max(lo, Math.round(high / 60));
+    if (lo === hi) return `~${lo} min`;
+    return `${lo}–${hi} min`;
+  }
+  return formatTripMins(mid);
+}
+
+function heroTitle(mode: RankingMode): string {
+  if (mode === "fastest") return "Soonest";
+  if (mode === "best_value") return "Best value";
+  return "Best price";
+}
+
+function humanizeDemand(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const base = (raw.split("+")[0] || raw).split("|")[0] || raw;
+  const map: Record<string, string> = {
+    late_night: "Late night",
+    morning_peak: "Morning peak",
+    morning: "Morning commute",
+    am_commute: "Morning commute",
+    evening_peak: "Evening peak",
+    evening: "Evening commute",
+    pm_commute: "Evening commute",
+    midday: "Midday",
+    overnight: "Overnight",
+    overnight_supply: "Overnight (thin supply)",
+    weekend: "Weekend",
+    weekend_day: "Weekend day",
+    weekend_night: "Weekend night",
+    sunday_return: "Sunday return",
+    flat_fare: "Flat fare",
+    baseline: "Steady market",
+    off_peak: "Off-peak",
+  };
+  const key = base.replace(/\+tick\d+.*$/, "").replace(/heat\d+pct/, "").trim();
+  const mapped = map[key];
+  if (mapped) return mapped;
+  if (key.includes("am_commute") || key.includes("morning")) return "Morning commute";
+  if (key.includes("pm_commute") || key.includes("evening")) return "Evening commute";
+  if (key.includes("weekend_night")) return "Weekend night";
+  if (key.includes("night")) return "Late night";
+  return key.replace(/_/g, " ");
+}
+
+function marketTone(mult: number | undefined): {
+  label: string;
+  className: string;
+} {
+  if (mult == null || !Number.isFinite(mult)) {
+    return { label: "Market steady", className: "market-chip is-calm" };
+  }
+  if (mult >= 1.35) return { label: "Market hot", className: "market-chip is-hot" };
+  if (mult >= 1.15)
+    return { label: "Elevated demand", className: "market-chip is-warm" };
+  if (mult <= 0.98)
+    return { label: "Soft market", className: "market-chip is-calm" };
+  return { label: "Market steady", className: "market-chip is-calm" };
+}
+
+function confidenceFromBand(band: number | undefined): {
+  label: string;
+  pct: number;
+} | null {
+  if (band == null) return null;
+  // tighter band → higher confidence (2% → ~90, 3.5% → ~70)
+  const pct = Math.max(55, Math.min(94, Math.round(100 - band * 900)));
+  const label =
+    pct >= 85 ? "High confidence" : pct >= 72 ? "Solid estimate" : "Wider band";
+  return { label, pct };
+}
+
+function humanizeFeeKey(key: string): string {
+  if (key.startsWith("toll_")) {
+    return `Toll · ${key.slice(5).replace(/_/g, " ")}`;
+  }
+  const map: Record<string, string> = {
+    base: "Base fare",
+    per_mile: "Distance",
+    per_minute: "Time",
+    booking_fee: "Booking fee",
+    black_car_fund: "Black car fund",
+    sales_tax: "Sales tax",
+    congestion: "Congestion",
+    airport_fee: "Airport fee",
+    marketplace_rules: "Marketplace fees",
+    directional_asymmetry: "Direction lift",
+    out_of_town_factor: "Out-of-town factor",
+    weather_lift: "Weather lift",
+    min_fare: "Minimum fare",
+  };
+  return map[key] || key.replace(/_/g, " ");
+}
+
+function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
+  const fees = quote.metadata?.feeBreakdown as
+    | Record<string, number>
+    | undefined;
+  const center = quote.metadata?.centerFare as number | undefined;
+  const band = quote.metadata?.band as number | undefined;
+  const city = quote.metadata?.city as string | undefined;
+  const demand = humanizeDemand(quote.metadata?.demand as string | undefined);
+  const demandMult = quote.metadata?.demandCenter as number | undefined;
+  const weather = quote.metadata?.weather as string | undefined;
+  const tone = marketTone(demandMult);
+  const anchor = quote.metadata?.anchorId as string | undefined;
+  const methodology = quote.metadata?.methodology as string | undefined;
+  const confidence = confidenceFromBand(band);
+
+  if (!fees && center == null) return null;
+
+  return (
+    <details className="fee-breakdown">
+      <summary>How this was estimated</summary>
+      <div className="fee-body">
+        {center != null ? (
+          <p>
+            Center <strong>{formatMoneyMinor(Math.round(center * 100))}</strong>
+            {band != null ? (
+              <span className="muted"> (±{(band * 100).toFixed(1)}%)</span>
+            ) : null}
+          </p>
+        ) : null}
+        {confidence ? (
+          <div className="confidence" aria-label={confidence.label}>
+            <div className="confidence-meta">
+              <span>{confidence.label}</span>
+              <span className="muted">{confidence.pct}%</span>
+            </div>
+            <div className="confidence-track">
+              <span
+                className="confidence-fill"
+                style={{ width: `${confidence.pct}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+        {city ? <p className="muted">Market: {city}</p> : null}
+        {demand ? (
+          <p className="muted">
+            Demand: {demand}
+            {demandMult != null ? ` · ×${demandMult.toFixed(2)}` : ""}
+          </p>
+        ) : null}
+        {weather && !weather.startsWith("dry") ? (
+          <p className="muted">Weather: {weather}</p>
+        ) : null}
+        {anchor ? (
+          <p className="muted">Corridor: {anchor.replace(/_/g, " ")}</p>
+        ) : null}
+        <p className="muted">
+          <span className={tone.className}>{tone.label}</span>
+        </p>
+        {fees && Object.keys(fees).length > 0 ? (
+          <ul>
+            {Object.entries(fees).map(([k, v]) => {
+              const isFactor = /factor|asymmetry/i.test(k);
+              return (
+                <li key={k}>
+                  <span>{humanizeFeeKey(k)}</span>
+                  <span>
+                    {isFactor
+                      ? `×${Number(v).toFixed(2)}`
+                      : formatMoneyMinor(Math.round(Number(v) * 100))}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        {methodology ? <p className="muted fine">{methodology}</p> : null}
+      </div>
+    </details>
+  );
+}
+
+function QuoteCard({
+  quote,
+  hero,
+  deltaMinor,
+  waitDeltaSec,
+  pickupLabel,
+  destinationLabel,
+  index = 0,
+  now,
+  returnTo,
+  animate = true,
+}: {
+  quote: NormalizedQuote;
+  hero?: boolean;
+  deltaMinor?: number;
+  waitDeltaSec?: number;
+  pickupLabel?: string;
+  destinationLabel?: string;
+  index?: number;
+  now: Date;
+  returnTo?: string;
+  animate?: boolean;
+}) {
+  const handoff = quote.bookingHandoff;
+  const dollarsPerMile =
+    quote.distanceMeters && quote.distanceMeters > 0
+      ? quote.rankingPriceMinor / 100 / (quote.distanceMeters / 1609.344)
+      : null;
+
+  const pickupSec = quote.pickupEtaSeconds;
+  const waitLow = quote.metadata?.waitLowSeconds as number | undefined;
+  const waitHigh = quote.metadata?.waitHighSeconds as number | undefined;
+  const driveSec = quote.tripDurationSeconds;
+  const totalSec =
+    pickupSec != null && driveSec != null ? pickupSec + driveSec : null;
+  const arriveLabel =
+    totalSec != null ? formatClock(now, totalSec) : "—";
+
+  const pickupAddr = String(
+    quote.metadata?.pickupAddress || pickupLabel || "",
+  );
+  const destAddr = String(
+    quote.metadata?.destinationAddress || destinationLabel || "",
+  );
+
+  const bookParams = new URLSearchParams({
+    provider: quote.provider,
+    price: formatQuotePrice(quote),
+    pickup: pickupAddr,
+    destination: destAddr,
+  });
+  if (handoff?.url) bookParams.set("url", handoff.url);
+  if (returnTo) bookParams.set("returnTo", returnTo);
+  const prefillsTrip =
+    Boolean(handoff?.prefills?.pickup) &&
+    Boolean(handoff?.prefills?.destination);
+  if (!prefillsTrip) bookParams.set("prefills", "0");
+
+  // Always hand off through /book so every provider gets the same confirm step.
+  const bookHref = `/book?${bookParams.toString()}`;
+  const bookLabel = !prefillsTrip
+    ? `Open ${providerLabel(quote)}`
+    : handoff?.label || `Continue with ${providerLabel(quote)}`;
+
+  const demandMult = quote.metadata?.demandCenter as number | undefined;
+  const tone = marketTone(demandMult);
+  const weatherRaw = String(quote.metadata?.weather || "");
+  const showWeather =
+    weatherRaw && !weatherRaw.startsWith("dry") && !weatherRaw.startsWith("unavailable");
+  const expiry = expiryCountdown(quote.expiresAt, now);
+
+  return (
+    <article
+      className={`quote-card${hero ? " hero" : ""}${animate ? " reveal-card" : ""}`}
+      style={animate ? { animationDelay: `${Math.min(index, 8) * 45}ms` } : undefined}
+    >
+      <header className="quote-card-header">
+        <ProviderLogo provider={quote.provider} size={40} priority={Boolean(hero)} />
+        <div className="quote-identity">
+          <p className="provider">{providerLabel(quote)}</p>
+          <p className="product">{quote.providerProductName}</p>
+        </div>
+        <div className="price-block">
+          <p className="price" aria-label={`Price ${formatQuotePrice(quote)}`}>
+            {formatQuotePrice(quote)}
+          </p>
+          {dollarsPerMile != null ? (
+            <p className="per-mile muted">${dollarsPerMile.toFixed(2)}/mi</p>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="wait-row" aria-label="Trip timing">
+        <div className="wait-cell">
+          <span className="wait-label">Pickup</span>
+          <span className="wait-value">
+            {formatWaitRange(pickupSec, waitLow, waitHigh)}
+          </span>
+        </div>
+        <div className="wait-cell">
+          <span className="wait-label">Drive</span>
+          <span className="wait-value">{formatTripMins(driveSec)}</span>
+        </div>
+        <div className="wait-cell">
+          <span className="wait-label">Total</span>
+          <span className="wait-value">{formatTripMins(totalSec)}</span>
+        </div>
+        <div className="wait-cell">
+          <span className="wait-label">Arrive</span>
+          <span className="wait-value">{arriveLabel}</span>
+        </div>
+      </div>
+
+      <div className="meta-chips">
+        <span className="meta-chip">{categoryLabel(quote.normalizedCategory)}</span>
+        <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
+        <span className={`meta-chip ${tone.className}`}>{tone.label}</span>
+        {showWeather ? (
+          <span className="meta-chip market-chip is-rain">Weather lift</span>
+        ) : null}
+        <span className="meta-chip">
+          <span className={statusDotClass(quote, now)} aria-hidden />
+          {freshnessLine(quote, now)}
+        </span>
+        {expiry && liveFreshness(quote, now) !== "LIVE" ? (
+          <span className="meta-chip muted">{expiry}</span>
+        ) : null}
+      </div>
+
+      {!hero && deltaMinor != null && deltaMinor > 0 ? (
+        <p className="delta muted">
+          +{formatMoneyMinor(deltaMinor)} vs best
+          {waitDeltaSec != null && waitDeltaSec > 30 ? (
+            <span>
+              {" "}
+              · +{Math.round(waitDeltaSec / 60)} min wait
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+
+      <FeeBreakdown quote={quote} />
+
+      <a className="book book-with-logo" href={bookHref}>
+        <ProviderLogo provider={quote.provider} size={24} />
+        {bookLabel}
+      </a>
+    </article>
+  );
+}
+
+export function QuoteResults({
+  session,
+  loading,
+  mode,
+  filter,
+  onModeChange,
+  onFilterChange,
+  onRefresh,
+  onReverseTrip,
+  mapRoute,
+  mapLoading,
+  pickup,
+  destination,
+}: {
+  session: QuoteSession | null;
+  loading: boolean;
+  mode: RankingMode;
+  filter: string;
+  onModeChange: (m: RankingMode) => void;
+  onFilterChange: (f: "standard" | "ALL" | "XL" | "PREMIUM" | "TAXI") => void;
+  onRefresh: () => void;
+  onReverseTrip?: () => void;
+  mapRoute: MapRoute | null;
+  mapLoading: boolean;
+  pickup: PlaceValue | null;
+  destination: PlaceValue | null;
+}) {
+  const [copied, setCopied] = useState<"best" | "all" | "fail" | null>(null);
+  const [tickLeft, setTickLeft] = useState<number | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [animateEntrance, setAnimateEntrance] = useState(false);
+  const resultsTopRef = useRef<HTMLElement | null>(null);
+  const scrolledSessionId = useRef<string | null>(null);
+  const playedEntrance = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!session?.quotes?.length) return;
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, [session?.id, session?.updatedAt, session?.quotes?.length]);
+
+  useEffect(() => {
+    if (!session?.id || loading) {
+      setAnimateEntrance(false);
+      return;
+    }
+    if (playedEntrance.current === session.id) {
+      setAnimateEntrance(false);
+      return;
+    }
+    setAnimateEntrance(true);
+    const t = window.setTimeout(() => {
+      playedEntrance.current = session.id;
+      setAnimateEntrance(false);
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [session?.id, loading]);
+
+  useEffect(() => {
+    if (!session?.id || loading) return;
+    if (scrolledSessionId.current === session.id) return;
+    const el = resultsTopRef.current;
+    if (!el) return;
+    scrolledSessionId.current = session.id;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [session?.id, loading]);
+
+  const ranked = useMemo(() => {
+    const raw = session?.quotes ?? [];
+    const categoryFilter =
+      filter === "standard" || filter === "ALL"
+        ? filter
+        : ([filter] as RideCategory[]);
+    return rankQuotes(raw, mode, categoryFilter);
+  }, [session?.quotes, mode, filter]);
+
+  const hero = ranked[0];
+  const rest = ranked.slice(1);
+
+  const returnTo = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    const url = new URL(window.location.href);
+    return `${url.pathname}${url.search}` || "/";
+  }, [pickup?.lat, pickup?.lng, destination?.lat, destination?.lng, mode, filter]);
+
+  const agingQuotes = useMemo(() => {
+    if (!hero) return false;
+    return ranked.some((q) => {
+      const f = liveFreshness(q, now);
+      return f === "STALE" || f === "EXPIRED";
+    });
+  }, [ranked, hero, now]);
+
+  useEffect(() => {
+    const next = hero?.metadata?.secondsToNextTick as number | undefined;
+    if (next == null || !Number.isFinite(next)) {
+      setTickLeft(null);
+      return;
+    }
+    setTickLeft(Math.max(0, Math.round(next)));
+    const id = window.setInterval(() => {
+      setTickLeft((n) => {
+        if (n == null) return null;
+        if (n <= 1) return 0;
+        return n - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [hero?.id, hero?.metadata?.secondsToNextTick, session?.updatedAt]);
+
+  const failures = session?.coverage.sourcesFailed ?? [];
+  const expected = session?.coverage.sourcesExpected ?? [];
+  const succeeded = session?.coverage.sourcesSucceeded ?? [];
+  const pendingSources = expected.filter(
+    (s) =>
+      !succeeded.includes(s) &&
+      !failures.some((f) => f.sourceId === s),
+  );
+  const isPartial =
+    session?.status === "PARTIAL" ||
+    (Boolean(hero) && failures.length > 0 && succeeded.length > 0);
+  const failedEmpty =
+    Boolean(session) &&
+    !loading &&
+    (session?.quotes.length ?? 0) === 0;
+  const filterEmpty =
+    Boolean(session) &&
+    !loading &&
+    (session?.quotes.length ?? 0) > 0 &&
+    ranked.length === 0;
+
+  const insight = useMemo(() => {
+    if (!hero) return null;
+    const baseline = defaultBaseline(hero, ranked);
+    return computeSavings(hero, baseline);
+  }, [hero, ranked]);
+
+  const takeaway = useMemo(() => {
+    if (!hero) return null;
+    const parts: string[] = [];
+    if (insight?.text) parts.push(insight.text);
+    const mult = hero.metadata?.demandCenter as number | undefined;
+    const tone = marketTone(mult);
+    if (mult != null && mult >= 1.15) {
+      parts.push(`${tone.label} right now — refresh before you book.`);
+    }
+    const weather = String(hero.metadata?.weather || "");
+    if (weather && !weather.startsWith("dry")) {
+      parts.push("Weather is lifting estimated prices.");
+    }
+    if (hero.provider === "empower" && rest[0]) {
+      const save = rest[0].rankingPriceMinor - hero.rankingPriceMinor;
+      if (save > 800) {
+        parts.push(
+          `Empower leads by ${formatMoneyMinor(save)} on this route.`,
+        );
+      }
+    }
+    if (!parts.length) return null;
+    return parts[0] + (parts[1] ? ` ${parts[1]}` : "");
+  }, [hero, insight, rest]);
+
+  const tripStats = useMemo(() => {
+    const q = hero || ranked[0];
+    if (!q && !mapRoute) return null;
+    const waits = ranked
+      .map((x) => x.pickupEtaSeconds)
+      .filter((n): n is number => n != null);
+    const drives = ranked
+      .map((x) => x.tripDurationSeconds)
+      .filter((n): n is number => n != null);
+    const versusNext =
+      hero && rest[0]
+        ? rest[0].rankingPriceMinor - hero.rankingPriceMinor
+        : null;
+    return {
+      miles:
+        mapRoute?.miles ??
+        (q?.distanceMeters ? q.distanceMeters / 1609.344 : null),
+      minWait: waits.length ? Math.min(...waits) : null,
+      minDrive:
+        mapRoute?.minutes != null
+          ? mapRoute.minutes * 60
+          : drives.length
+            ? Math.min(...drives)
+            : null,
+      bestMid: hero?.rankingPriceMinor ?? null,
+      versusNext:
+        versusNext != null && versusNext > 0 ? versusNext : null,
+    };
+  }, [hero, ranked, rest, mapRoute]);
+
+  const mapPickup = useMemo(() => {
+    if (pickup) {
+      return {
+        lat: pickup.lat,
+        lng: pickup.lng,
+        label: pickup.label.split(",")[0] || "From",
+      };
+    }
+    if (session) {
+      return {
+        lat: session.pickup.lat,
+        lng: session.pickup.lng,
+        label:
+          session.pickup.name ||
+          session.pickup.formattedAddress.split(",")[0] ||
+          "From",
+      };
+    }
+    return null;
+  }, [pickup, session]);
+
+  const mapDest = useMemo(() => {
+    if (destination) {
+      return {
+        lat: destination.lat,
+        lng: destination.lng,
+        label: destination.label.split(",")[0] || "To",
+      };
+    }
+    if (session) {
+      return {
+        lat: session.destination.lat,
+        lng: session.destination.lng,
+        label:
+          session.destination.name ||
+          session.destination.formattedAddress.split(",")[0] ||
+          "To",
+      };
+    }
+    return null;
+  }, [destination, session]);
+
+  const tripPickupLabel = useMemo(() => {
+    return (
+      pickup?.formattedAddress ||
+      pickup?.label ||
+      session?.pickup.formattedAddress ||
+      mapPickup?.label ||
+      ""
+    );
+  }, [pickup, session, mapPickup]);
+
+  const tripDestLabel = useMemo(() => {
+    return (
+      destination?.formattedAddress ||
+      destination?.label ||
+      session?.destination.formattedAddress ||
+      mapDest?.label ||
+      ""
+    );
+  }, [destination, session, mapDest]);
+
+  const copyBest = async () => {
+    if (!hero) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${providerLabel(hero)} ${hero.providerProductName}: ${formatQuotePrice(hero)}`,
+      );
+      setCopied("best");
+      window.setTimeout(() => setCopied(null), 1600);
+    } catch {
+      setCopied("fail");
+      window.setTimeout(() => setCopied(null), 2200);
+    }
+  };
+
+  const copyAll = async () => {
+    if (!ranked.length) return;
+    const from =
+      mapPickup?.label ||
+      session?.pickup.formattedAddress.split(",")[0] ||
+      "From";
+    const to =
+      mapDest?.label ||
+      session?.destination.formattedAddress.split(",")[0] ||
+      "To";
+    const lines = [
+      `RideLens · ${from} → ${to}`,
+      insight?.text || null,
+      ...ranked.map((q, i) => {
+        const mark = i === 0 ? " ★" : "";
+        return `${providerLabel(q)} ${q.providerProductName}: ${formatQuotePrice(q)}${mark}`;
+      }),
+      "Estimates — confirm in the provider app.",
+    ].filter(Boolean);
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied("all");
+      window.setTimeout(() => setCopied(null), 1600);
+    } catch {
+      setCopied("fail");
+      window.setTimeout(() => setCopied(null), 2200);
+    }
+  };
+
+  const resultsAnnounce =
+    hero && !loading
+      ? `${ranked.length} options. Best is ${providerLabel(hero)} ${hero.providerProductName} at ${formatQuotePrice(hero)}.`
+      : "";
+
+  return (
+    <section
+      className={`results${loading ? " is-loading" : ""}`}
+      ref={resultsTopRef}
+    >
+      <p className="sr-only" aria-live="polite">
+        {resultsAnnounce}
+      </p>
+      {mapPickup && mapDest ? (
+        <div className="map-slot">
+          <RouteMap
+            pickup={mapPickup}
+            destination={mapDest}
+            route={mapRoute}
+            loading={mapLoading && !mapRoute}
+          />
+        </div>
+      ) : null}
+
+      <div className="results-toolbar sticky-bar">
+        <div className="route-summary muted">
+          {session || (pickup && destination) ? (
+            <>
+              <span>
+                {mapPickup?.label ||
+                  session?.pickup.formattedAddress.split(",")[0]}
+              </span>
+              <span aria-hidden>→</span>
+              <span>
+                {mapDest?.label ||
+                  session?.destination.formattedAddress.split(",")[0]}
+              </span>
+            </>
+          ) : (
+            <span>Resolving route…</span>
+          )}
+        </div>
+        <div className="toolbar-actions">
+          {hero ? (
+            <button type="button" className="ghost" onClick={copyBest}>
+              {copied === "best"
+                ? "Copied"
+                : copied === "fail"
+                  ? "Copy failed"
+                  : "Copy best"}
+            </button>
+          ) : null}
+          {ranked.length > 0 ? (
+            <button type="button" className="ghost" onClick={copyAll}>
+              {copied === "all"
+                ? "Copied"
+                : copied === "fail"
+                  ? "Copy failed"
+                  : "Copy all"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ghost"
+            onClick={onRefresh}
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading && hero ? "Updating…" : "Refresh prices"}
+          </button>
+        </div>
+      </div>
+      {loading && hero ? (
+        <div className="refresh-progress" aria-hidden>
+          <span />
+        </div>
+      ) : null}
+
+      {hero ? (
+        <div className="market-pulse" role="status" aria-live="polite">
+          <span className={marketTone(hero.metadata?.demandCenter as number | undefined).className}>
+            {marketTone(hero.metadata?.demandCenter as number | undefined).label}
+          </span>
+          {hero.metadata?.demandCenter != null ? (
+            <span className="muted mono">
+              ×{Number(hero.metadata.demandCenter).toFixed(2)}
+            </span>
+          ) : null}
+          {hero.metadata?.weather &&
+          !String(hero.metadata.weather).startsWith("dry") ? (
+            <span className="market-chip is-rain">Weather active</span>
+          ) : (
+            <span className="muted">Clear conditions</span>
+          )}
+          {tickLeft != null && tickLeft > 0 ? (
+            <span className="market-tick muted">
+              Prices reshape in <strong>{tickLeft}s</strong>
+            </span>
+          ) : tickLeft === 0 ? (
+            <button
+              type="button"
+              className="market-tick market-tick-btn ghost"
+              onClick={onRefresh}
+              disabled={loading}
+            >
+              Market tick due — refresh now
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {agingQuotes ? (
+        <div className="banner warn banner-with-action" role="status">
+          <p>Estimates are aging — refresh for a sharper read.</p>
+          <button
+            type="button"
+            className="ghost banner-retry"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            Refresh prices
+          </button>
+        </div>
+      ) : null}
+
+      {isPartial && !failedEmpty ? (
+        <div className="banner warn banner-with-action" role="status">
+          <p>
+            Showing {succeeded.length} of {expected.length || succeeded.length + failures.length}{" "}
+            sources
+            {failures.length
+              ? ` — retry ${failures.map((f) => humanizeSourceId(f.sourceId)).join(", ")}`
+              : ""}
+            .
+          </p>
+          <button
+            type="button"
+            className="ghost banner-retry"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            Refresh prices
+          </button>
+        </div>
+      ) : null}
+
+      {takeaway ? (
+        <div className="insight-banner" role="status">
+          <p className="insight-kicker">Takeaway</p>
+          <p className="insight-text">{takeaway}</p>
+        </div>
+      ) : insight ? (
+        <div className="insight-banner" role="status">
+          <p className="insight-kicker">Takeaway</p>
+          <p className="insight-text">{insight.text}</p>
+        </div>
+      ) : null}
+
+      {tripStats &&
+      (tripStats.miles != null ||
+        tripStats.minWait != null ||
+        tripStats.bestMid != null) ? (
+        <div className="trip-stats">
+          {tripStats.miles != null ? (
+            <div>
+              <span className="stat-value">
+                {tripStats.miles.toFixed(1)}
+              </span>
+              <span className="stat-label">Miles</span>
+            </div>
+          ) : null}
+          {tripStats.minWait != null ? (
+            <div>
+              <span className="stat-value">
+                {formatTripMins(tripStats.minWait).replace("~", "")}
+              </span>
+              <span className="stat-label">Min wait</span>
+            </div>
+          ) : null}
+          {tripStats.minDrive != null ? (
+            <div className="trip-stat-desktop">
+              <span className="stat-value">
+                {formatTripMins(tripStats.minDrive).replace("~", "")}
+              </span>
+              <span className="stat-label">Min drive</span>
+            </div>
+          ) : null}
+          {tripStats.bestMid != null ? (
+            <div>
+              <span className="stat-value">
+                {formatMoneyMinor(tripStats.bestMid)}
+              </span>
+              <span className="stat-label">Best estimate</span>
+            </div>
+          ) : null}
+          {tripStats.versusNext != null ? (
+            <div className="trip-stat-desktop">
+              <span className="stat-value">
+                {formatMoneyMinor(tripStats.versusNext)}
+              </span>
+              <span className="stat-label">Saves vs next</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="filters" role="toolbar" aria-label="Ranking and category">
+        {(
+          [
+            ["cheapest", "Price"],
+            ["fastest", "Soonest"],
+            ["best_value", "Value"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={mode === id ? "chip active" : "chip"}
+            aria-pressed={mode === id}
+            onClick={() => onModeChange(id)}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="sep" aria-hidden />
+        {(
+          [
+            ["standard", "Standard"],
+            ["TAXI", "Taxi"],
+            ["XL", "XL"],
+            ["PREMIUM", "Premium"],
+            ["ALL", "All"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={filter === id ? "chip active" : "chip"}
+            aria-pressed={filter === id}
+            onClick={() => onFilterChange(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading && !hero ? (
+        <div className="skeletons" aria-busy="true" aria-label="Loading quotes">
+          {(["uber", "lyft", "empower", "curb"] as const).map((p) => (
+            <div key={p} className="skeleton-card" aria-hidden>
+              <div className="sk-head">
+                <ProviderLogo provider={p} size={40} />
+                <div className="sk-lines">
+                  <div className="sk-line w40" />
+                  <div className="sk-line w60" />
+                </div>
+              </div>
+              <div className="sk-line w30" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {pendingSources.length > 0 && hero ? (
+        <div className="pending-strip" role="status">
+          <span className="muted">Still lining up</span>
+          <div className="pending-logos">
+            {pendingSources.map((s) => {
+              const lower = s.toLowerCase();
+              const provider = (
+                ["uber", "lyft", "empower", "curb"] as const
+              ).find((p) => lower.includes(p));
+              const label = provider
+                ? provider
+                : lower.includes("rate")
+                  ? "Rate cards"
+                  : s.replace(/_/g, " ");
+              return (
+                <span key={s} className="pending-chip">
+                  {provider ? (
+                    <ProviderLogo provider={provider} size={24} />
+                  ) : null}
+                  <span>{label}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {hero ? (
+        <div className="hero-quote">
+          <div className="section-label-row">
+            <p className="section-label">{heroTitle(mode)}</p>
+            {onReverseTrip && pickup && destination ? (
+              <button
+                type="button"
+                className="chip reverse-chip"
+                onClick={onReverseTrip}
+              >
+                Going back? Swap trip
+              </button>
+            ) : null}
+          </div>
+          <QuoteCard
+            quote={hero}
+            hero
+            pickupLabel={tripPickupLabel}
+            destinationLabel={tripDestLabel}
+            index={0}
+            now={now}
+            returnTo={returnTo}
+            animate={animateEntrance}
+          />
+        </div>
+      ) : null}
+
+      {rest.length > 0 ? (
+        <div className="all-options">
+          <p className="section-label">All options</p>
+          <div className="quote-list">
+            {rest.map((q, i) => (
+              <QuoteCard
+                key={`${q.provider}:${q.providerProductId || q.providerProductName}`}
+                quote={q}
+                pickupLabel={tripPickupLabel}
+                destinationLabel={tripDestLabel}
+                index={i + 1}
+                now={now}
+                returnTo={returnTo}
+                animate={animateEntrance}
+                deltaMinor={
+                  hero
+                    ? q.rankingPriceMinor - hero.rankingPriceMinor
+                    : undefined
+                }
+                waitDeltaSec={
+                  hero?.pickupEtaSeconds != null && q.pickupEtaSeconds != null
+                    ? q.pickupEtaSeconds - hero.pickupEtaSeconds
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {failures.length > 0 ? (
+        <div className="failures">
+          <p className="section-label">Source issues</p>
+          <ul>
+            {failures.map((f) => (
+              <li key={`${f.sourceId}-${f.code}`}>
+                <strong>{humanizeSourceId(f.sourceId)}</strong>: {f.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {session?.discrepancies?.length ? (
+        <div className="failures">
+          <p className="section-label">Price discrepancies</p>
+          <ul>
+            {session.discrepancies.map((d, i) => (
+              <li key={`${d.message}-${i}`}>{d.message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {failedEmpty ? (
+        <div className="banner danger empty-filter" role="alert">
+          <p>
+            {session?.status === "FAILED"
+              ? "We couldn’t pull estimates for this route. Check your connection and try again."
+              : "No estimates came back for this route. Refresh or try a nearby pin."}
+          </p>
+          <div className="empty-filter-actions">
+            <button type="button" className="ghost" onClick={onRefresh}>
+              Retry comparison
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {filterEmpty ? (
+        <div className="banner warn empty-filter" role="status">
+          <p>No quotes matched this filter. Try All, or refresh prices.</p>
+          <div className="empty-filter-actions">
+            <button
+              type="button"
+              className="chip active"
+              onClick={() => onFilterChange("ALL")}
+            >
+              Show all
+            </button>
+            <button type="button" className="ghost" onClick={onRefresh}>
+              Refresh prices
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <p className="fineprint muted">
+        Estimates blend live road distance, published rate cards, corridor
+        anchors, and a simulated marketplace (time, zone heat, weather). Provider
+        apps may show promos or account pricing — always confirm before booking.
+      </p>
+    </section>
+  );
+}
