@@ -61,7 +61,7 @@ declare global {
 }
 
 const STYLE =
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const CSS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
 const JS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 
@@ -196,13 +196,13 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const a = new ml.Marker({ element: makePin("#3ecf8e", "A") })
+    const a = new ml.Marker({ element: makePin("#1f6b4a", "A") })
       .setLngLat([pickupLng, pickupLat])
       .setPopup(
         new ml.Popup({ offset: 18, closeButton: false }).setText(pickupLabel),
       )
       .addTo(map);
-    const b = new ml.Marker({ element: makePin("#6b9bff", "B") })
+    const b = new ml.Marker({ element: makePin("#1d4e84", "B") })
       .setLngLat([destLng, destLat])
       .setPopup(
         new ml.Popup({ offset: 18, closeButton: false }).setText(destLabel),
@@ -241,9 +241,9 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
           source: sourceId,
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
-            "line-color": "#3ecf8e",
+            "line-color": "#6ee7b7",
             "line-width": 10,
-            "line-opacity": 0.22,
+            "line-opacity": 0.45,
             "line-blur": 2,
           },
         });
@@ -253,7 +253,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
           source: sourceId,
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
-            "line-color": "#3ecf8e",
+            "line-color": "#1f6b4a",
             "line-width": 3.5,
             "line-opacity": 0.95,
           },

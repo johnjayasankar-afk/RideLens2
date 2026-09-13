@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Compare Uber, Lyft, Empower, and Curb before you book — live routing and tight fare estimates.",
     start_url: "/",
     display: "standalone",
-    background_color: "#070a0e",
-    theme_color: "#070a0e",
+    background_color: "#f8f6f1",
+    theme_color: "#f8f6f1",
     icons: [
       {
         src: "/icon.svg",
