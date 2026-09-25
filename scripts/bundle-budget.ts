@@ -11,10 +11,10 @@
  * Measures gzipped bytes, because that is what crosses the network. Raw size
  * is what a bundler reports and is not what anyone waits for.
  *
- * Deliberately does NOT measure MapLibre, which is loaded from a CDN at
- * runtime and is 207 KB gzipped on its own — larger than everything here put
- * together. That is recorded in docs/PERFORMANCE.md rather than smuggled into
- * a number that would then need a footnote every time it was quoted.
+ * MapLibre gets its own line rather than being folded into `clientJs`. It is
+ * lazily imported, so it costs nothing until a map renders — but at more than
+ * the rest of the app combined it is not something to leave unmeasured
+ * either. Two honest numbers beat one that needs a footnote.
  */
 import { gzipSync } from "node:zlib";
 import { readFileSync, readdirSync, statSync, type Dirent } from "node:fs";
@@ -32,6 +32,15 @@ const BUDGETS_KB = {
   css: 20,
   /** Self-hosted, subset, and the largest single category after JS. */
   fonts: 95,
+  /**
+   * MapLibre and its stylesheet, fetched only when a map is rendered.
+   *
+   * Generous because it is one upstream package and we do not control its
+   * size: v4 was 207 KB and the v6 required to clear a critical XSS advisory
+   * is larger. The ceiling exists to catch it being pulled into the initial
+   * bundle by accident, or doubling again.
+   */
+  lazyMap: 320,
 } as const;
 
 const NEXT_DIR = ".next";
@@ -65,6 +74,43 @@ function walk(dir: string, match: RegExp): string[] {
   return out;
 }
 
+/**
+ * The stylesheets the root page actually loads.
+ *
+ * Summing every .css under static/ counted the lazily-imported map styles
+ * against the page, which reported 33 KB for a page that downloads 12. The
+ * RSC manifest lists what a page pulls on arrival, which is the number worth
+ * having a ceiling on.
+ */
+function initialCss(): string[] {
+  const manifestPath = join(NEXT_DIR, "server/app/page_client-reference-manifest.js");
+  let src: string;
+  try {
+    src = readFileSync(manifestPath, "utf8");
+  } catch {
+    // Fall back to everything rather than silently reporting zero.
+    return walk(join(NEXT_DIR, "static"), /\.css$/);
+  }
+  const refs = new Set(src.match(/static\/(?:chunks|media)\/[A-Za-z0-9_.-]+\.css/g) ?? []);
+  return [...refs].map((f) => join(NEXT_DIR, f));
+}
+
+/** Whatever chunk MapLibre ended up in, found by looking inside rather than by name. */
+function mapChunks(): string[] {
+  const candidates = [
+    ...walk(join(NEXT_DIR, "static"), /\.js$/),
+    ...walk(join(NEXT_DIR, "static"), /maplibre.*\.css$/),
+  ];
+  return candidates.filter((f) => {
+    if (f.endsWith(".css")) return true;
+    try {
+      return readFileSync(f, "utf8").includes("maplibregl-canvas");
+    } catch {
+      return false;
+    }
+  });
+}
+
 function main() {
   try {
     statSync(NEXT_DIR);
@@ -81,13 +127,13 @@ function main() {
   const jsFiles = [...(manifest.rootMainFiles ?? []), ...(manifest.polyfillFiles ?? [])].map((f) =>
     join(NEXT_DIR, f),
   );
-  const cssFiles = walk(join(NEXT_DIR, "static"), /\.css$/);
   const fontFiles = walk(join(NEXT_DIR, "static"), /\.(woff2?|ttf|otf)$/);
 
   const measured = {
     clientJs: gzipKb(jsFiles),
-    css: gzipKb(cssFiles),
+    css: gzipKb(initialCss()),
     fonts: gzipKb(fontFiles),
+    lazyMap: gzipKb(mapChunks()),
   };
 
   let failed = false;

@@ -21,50 +21,66 @@ Loading `/` with no comparison run:
 subset, provider logos are local, and there is no analytics, no tag manager
 and no font CDN. That is unusual and worth keeping.
 
+(Measured against the CDN build; removing the CDN stylesheet link brought the
+same page to 259.6 KB.)
+
 ## The map is the elephant
 
-Running a comparison loads MapLibre GL from `unpkg.com`:
+Rendering a comparison loads MapLibre GL. It is the largest single thing this
+app ships:
 
-|                    |                                                           |
-| ------------------ | --------------------------------------------------------- |
-| Raw                | 803 KB                                                    |
-| Gzipped            | **207 KB**                                                |
-| Source             | `https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js` |
-| In `package.json`? | **No**                                                    |
+|                                     |                               |
+| ----------------------------------- | ----------------------------- |
+| Lazy chunk, gzipped                 | **287.5 KB**                  |
+| Initial JS, gzipped, for comparison | 166.4 KB                      |
+| Loaded                              | Only when a map renders       |
+| Source                              | `maplibre-gl@6.11.2`, bundled |
 
-**The map costs more than the entire rest of the application.** 207 KB
-gzipped against 167 KB for everything else — it more than doubles the page's
-JavaScript, and it arrives from a third party.
+**The map weighs more than the rest of the application put together.** It is
+lazily imported, so first paint is untouched and a page with no map never
+pays for it — but it is not a small thing and the budget tracks it on its own
+line rather than folding it into a number that would then need a footnote.
 
-It is at least loaded lazily: nothing fetches it until a comparison renders,
-so the first paint is unaffected. And `docs/A11Y.md` establishes that no task
-requires the map — it is supplementary.
+### It used to come from a CDN, and that was worse than it looked
 
-Four things follow, in descending order of how much they matter:
+Until now `route-map.tsx` injected a `<script>` from `unpkg.com` and read
+`window.maplibregl` off the global. That ran 800 KB of third-party code on
+this origin, made the map an uptime dependency on a CDN, and — the part that
+mattered — kept it invisible to `npm audit`.
 
-1. **It executes third-party code on this origin.** Now pinned with
-   subresource integrity, so the browser refuses anything that is not the
-   exact bytes npm published for 4.7.1. Before that, whatever unpkg returned
-   for that path ran with full access to the page, and the CSP permitting it
-   is report-only, so nothing was checking anything. The hashes were derived
-   from the registry tarball — whose published `dist.integrity` was verified
-   against the downloaded bytes — and not merely from what the CDN happened to
-   serve.
-2. **It is an uptime dependency on unpkg.** If unpkg is slow or down, the map
-   fails. It degrades rather than breaking the page, which is the right
-   behaviour, but it is an availability surface nobody chose.
-3. **It reveals users to two third parties.** Every comparison tells unpkg
-   and CARTO the user's IP and referer, and the CARTO tile requests describe
-   the route being viewed. That is a privacy fact, not a performance one, but
-   it arrives with the same decision.
-4. **It is not a dependency**, so `npm audit` does not see it, Dependabot
-   does not watch it, and the version is a string in a component file.
+**The moment it became a real dependency, audit reported a _critical_ XSS
+advisory** (GHSA-jrc7-96c5-q579, sanitizer bypass in `DOM.sanitize()`)
+against every version at or below 6.4.0. That included the 4.7.1 the app had
+been serving to users the whole time. Nothing in the project could have told
+anyone, because nothing in the project knew the package existed.
 
-**Recommendation: add `maplibre-gl` to `package.json` and bundle it.** That
-removes the CDN, the integrity question and the uptime dependency in one
-move, at the cost of a runtime dependency — which this project requires a
-decision on rather than a commit. Self-hosting the basemap style would be a
-separate, larger piece of work.
+Fixed in 6.11.2, which is what is installed. `npm audit` reports zero
+vulnerabilities.
+
+The upgrade cost weight — v4 was 207 KB gzipped, v6 is 287.5 KB. That is a
+40% increase to clear a critical advisory, and it is worth it.
+
+### Two things the move needed
+
+**The stylesheet had to go in the lazy chunk.** A top-level
+`import "maplibre-gl/dist/maplibre-gl.css"` in a client component is hoisted
+into the route's own stylesheet, which took the CSS budget from 12 KB to
+33 KB and shipped map styles to every page including those with no map. The
+budget caught it on the first run. It now lives in `map-lib.ts`, imported
+alongside the library, so it travels with the chunk that only loads when a
+map does.
+
+**The worker had to be self-hosted.** v6 decodes tiles in a module worker and
+resolves its URL relative to its own module; the bundler does not emit that
+as a served asset, so the request fell through to the app's 404 page, the
+browser refused a script served as `text/html`, and the map drew a blank
+canvas. `scripts/vendor-map-worker.ts` copies the worker and the shared chunk
+it imports into `public/vendor/maplibre/` on every build, and `map-lib.ts`
+calls `setWorkerUrl` at it. Copied at build time rather than committed, so it
+cannot drift from the installed version — `public/vendor/` is gitignored.
+
+**Third-party requests are now only map tiles**, from CARTO. No script from
+anywhere but this origin.
 
 ## The budget
 
@@ -82,14 +98,19 @@ budget nobody enforces is a preference, and the argument about a heavier page
 should happen when somebody makes it heavier rather than a year later when
 the cause is unrecoverable.
 
-The script measures gzipped bytes from `.next/build-manifest.json` and
-cross-checks cleanly against what the browser reports (166.4 vs 167.2 KB
-measured live — the difference is Next's runtime bootstrap inline in the
-HTML).
+The script measures gzipped bytes and cross-checks cleanly against what the
+browser reports (166.4 vs 167.1 KB JS, 12.1 vs 12.4 KB CSS, measured live).
 
-**It deliberately excludes MapLibre**, which would otherwise be a 207 KB
-footnote attached to every number quoted from this table. The map's cost is
-stated above, on its own, where it cannot be skimmed past.
+CSS is read from the root page's RSC manifest rather than by summing every
+`.css` under `static/`. Summing counted the lazily-imported map styles against
+the page and reported 33 KB for a page that downloads 12.
+
+MapLibre has its own line rather than being folded into `clientJs`, because
+it is lazily imported and costs nothing until a map renders — but at more
+than the rest of the app combined it is not something to leave unmeasured.
+Its ceiling is generous because it is one upstream package whose size we do
+not control; it exists to catch the chunk being pulled into the initial
+bundle by accident, or doubling again.
 
 ## Where the time goes
 

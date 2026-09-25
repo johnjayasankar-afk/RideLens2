@@ -19,13 +19,17 @@
     "playwright:install": "npx playwright install chromium",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run budget",
     "eval": "tsx scripts/eval.ts",
-    "budget": "tsx scripts/bundle-budget.ts"
+    "budget": "tsx scripts/bundle-budget.ts",
+    "vendor:map": "tsx scripts/vendor-map-worker.ts",
+    "prebuild": "npm run vendor:map",
+    "predev": "npm run vendor:map"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.39.0",
+    "maplibre-gl": "^6.11.2",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

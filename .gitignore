@@ -17,3 +17,6 @@ RideLens.zip
 test-results/
 playwright-report/
 blob-report/
+
+# Vendored at build time by scripts/vendor-map-worker.ts
+public/vendor/

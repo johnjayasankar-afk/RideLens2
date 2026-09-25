@@ -78,14 +78,25 @@ Both directives are fixed, the console is genuinely quiet on `/`, `/sources`,
 **When adding a host, verify it against a real page load.** The evidence is a
 browser console with no violations, not a plausible-looking directive.
 
-## Third-party script
+## No third-party script
 
-`route-map.tsx` loads MapLibre from `unpkg.com` and runs it on this origin.
-It is pinned with subresource integrity derived from the npm registry's own
-published tarball — `dist.integrity` verified against the downloaded bytes,
-which are byte-identical to what the CDN serves — rather than from whatever
-the CDN returned on the day. A mismatch makes the browser refuse the file and
-the map degrades, which is the correct outcome.
+`script-src` is `'self'` plus a per-request nonce. Nothing else. There is no
+CDN in the allowlist and no external origin can execute on this page.
 
-It is not a `package.json` dependency, so `npm audit` does not see it and the
-version is a string in a component file. See `docs/PERFORMANCE.md`.
+MapLibre used to be injected from `unpkg.com` and read off `window`. It is now
+`maplibre-gl` in `package.json`, lazily imported from the bundle. The
+difference is not theoretical: **the moment it became a real dependency,
+`npm audit` reported a critical XSS advisory** (GHSA-jrc7-96c5-q579, sanitizer
+bypass in `DOM.sanitize()`) covering every version at or below 6.4.0 —
+including the 4.7.1 the app had been serving to users. A CDN script is not
+merely a supply-chain risk; it is one your tooling cannot see. Now on 6.11.2,
+with `npm audit` clean.
+
+Its tile-decoding worker is served from this origin too, vendored out of
+`node_modules` at build time by `scripts/vendor-map-worker.ts` so it always
+matches the installed version.
+
+What remains third-party is map **tiles**, from CARTO. Those are `connect-src`
+and `img-src` only, and they do tell CARTO the approximate area a rider is
+looking at — a privacy fact worth knowing, recorded here rather than left
+implicit.

@@ -31,7 +31,9 @@ import { FRAMING_CSP } from "@/lib/embed";
 
 /**
  * Hosts the app genuinely talks to, verified against a real page load rather
- * than assembled from memory. See docs/SECURITY.md.
+ * than assembled from memory. Note there is no script host: MapLibre is a
+ * bundled dependency and its worker is served from here, so nothing external
+ * executes. See docs/SECURITY.md.
  */
 const ROUTING = ["https://router.project-osrm.org", "https://routing.openstreetmap.de"];
 const GEOCODING = ["https://nominatim.openstreetmap.org"];
@@ -41,9 +43,6 @@ const WEATHER = ["https://api.open-meteo.com"];
  * style lives on the bare domain while the tiles are on tiles-a/b/c/d.
  */
 const BASEMAP = ["https://basemaps.cartocdn.com", "https://*.basemaps.cartocdn.com"];
-/** MapLibre itself, pinned by subresource integrity in route-map.tsx. */
-const MAP_LIB = "https://unpkg.com";
-
 function policy(nonce: string, isDev: boolean): string {
   return [
     "default-src 'self'",
@@ -57,9 +56,9 @@ function policy(nonce: string, isDev: boolean): string {
      * error stacks in the browser, and neither React nor Next use it in a
      * production build.
      */
-    `script-src 'self' 'nonce-${nonce}' ${MAP_LIB}${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""}`,
     // React sets inline styles directly on elements, which a nonce cannot cover.
-    `style-src 'self' 'unsafe-inline' ${MAP_LIB}`,
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://api.mapbox.com",
     "font-src 'self'",
     // MapLibre pulls style, tiles, sprite and glyph .pbf files over XHR.

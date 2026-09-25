@@ -15,6 +15,10 @@ const eslintConfig = defineConfig([
     "coverage/**",
     // Not this app — see .gitignore.
     "ridelens/**",
+    // Upstream MapLibre, copied out of node_modules at build time.
+    "public/vendor/**",
+    "test-results/**",
+    "playwright-report/**",
   ]),
 ]);
 
