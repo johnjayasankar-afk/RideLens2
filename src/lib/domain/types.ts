@@ -126,12 +126,25 @@ export interface SourceFailure {
   retryable: boolean;
 }
 
+export interface ProviderUnavailable {
+  provider: ProviderId;
+  /** Confirmed absent, or simply never checked. Different sentences. */
+  status: "DOES_NOT_OPERATE" | "UNVERIFIED";
+  reason: string;
+}
+
 export interface SourceQuoteResult {
   sourceId: string;
   ok: boolean;
   quotes: NormalizedQuote[];
   failure?: SourceFailure;
   latencyMs: number;
+  /**
+   * Providers this source could price but withheld, because the rider cannot
+   * hail them in this market. Carried so the UI can name them rather than let
+   * them vanish.
+   */
+  providersUnavailable?: ProviderUnavailable[];
   raw?: unknown;
 }
 
@@ -148,6 +161,8 @@ export interface QuoteSessionCoverage {
   sourcesSucceeded: string[];
   sourcesFailed: Array<{ sourceId: string; code: string; message: string }>;
   providersReturned: ProviderId[];
+  /** Named, not silently dropped — see market-coverage.ts. */
+  providersUnavailable: ProviderUnavailable[];
 }
 
 export interface QuoteSession {

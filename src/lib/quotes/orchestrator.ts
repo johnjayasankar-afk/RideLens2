@@ -154,6 +154,7 @@ export async function runQuoteSession(input: {
     coverage: {
       sourcesExpected: sources.map((s) => s.id),
       sourcesSucceeded: [],
+      providersUnavailable: [],
       sourcesFailed:
         sources.length === 0
           ? [
@@ -211,6 +212,18 @@ export async function runQuoteSession(input: {
                   ...session.coverage.providersReturned,
                   ...result.quotes.map((q) => q.provider),
                 ]),
+              ],
+              /*
+               * A provider a source withheld because the rider cannot hail it
+               * here. Carried through so the UI can say so; dropping it is how
+               * a Phoenix comparison came to show a New York taxi fare.
+               */
+              providersUnavailable: [
+                ...session.coverage.providersUnavailable,
+                ...(result.providersUnavailable ?? []).filter(
+                  (u) =>
+                    !session.coverage.providersUnavailable.some((x) => x.provider === u.provider),
+                ),
               ],
             },
           };

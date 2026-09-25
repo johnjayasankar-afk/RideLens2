@@ -2,6 +2,12 @@ import { getEnv } from "@/lib/config";
 import { resolveBookingHandoff } from "@/lib/booking/booking-link-resolver";
 import { computeFreshness } from "@/lib/domain/freshness";
 import { dollarsToMinor, rankingMidpointMinor } from "@/lib/domain/money";
+import {
+  coverageFor,
+  omittedProvidersIn,
+  operatesIn,
+  type OmittedProvider,
+} from "@/lib/domain/market-coverage";
 import { confidenceForQuoteType } from "@/lib/domain/ranking";
 import type {
   NormalizedQuote,
@@ -11,7 +17,15 @@ import type {
   SourceQuoteResult,
 } from "@/lib/domain/types";
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
+import { nearestCity } from "@/lib/sources/ratecard/rates";
 import type { QuoteSource } from "@/lib/sources/types";
+
+/**
+ * Every provider this source knows how to price. Which of them a given
+ * comparison actually surfaces is decided per market by market-coverage.ts,
+ * so healthCheck reports the ceiling rather than a promise.
+ */
+const SURFACEABLE_PROVIDERS: NormalizedQuote["provider"][] = ["uber", "lyft", "curb", "empower"];
 import { computeProductFare, type FareProduct } from "@/lib/sources/ratecard/fare-engine";
 import { estimatePickupWait, type WaitCategory } from "@/lib/sources/ratecard/wait-eta";
 import { fetchWeatherSignal } from "@/lib/sources/ratecard/weather-signal";
@@ -64,7 +78,7 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         p50LatencyMs: null,
         lastSuccessAt: new Date().toISOString(),
         lastError: null,
-        providersSurfaced: ["uber", "lyft", "curb", "empower"],
+        providersSurfaced: SURFACEABLE_PROVIDERS,
       };
     } catch (e) {
       return {
@@ -219,7 +233,15 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         weatherLabel: `${weather.label}:${weather.precipMm}mm`,
       };
 
-      const quotes: NormalizedQuote[] = [
+      /*
+       * Which market this route is priced against, and therefore which
+       * providers a rider can actually hail here. The list used to be
+       * hardcoded, so a Phoenix comparison offered a Curb fare computed from
+       * the New York TLC meter.
+       */
+      const marketId = nearestCity(request.pickup.lat, request.pickup.lng).id;
+
+      const candidates: NormalizedQuote[] = [
         this.buildFromFare({
           ...common,
           provider: "uber",
@@ -281,11 +303,22 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         }),
       ];
 
+      /*
+       * Omitted, never silently. A provider held back is named with the reason
+       * — "does not operate here" and "we have not checked" are different
+       * sentences and the rider gets the true one.
+       */
+      const quotes = candidates.filter((q) => operatesIn(q.provider, marketId));
+      const omitted: OmittedProvider[] = omittedProvidersIn(marketId, [
+        ...new Set(candidates.map((q) => q.provider)),
+      ]);
+
       return {
         sourceId: this.id,
         ok: true,
         quotes,
         latencyMs: Date.now() - started,
+        providersUnavailable: omitted,
         raw: {
           miles,
           osrmMinutes,
@@ -293,6 +326,14 @@ export class PublicRateCardQuoteSource implements QuoteSource {
           geometry: route.geometry,
           bbox: route.bbox,
           weather,
+          marketId,
+          omittedProviders: omitted,
+          coverageBasis: Object.fromEntries(
+            [...new Set(candidates.map((q) => q.provider))].map((p) => [
+              p,
+              coverageFor(p, marketId),
+            ]),
+          ),
           sample: quotes[0]?.metadata,
         },
       };
