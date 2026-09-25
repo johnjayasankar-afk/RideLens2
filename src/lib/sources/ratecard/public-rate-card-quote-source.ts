@@ -19,13 +19,14 @@ import type {
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
 import { resolveMarket, type MarketResolution } from "@/lib/sources/ratecard/rates";
 import { feeModelFor, unmodeledFeeNote } from "@/lib/sources/ratecard/market-fees";
+import { MODEL_PARAMS, MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import type { QuoteSource } from "@/lib/sources/types";
 
 /**
  * How much wider a borrowed card's band gets. A card from 120 km away is not
  * wrong so much as untested here, and the band is the only place to put that.
  */
-const EXTRAPOLATION_BAND_WIDENING = 2.2;
+const EXTRAPOLATION_BAND_WIDENING = MODEL_PARAMS.band.extrapolationWidening;
 
 /**
  * How much wider a band gets when the market's regulatory fees are not
@@ -36,7 +37,7 @@ const EXTRAPOLATION_BAND_WIDENING = 2.2;
  * tariff. It is a stand-in for a number nobody has looked up, and the card
  * says which fees are missing rather than only that the band is wide.
  */
-const UNMODELED_FEE_WIDENING = 1.5;
+const UNMODELED_FEE_WIDENING = MODEL_PARAMS.band.unmodeledFeeWidening;
 
 /**
  * Every provider this source knows how to price. Which of them a given
@@ -169,9 +170,13 @@ export class PublicRateCardQuoteSource implements QuoteSource {
       (feesUnmodeled ? UNMODELED_FEE_WIDENING : 1);
     const widened = extrapolated || feesUnmodeled;
     const centre = (fare.low + Math.max(fare.low, fare.high)) / 2;
-    const rawLow = widened ? centre - (centre - fare.low) * spread - centre * 0.08 : fare.low;
+    const rawLow = widened
+      ? centre - (centre - fare.low) * spread - centre * MODEL_PARAMS.band.widenedEdgeRelief
+      : fare.low;
     const rawHigh = widened
-      ? centre + (Math.max(fare.low, fare.high) - centre) * spread + centre * 0.08
+      ? centre +
+        (Math.max(fare.low, fare.high) - centre) * spread +
+        centre * MODEL_PARAMS.band.widenedEdgeRelief
       : Math.max(fare.low, fare.high);
 
     const minMinor = dollarsToMinor(Math.max(0, rawLow));
@@ -231,6 +236,12 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         marketId: input.market.id,
         marketBasis: input.market.basis,
         marketDistanceKm: Math.round(input.market.distanceKm),
+        /*
+         * Which parameter set produced this number. Without it a corpus
+         * spanning a change cannot be split, and "the model improved" is
+         * unfalsifiable.
+         */
+        modelVersion: MODEL_VERSION,
         feesModeled: !feesUnmodeled,
         feeModelNote: unmodeledFeeNote(input.market.id, fare.marketName),
         marketNote:
