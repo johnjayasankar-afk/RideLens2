@@ -14,7 +14,7 @@ import type {
   SourceQuoteResult,
 } from "@/lib/domain/types";
 import { resolveBookingHandoff } from "@/lib/booking/booking-link-resolver";
-import { getEnv } from "@/lib/config";
+import { getEnv, obiConfigured } from "@/lib/config";
 import type { QuoteSource } from "@/lib/sources/types";
 import { ConfigurationError } from "@/lib/sources/types";
 import { z } from "zod";
@@ -61,18 +61,31 @@ export class ObiQuoteSource implements QuoteSource {
   id = "obi";
 
   capabilities(): SourceCapabilities {
+    /*
+     * These were hardcoded true, alone among the five partner adapters, so
+     * the admin panel showed an unconfigured Obi as a fully capable priced
+     * source. Gated now like its siblings: a source with no credentials
+     * cannot price anything, whatever it is licensed to do.
+     *
+     * comparisonPermitted is gated too, though Obi's case differs in kind —
+     * it is a licensed aggregator, so comparison is permitted by the
+     * arrangement rather than by our configuration. The field answers
+     * whether this source's output may be compared *now*, and with no
+     * output there is nothing to permit. Wiring up credentials restores it.
+     */
+    const ok = obiConfigured();
     return {
-      supportsPrice: true,
+      supportsPrice: ok,
       supportsUpfront: false,
       supportsETA: false,
       supportsBooking: true,
       supportsAccountLink: false,
       supportsCurrentLocation: true,
-      supportsScheduledRide: true,
+      supportsScheduledRide: ok,
       markets: ["US", "global"],
       ttlSeconds: 20,
       rateLimitPerMinute: 60,
-      comparisonPermitted: true,
+      comparisonPermitted: ok,
     };
   }
 
