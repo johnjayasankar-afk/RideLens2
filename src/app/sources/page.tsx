@@ -4,6 +4,10 @@ import Link from "next/link";
 import { MARKET_COVERAGE, MODELLED_MARKETS } from "@/lib/domain/market-coverage";
 import type { ProviderId } from "@/lib/domain/types";
 import { getEnv } from "@/lib/config";
+import { loadCorpus, scorable } from "@/lib/eval/corpus";
+import { MIN_SAMPLES, evaluate } from "@/lib/eval/metrics";
+import { rateCardFreshness } from "@/lib/sources/ratecard/freshness";
+import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { sourceStatusSummary } from "@/lib/sources/registry";
 
 export const dynamic = "force-dynamic";
@@ -103,8 +107,19 @@ const SOURCES: SourceRow[] = [
   },
 ];
 
-export default function SourcesPage() {
+export default async function SourcesPage() {
   const env = getEnv();
+
+  /*
+   * The error rate, published. A product that says how often it is wrong is
+   * more credible than one that does not — provided it is also willing to say
+   * "we have not measured this yet", which today it is.
+   */
+  const corpus = await loadCorpus(
+    process.env.EVAL_CORPUS ?? "tests/fixtures/calibration-corpus.json",
+  );
+  const calibration = evaluate(scorable(corpus));
+  const freshness = rateCardFreshness();
   const summary = sourceStatusSummary(env) as Record<string, string>;
   const liveCount = Object.values(summary).filter((v) => String(v).startsWith("enabled")).length;
 
@@ -156,6 +171,36 @@ export default function SourcesPage() {
             );
           })}
         </ul>
+      </section>
+
+      <section aria-labelledby="accuracy">
+        <h2 id="accuracy">How often we are right</h2>
+        {calibration.overall.n >= MIN_SAMPLES ? (
+          <>
+            <p className="sources-note">
+              Our band contained the actual fare in{" "}
+              <strong>{(calibration.overall.coverage! * 100).toFixed(0)}%</strong> of{" "}
+              <strong>{calibration.overall.n}</strong> reported rides, with a mean band width of{" "}
+              {(calibration.overall.meanRelativeWidth! * 100).toFixed(0)}% of the fare.
+            </p>
+            <p className="sources-note">
+              Both numbers are shown together on purpose. A band of $5–$500 would contain every fare
+              ever charged and tell you nothing.
+            </p>
+          </>
+        ) : (
+          <p className="sources-note" data-testid="calibration-unmeasured">
+            <strong>We do not know yet.</strong> {calibration.overall.n} of {MIN_SAMPLES} reported
+            fares needed before this number means anything, and nothing is published below that — a
+            figure on a page gets read and the caveat beside it does not. The model has never been
+            checked against a real fare.
+          </p>
+        )}
+        <p className="sources-note">
+          Model <code>{MODEL_VERSION}</code>. Rate cards last verified{" "}
+          <strong>{freshness.verifiedOn}</strong> ({freshness.ageDays} days ago).
+          {freshness.warning ? ` ${freshness.warning}` : ""}
+        </p>
       </section>
 
       <section aria-labelledby="coverage">

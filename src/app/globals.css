@@ -2493,3 +2493,20 @@ h1.admin-title {
   background: var(--amber-bg);
   color: var(--amber-t);
 }
+
+/* Admin alerts: something an operator has to act on, not decoration. */
+.admin-alert {
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.admin-alert.is-stale {
+  background: var(--amber-bg);
+  color: var(--amber-t);
+}
+.admin-alert.is-expired {
+  background: var(--rose-bg);
+  color: var(--rose-t);
+}

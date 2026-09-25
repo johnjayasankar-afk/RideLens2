@@ -8,6 +8,8 @@ import { listAllSources, sourceStatusSummary } from "@/lib/sources/registry";
 import { getUsageToday, listRecentSessions } from "@/lib/quotes/orchestrator";
 import { getEnv, isProductionLiveCapable } from "@/lib/config";
 import { cacheStats } from "@/lib/quotes/cache";
+import { rateCardFreshness } from "@/lib/sources/ratecard/freshness";
+import { sessionsAreDurable } from "@/lib/quotes/orchestrator";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +134,8 @@ export default async function AdminPage({
       health: await s.healthCheck(),
     })),
   );
+  const freshness = rateCardFreshness();
+  const durable = sessionsAreDurable();
   const usage = getUsageToday();
   const sessions = await listRecentSessions(12);
   const summary = sourceStatusSummary(env);
@@ -148,8 +152,24 @@ export default async function AdminPage({
         Source health, usage, and recent sessions: not a public accuracy claim.
       </p>
 
+      {freshness.warning ? (
+        <p className={`admin-alert is-${freshness.status}`} data-testid="ratecard-staleness">
+          <strong>Rate cards are {freshness.status}.</strong> {freshness.warning}
+        </p>
+      ) : null}
+
+      {!durable ? (
+        <p className="admin-alert is-stale" data-testid="sessions-not-durable">
+          <strong>Sessions are not durable.</strong> Supabase is not configured, so sessions live in
+          this instance&rsquo;s memory only. Shared links and reported actuals will fail for any
+          request that lands elsewhere, and the list below shows this instance&rsquo;s work rather
+          than the fleet&rsquo;s.
+        </p>
+      ) : null}
+
       <div className="admin-stats">
         <Stat label="Live capable" value={isProductionLiveCapable(env) ? "Yes" : "No"} />
+        <Stat label="Rate cards" value={`${freshness.ageDays}d old`} />
         <Stat label="Comparisons today" value={String(usage.comparisons)} />
         <Stat label="Source calls" value={String(usage.sourceCalls)} />
         <Stat
