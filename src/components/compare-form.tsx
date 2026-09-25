@@ -174,7 +174,22 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const onlineRef = useRef(true);
   const swapComparePending = useRef(false);
   const recentComparePending = useRef(false);
+  /*
+   * Two halves of one fact, on purpose.
+   *
+   * The ref is read inside async flows (fetchRoute, compare) where a stale
+   * closure would compare against the wrong route. The state exists because
+   * render reads this too — `showMobileCompare` below — and a ref mutation
+   * schedules no re-render, so the mobile compare button could show or hide
+   * based on a value React had never seen. Write through setLastCompared and
+   * the two cannot drift.
+   */
   const lastComparedKey = useRef<string | null>(null);
+  const [comparedKey, setComparedKey] = useState<string | null>(null);
+  const setLastCompared = useCallback((key: string | null) => {
+    lastComparedKey.current = key;
+    setComparedKey(key);
+  }, []);
   const deepLinkCompareDone = useRef(false);
   const toFieldRef = useRef<PlaceFieldHandle | null>(null);
 
@@ -351,7 +366,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         setError("Pickup and destination are nearly the same place. Choose a clearer destination.");
         setSession(null);
         setMapRoute(null);
-        lastComparedKey.current = null;
+        setLastCompared(null);
         return;
       }
 
@@ -363,7 +378,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
       if (!refresh && lastComparedKey.current !== key) {
         setSession(null);
       }
-      lastComparedKey.current = key;
+      setLastCompared(key);
 
       setLoading(true);
       setError(null);
@@ -488,7 +503,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         if (gen === requestGen.current) setLoading(false);
       }
     },
-    [pickup, destination, canSubmit, filter, mode, fetchRoute, autoRefresh],
+    [pickup, destination, canSubmit, filter, mode, fetchRoute, autoRefresh, setLastCompared],
   );
 
   // Deep-link one-shot compare
@@ -507,14 +522,14 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     if (!pickup || !destination) {
       setSession(null);
       setMapRoute(null);
-      lastComparedKey.current = null;
+      setLastCompared(null);
       return;
     }
     const key = `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`;
     if (lastComparedKey.current && lastComparedKey.current !== key) {
       setSession(null);
     }
-  }, [pickup, destination, session]);
+  }, [pickup, destination, session, setLastCompared]);
 
   // Auto-compare when both places newly selected (not already compared)
   useEffect(() => {
@@ -661,8 +676,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     }
   };
 
-  const showMobileCompare =
-    canSubmit && !loading && !(session && lastComparedKey.current === routeKey);
+  const showMobileCompare = canSubmit && !loading && !(session && comparedKey === routeKey);
   const compareReadyPulse = showMobileCompare;
 
   const timeEyebrow = useMemo(() => {
@@ -804,7 +818,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
                   setAutoRefresh(false);
                   autoRefreshArmed.current = false;
                   refreshFailCount.current = 0;
-                  lastComparedKey.current = null;
+                  setLastCompared(null);
                   setQuickTarget("to");
                   const url = new URL(window.location.href);
                   url.searchParams.delete("from");

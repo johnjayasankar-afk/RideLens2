@@ -215,7 +215,7 @@ committed.
 
 ## Deferred to Phase 4.1
 
-Nine ESLint errors remain, all React Compiler rules, all inside the two
+Seven ESLint errors remain, all `set-state-in-effect`, all inside the two
 monoliths the brief already scopes for decomposition:
 
 | File                | Line     | Rule                                                            |
@@ -228,10 +228,17 @@ monoliths the brief already scopes for decomposition:
 | `quote-results.tsx` | 424      | `set-state-in-effect` — entrance animation                      |
 | `quote-results.tsx` | 479      | `set-state-in-effect` — marketplace tick countdown              |
 
-These are not cosmetic. Reading `lastComparedKey.current` during render (665) can
-produce a mobile compare button whose visibility disagrees with what was
-actually compared. The correct fixes are the `useCompareSession` and
-`useDeepLinkState` extractions in 4.1; suppressing them to turn the gate green
+The two `refs-during-render` errors that were also here **have been fixed**,
+because they were a real defect rather than a flagged pattern:
+`lastComparedKey` is a ref, mutating a ref schedules no re-render, and render
+read it to decide whether to show the mobile compare button — so that button's
+visibility could disagree with what had actually been compared. The ref is kept
+for async reads, where a stale closure would compare against the wrong route,
+and is mirrored into state for render.
+
+The seven that remain are the `useCompareSession` / `useDeepLinkState`
+extractions in 4.1. They need to move together, in a 1,024-line component with
+almost no coverage protecting it, and suppressing them to turn the gate green
 would be worse than leaving them visible.
 
 **`npm run verify` therefore still exits non-zero on `lint`.** Every other step
