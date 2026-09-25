@@ -1,6 +1,9 @@
+import { timingSafeEqual } from "node:crypto";
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { listAllSources, sourceStatusSummary } from "@/lib/sources/registry";
 import { getUsageToday, listRecentSessions } from "@/lib/quotes/orchestrator";
 import { getEnv, isProductionLiveCapable } from "@/lib/config";
@@ -13,18 +16,72 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function unauthorized() {
+/** Name of the httpOnly cookie that holds an accepted admin secret. */
+const ADMIN_COOKIE = "ridelens_admin";
+
+/**
+ * Compare without leaking length or position through timing.
+ *
+ * `a === b` on a secret returns as soon as two bytes differ, which is a
+ * measurable signal. Lengths are compared first because timingSafeEqual throws
+ * on a mismatch; that leaks the length alone, which is not the interesting part.
+ */
+function secretMatches(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Take the secret from a POST body and put it in an httpOnly cookie.
+ *
+ * The page used to accept `?secret=…`, which writes the credential into the
+ * access log of every proxy in front of it, into the browser's history, and
+ * into the Referer header of every outbound link on the page.
+ */
+async function signIn(formData: FormData) {
+  "use server";
+  const env = getEnv();
+  const expected = env.RIDELENS_ADMIN_SECRET;
+  const provided = String(formData.get("secret") ?? "");
+  if (!expected || !secretMatches(provided, expected)) redirect("/admin?denied=1");
+
+  const jar = await cookies();
+  jar.set(ADMIN_COOKIE, provided, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: env.NODE_ENV === "production",
+    path: "/admin",
+    maxAge: 60 * 60 * 8,
+  });
+  redirect("/admin");
+}
+
+function unauthorized(denied: boolean) {
   return (
     <div className="shell status-shell">
       <div className="status-brand" aria-hidden>
         <span className="brand-mark" />
       </div>
       <p className="eyebrow">Admin</p>
-      <h1 className="brand status-title">Unauthorized</h1>
+      <h1 className="brand status-title">{denied ? "That secret was not accepted" : "Sign in"}</h1>
       <p className="muted status-copy">
-        Set <code>RIDELENS_ADMIN_SECRET</code> and open <code>/admin?secret=…</code>, or send header{" "}
-        <code>x-admin-secret</code>.
+        Set <code>RIDELENS_ADMIN_SECRET</code>, then enter it below. Automated callers may send the{" "}
+        <code>x-admin-secret</code> header instead.
       </p>
+      <form action={signIn} className="status-actions" style={{ gap: 8 }}>
+        <input
+          type="password"
+          name="secret"
+          aria-label="Admin secret"
+          autoComplete="current-password"
+          required
+        />
+        <button className="primary" type="submit">
+          Sign in
+        </button>
+      </form>
       <div className="status-actions">
         <Link className="ghost" href="/">
           Back to comparison
@@ -44,7 +101,7 @@ function healthTone(status: string): string {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ secret?: string }>;
+  searchParams: Promise<{ secret?: string; denied?: string }>;
 }) {
   const env = getEnv();
   const secret = env.RIDELENS_ADMIN_SECRET;
@@ -52,12 +109,21 @@ export default async function AdminPage({
   const hdrs = await headers();
   const jar = await cookies();
 
-  const provided =
-    params.secret || hdrs.get("x-admin-secret") || jar.get("ridelens_admin")?.value || "";
+  /*
+   * A secret in the query string is already burned — it is in the browser
+   * history and in this proxy's access log. Bounce it out of the URL rather
+   * than honouring it, so a bookmarked or shared link stops working instead of
+   * quietly continuing to authenticate.
+   */
+  if (params.secret) redirect("/admin");
 
-  const allowed = secret ? provided === secret : env.NODE_ENV !== "production";
+  const provided = hdrs.get("x-admin-secret") || jar.get(ADMIN_COOKIE)?.value || "";
 
-  if (!allowed) return unauthorized();
+  // Matches the API's rule in /api/admin/overview: with no secret configured,
+  // the dashboard is open outside production and closed inside it.
+  const allowed = secret ? secretMatches(provided, secret) : env.NODE_ENV !== "production";
+
+  if (!allowed) return unauthorized(params.denied === "1");
 
   const health = await Promise.all(
     listAllSources().map(async (s) => ({

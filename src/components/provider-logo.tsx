@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import type { ProviderId } from "@/lib/domain/types";
 
 const KNOWN = new Set<ProviderId>(["uber", "lyft", "empower", "curb"]);
@@ -6,6 +8,18 @@ function slugFor(provider: ProviderId): string {
   return KNOWN.has(provider) ? provider : "other";
 }
 
+/**
+ * A provider's brand mark.
+ *
+ * One source file per provider, at 256px, resized and re-encoded by next/image
+ * — these are 8–25KB PNGs rendered at 24–40px, and a page shows five or six of
+ * them. The repo previously carried three variants each (`-128`, `-256` and a
+ * bare `.png` that was a byte-identical copy of the 256), of which the bare one
+ * was referenced nowhere.
+ *
+ * width/height are always set, so the box is reserved before the bytes land and
+ * nothing shifts.
+ */
 export function ProviderLogo({
   provider,
   size = 40,
@@ -19,23 +33,17 @@ export function ProviderLogo({
 }) {
   const slug = slugFor(provider);
   const label = slug.charAt(0).toUpperCase() + slug.slice(1);
-  const src128 = `/providers/${slug}-128.png`;
-  const src256 = `/providers/${slug}-256.png`;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- static App Store marks
-    <img
+    <Image
       className={`provider-mark-img${className ? ` ${className}` : ""}`}
       style={{ ["--mark-size" as string]: `${size}px` }}
-      src={size <= 32 ? src128 : src256}
-      srcSet={`${src128} 128w, ${src256} 256w`}
-      sizes={`${size}px`}
+      src={`/providers/${slug}-256.png`}
       alt={`${label} logo`}
       width={size}
       height={size}
-      decoding={priority ? "sync" : "async"}
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
+      sizes={`${size}px`}
+      priority={priority}
     />
   );
 }

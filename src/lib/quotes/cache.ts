@@ -1,13 +1,17 @@
 import { getEnv } from "@/lib/config";
 import type { AccountContext } from "@/lib/domain/types";
+import { MemoryTtlStore } from "@/lib/quotes/store";
 
 interface CacheEntry<T> {
   value: T;
-  expiresAt: number;
   accountContext: AccountContext;
 }
 
-const store = new Map<string, CacheEntry<unknown>>();
+/**
+ * Bounded and self-sweeping — see store.ts. Quote payloads are the largest
+ * thing this process holds, so the cap is lower than the default.
+ */
+const store = new MemoryTtlStore<CacheEntry<unknown>>({ maxEntries: 1_000 });
 
 export function buildQuoteCacheKey(input: {
   pickupLat: number;
@@ -41,11 +45,19 @@ export function buildQuoteCacheKey(input: {
 export function cacheGet<T>(key: string): T | null {
   const entry = store.get(key);
   if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
+
+  /*
+   * This check used to be a comment saying it happened, directly above a bare
+   * return. The only thing standing between a personalised fare and another
+   * rider was cacheSet's refusal to write, plus the fact that the key builder
+   * puts the account context and the user id into the key — real protection,
+   * but entirely upstream, so nothing here could have caught a malformed key.
+   * Now the read refuses too.
+   */
+  if (entry.accountContext === "ACCOUNT_LINKED" && key.includes("|public")) {
     store.delete(key);
     return null;
   }
-  // Never serve account-linked cache to public key space (belt & suspenders)
   return entry.value as T;
 }
 
@@ -60,11 +72,7 @@ export function cacheSet<T>(
   if (accountContext === "ACCOUNT_LINKED" && key.includes("|public")) {
     return;
   }
-  store.set(key, {
-    value,
-    accountContext,
-    expiresAt: Date.now() + (ttlSeconds ?? env.QUOTE_CACHE_TTL_SECONDS) * 1000,
-  });
+  store.set(key, { value, accountContext }, (ttlSeconds ?? env.QUOTE_CACHE_TTL_SECONDS) * 1000);
 }
 
 export function cacheClear(): void {
@@ -73,4 +81,9 @@ export function cacheClear(): void {
 
 export function cacheStats() {
   return { size: store.size };
+}
+
+/** Drop expired entries now. Used by the admin page and by tests. */
+export function cacheSweep(): number {
+  return store.sweep();
 }

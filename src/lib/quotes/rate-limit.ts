@@ -1,10 +1,19 @@
 import { getEnv } from "@/lib/config";
+import { MemoryTtlStore } from "@/lib/quotes/store";
 
 interface Bucket {
   timestamps: number[];
 }
 
-const buckets = new Map<string, Bucket>();
+/**
+ * Bounded and self-sweeping — see store.ts.
+ *
+ * The previous Map retained every key forever: a bucket whose timestamps had
+ * all aged out was still written back, so one entry per caller accumulated for
+ * the lifetime of the instance. Each bucket's TTL is now the window itself, so
+ * a caller who stops calling is forgotten on the next sweep.
+ */
+const buckets = new MemoryTtlStore<Bucket>({ maxEntries: 20_000 });
 
 export type RateLimitResult =
   | { allowed: true; remaining: number }
@@ -21,12 +30,12 @@ export function rateLimit(key: string, max?: number, windowSeconds?: number): Ra
   if (bucket.timestamps.length >= limit) {
     const oldest = bucket.timestamps[0]!;
     const retryAfterSeconds = Math.ceil((windowMs - (now - oldest)) / 1000);
-    buckets.set(key, bucket);
+    buckets.set(key, bucket, windowMs);
     return { allowed: false, remaining: 0, retryAfterSeconds };
   }
 
   bucket.timestamps.push(now);
-  buckets.set(key, bucket);
+  buckets.set(key, bucket, windowMs);
   return { allowed: true, remaining: limit - bucket.timestamps.length };
 }
 
@@ -37,4 +46,8 @@ export function rateLimitKey(parts: { ip?: string; userId?: string; action: stri
 
 export function resetRateLimits(): void {
   buckets.clear();
+}
+
+export function rateLimitStats() {
+  return { size: buckets.size };
 }
