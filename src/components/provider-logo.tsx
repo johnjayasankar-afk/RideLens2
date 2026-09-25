@@ -18,7 +18,9 @@ function slugFor(provider: ProviderId): string {
  * was referenced nowhere.
  *
  * width/height are always set, so the box is reserved before the bytes land and
- * nothing shifts.
+ * nothing shifts. No `sizes`: on a fixed-size image it makes Next emit the full
+ * device-width srcset — fifteen candidates up to 3840w for a 32px mark, on six
+ * marks a page. Without it the srcset is just 1x and 2x.
  */
 export function ProviderLogo({
   provider,
@@ -42,7 +44,6 @@ export function ProviderLogo({
       alt={`${label} logo`}
       width={size}
       height={size}
-      sizes={`${size}px`}
       priority={priority}
     />
   );

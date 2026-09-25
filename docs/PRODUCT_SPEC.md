@@ -1,46 +1,132 @@
-# RailDrop product spec
+# RideLens product spec
 
-**Know when your train gets cheaper.**
-Book the flexible fare. RailDrop watches the rest.
+**Every ride. One comparison.**
+What each way of making this trip costs, and how firm each number is.
+
+---
 
 ## Who it is for
 
-A traveler who already bought an Amtrak ticket — usually Flexible — and wants to know if the same origin and destination can be ridden for less in a short window around the desired date.
+Someone standing on a pavement in New York with four apps on their phone, about
+to open three of them to find out which is cheapest — and who will open the
+winning one anyway to book, because RideLens does not book rides.
 
-## What it watches
+The job is the thirty seconds before that decision, not the ride itself.
 
-Not the original train number. Not the original departure time. Not only the original service.
+## What a quote means here
 
-Default window: desired date `D` ± 1 calendar day. Architecture also supports exact date and ±2.
+This is the part most fare-comparison products get wrong, so it is stated
+first.
 
-Every bookable Amtrak **rail** itinerary between the chosen stations is eligible: Northeast Regional, Acela, other named trains, and connecting rail. Thruway/bus is identified and excluded unless the user opts in.
+A RideLens quote is **a number with a stated provenance and a stated firmness**.
+It is never simply "the price". Four kinds exist, defined in
+[`QUOTE_SEMANTICS.md`](./QUOTE_SEMANTICS.md):
 
-Preferred departure time is optional and ranks only. Cheaper trains outside that hour still appear.
+| Type               | Means                                          | Shown as      |
+| ------------------ | ---------------------------------------------- | ------------- |
+| `UPFRONT_QUOTE`    | The source contractually asserts a locked fare | `$24.80`      |
+| `ESTIMATE`         | Single expected fare that may move             | `Est. $24.80` |
+| `ESTIMATE_RANGE`   | A band, from percentiles or a provider range   | `$27–34`      |
+| `METERED_ESTIMATE` | A meter projection, not a locked price         | `Est. $27`    |
 
-## Comparison
+And a confidence class — `HIGH`, `MEDIUM`, `LOW`, `UNCERTAIN` — derived from the
+type and the width of the band.
 
-Benchmark is `current_booked_price_cents` — the actual total paid. Integer cents only. Default compare is Flexible → Flexible. Restricted families can be surfaced separately and are never implied to have the same rules.
+**A midpoint is never shown to a user.** `p50` exists to sort a list; it is not a
+price anyone will pay, and printing it would invent precision the source never
+offered.
 
-A candidate qualifies when
+## Today, in production: one source, and it is a model
 
-`candidate.total_party_price_cents <= booked - minimum_savings_cents`
+As of this writing the only enabled quote source is `PublicRateCardQuoteSource`.
+A quote is built from:
 
-with a $1 default threshold.
+1. A live driving route from public OSRM — real distance, real duration
+2. New York's **published** taxi and FHV rate cards, plus the NY regulatory fee
+   stack by name (NYS surcharge, MTA congestion, Black Car Fund)
+3. Tolls along the routed line
+4. A **deterministic simulation** of marketplace behaviour
+   (`marketplace-dynamics.ts`) — time-of-day and day-of-week demand curves, zone
+   heat, provider personality, product elasticity, and minute-scale volatility
+   on a fixed tick
+5. A real precipitation signal from Open-Meteo
 
-## Immediate value
+Items 1, 2, 3 and 5 are measurements. **Item 4 is a model.** It is calibrated
+against published rate cards and public studies, it is deterministic given a
+route and a clock, and it is not a live Uber price. No amount of it moving in
+real time makes it one.
 
-Creating a watch runs one `INITIAL` scan immediately, then three scheduled local slots (08:00 / 14:00 / 20:00) per day until the monitoring window ends (default 48 hours after `booked_at`).
+The product must never let a reader conclude otherwise. See "What RideLens will
+never claim".
 
-## Alerts
+## The four providers and where they legally stand
 
-One email when a qualifying fare first appears, when the best price improves by at least $1, or when a same-day option appears within $10 of the current best after only off-day options existed. Unchanged results are silent.
+Full detail in [`DATA_SOURCE_MATRIX.md`](./DATA_SOURCE_MATRIX.md); the summary
+that matters for product decisions:
 
-The email CTA opens the RailDrop watch. Booking continues on Amtrak with copied itinerary details.
+| Provider    | Comparison permitted?                                                                                                  | Status                                          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Uber**    | Via an Obi FARE.AI licence, yes. Via Uber's own public API, **no** — barred by ToS § II B absent written authorization | Adapter ready, gated on `OBI_*`                 |
+| **Lyft**    | Via Obi, yes. Direct is commercially unclear                                                                           | Gated on `LYFT_COMPARISON_AUTHORIZED` + secrets |
+| **Empower** | Via Obi where present in the feed; direct needs a partner contract                                                     | Stub ready                                      |
+| **Curb**    | Via Obi, or a Curb Business partner API                                                                                | Adapter ready, gated on `CURB_API_*`            |
 
-## I rebooked
+Every one of these is **off** right now, and the UI says so rather than quietly
+showing a modeled number under a provider's logo.
 
-The previous benchmark is stored as a price event. Monitoring continues against the new total. History is never erased.
+Obi's consumer app is not to be scraped. The relationship is a licence or it
+does not exist.
+
+## The ranking contract under uncertainty
+
+A comparison product's only real asset is that its comparisons are true.
+
+- Two ranges that **do not overlap** may assert `cheaper` / `more_expensive`,
+  and the claimed saving is the gap between the bounds — never between
+  midpoints.
+- Two ranges that **overlap by half or more** are `similar`. Not "probably
+  cheaper". Similar.
+- Partial overlap yields `unclear` with a hedged label ("Likely cheaper"), and
+  only when the midpoint gap exceeds a floor.
+- Two exact `HIGH`-confidence prices may be compared directly.
+
+`comparePrices()` in `ranking.ts` is the single implementation. Exact $25 against
+a $21–29 band must not report that the band is cheaper, because it might not be.
+
+Expired quotes never rank.
+
+## What RideLens will never claim
+
+1. That a modeled number is a live provider quote.
+2. That a range has a single price, by showing its midpoint.
+3. That option A is cheaper than B when their bands overlap.
+4. That a fare is final. The provider app is where a fare becomes real, and the
+   interstitial says so.
+5. That a provider is unavailable when the truth is that RideLens lacks a
+   credential. "Not connected" and "no cars" are different sentences.
+6. That a personalised, account-linked price applies to anyone else — those
+   never enter the shared cache.
 
 ## Non-goals
 
-Automated rebooking, scraping Amtrak, storing payment data, or inventing official deep links that have not been verified.
+- **No booking.** RideLens hands off to the provider; it never takes payment or
+  dispatches a car.
+- **No account linking** until a provider relationship makes it lawful and
+  useful. Public pricing is the baseline.
+- **No scraping** — not Obi's consumer app, not a provider's web funnel.
+- **No fabricated midpoints**, and no interpolation presented as data.
+- **Not a trip planner.** Turn-by-turn navigation and multi-leg itineraries are
+  someone else's product.
+- **Not a loyalty or rewards tracker.** Provider apps show credits and promos
+  RideLens cannot see, and the UI discloses that rather than pretending
+  completeness.
+
+## What "done" looks like
+
+A rider gets, within a few seconds of entering two addresses:
+
+- Every way of making the trip that RideLens can price, ranked honestly
+- For each: a price with its firmness, a pickup wait where one is known, and a
+  one-tap route into the app that can actually book it
+- A plain answer to "where did this number come from?" for any figure on screen
+- No sentence anywhere that a careful reader could call a lie

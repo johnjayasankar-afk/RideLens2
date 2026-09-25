@@ -1,186 +1,136 @@
-# RailDrop architecture
+# RideLens architecture
 
-RailDrop is a Next.js App Router product that watches Amtrak fares after a traveler has already booked. The application owns dates, ranking, alerts, and booking handoff. Parse’s `amtrak-com-api` is an interchangeable fare source.
+> Replaces a document that described RailDrop, an Amtrak fare-watching product.
+> See [`AUDIT.md` § 0.3](./AUDIT.md).
+
+---
 
 ## System overview
 
-```mermaid
-flowchart LR
-  User --> NextApp
-  NextApp --> Auth[Supabase Auth]
-  NextApp --> DB[(Supabase Postgres)]
-  Cron[Vercel Cron hourly] --> Dispatcher
-  Dispatcher --> Orchestrator
-  Orchestrator --> Provider[FareProvider]
-  Provider --> Parse[Parse search_trains]
-  Orchestrator --> DB
-  Orchestrator --> Mailer[Resend]
-  Mailer --> User
+```
+  browser
+    │  POST /api/quotes  { pickup, destination, stream? }
+    ▼
+  app/api/quotes/route.ts ──── rateLimit() ──── validation (zod)
+    │
+    ▼
+  quotes/orchestrator.ts
+    │   cacheGet(key)  ── hit ──▶ return session
+    │   miss
+    │   ├── discoverEnabledSources(env)        registry.ts
+    │   └── Promise.allSettled(fetchSource ×N) per-source timeout + logging
+    │            │
+    │            ├── PublicRateCardQuoteSource   ← the only one enabled today
+    │            ├── ObiQuoteSource              gated: OBI_API_KEY/SECRET
+    │            ├── LyftAuthorizedQuoteSource   gated: LYFT_COMPARISON_AUTHORIZED
+    │            ├── CurbFlowQuoteSource         gated: CURB_API_*
+    │            ├── EmpowerAuthorizedQuoteSource gated: EMPOWER_API_*
+    │            ├── UberAuthorizedQuoteSource   gated: written authorization
+    │            └── FixtureQuoteSource          non-production only
+    │
+    ├── reconciler.ts   dedupe the same product arriving from two sources
+    ├── ranking.ts      filter → comparePrices → rank
+    └── cacheSet(key)
 ```
 
-## Component diagram
+Sources are discovered, not hard-coded. Adding one means implementing
+`QuoteSource` and registering it; nothing else changes.
 
-```mermaid
-flowchart TB
-  UI[Dashboard / Watch / Auth] --> API[Route handlers]
-  API --> Domain
-  subgraph Domain
-    Calendar[generateSearchDates]
-    Eligibility
-    Ranking
-    Opportunity[OpportunityComparator]
-    Monitoring
-  end
-  API --> Orchestrator[runWatchCycle]
-  Orchestrator --> Calendar
-  Orchestrator --> Eligibility
-  Orchestrator --> Ranking
-  Orchestrator --> Opportunity
-  Orchestrator --> Repo[RailDropRepository]
-  Orchestrator --> FareProvider
-  FareProvider --> ParseAdapter[ParseFareProvider]
-  FareProvider --> Official[OfficialAmtrakProvider later]
-  Repo --> Memory[MemoryRepository tests]
-  Repo --> Supa[SupabaseRepository]
+## The keyless live path
+
+`PublicRateCardQuoteSource` is what runs in production today.
+
+```
+  OSRM /route/v1/driving      → distance, duration          (measured)
+  rates.ts                    → published NYC rate cards     (published)
+  fare-engine.ts              → base + per-mile + per-minute (arithmetic)
+     + NY fee stack by name   → NYS $2.75, MTA congestion, Black Car Fund
+     + tolls.ts               → tolled crossings on the line
+  weather-signal.ts           → Open-Meteo precipitation     (measured)
+  marketplace-dynamics.ts     → demand curve, zone heat,      (MODEL)
+                                provider personality,
+                                deterministic per-tick noise
+  wait-eta.ts                 → modeled pickup wait           (MODEL)
 ```
 
-## Data flow
+**The boundary between measurement and model is the most important line in this
+codebase.** Everything above `marketplace-dynamics.ts` is a fact about the world
+or a published rule. Everything from it down is a simulation, however
+sophisticated and however convincingly it moves.
 
-1. User creates a watch with origin, destination, desired date `D`, flexibility, and the actual booked total in cents.
-2. `generateSearchDates` produces the canonical window: `D-flexibility … D+flexibility`, skipping past dates.
-3. `runWatchCycle` with trigger `INITIAL` searches each remaining date through `FareProvider.searchTrips`.
-4. Identical `provider:origin:destination:date:A{n}` keys reuse a fresh result for the cycle.
-5. Journeys are normalized into `JourneyOption` / `FareOption` domain objects.
-6. Eligibility keeps Flexible + requested class by default; Thruway/bus is opt-in.
-7. Ranking sorts the entire window by lowest party total, then date proximity, preferred time, transfers, duration, Flexible preference.
-8. `OpportunityComparator` decides whether to email.
-9. Dashboard reads the latest cycle, not individual provider calls.
+`marketplace-dynamics.ts` is deterministic: FNV-1a over the route seeds an
+xorshift generator, ticked on a fixed interval, so refreshing changes the quote
+the way a marketplace would while remaining reproducible for a given route and
+clock. That determinism is a testing property, not a licence to present the
+output as observed pricing.
 
-## Scheduled check sequence
+Nothing may make that model _less_ honest about being a model without an
+explicit decision to do so.
 
-```mermaid
-sequenceDiagram
-  participant Cron as Vercel Cron
-  participant API as /api/cron/dispatch
-  participant Disp as Dispatcher
-  participant Repo as Repository
-  participant Orch as runWatchCycle
-  participant Parse as FareProvider
-  Cron->>API: Hourly wake + CRON_SECRET
-  API->>Disp: dispatchScheduledChecks
-  Disp->>Repo: list ACTIVE watches
-  Disp->>Disp: dueSlotsAt(now, watch.timezone)
-  Disp->>Repo: claimScheduledRun unique(watch, local_date, slot)
-  alt claimed
-    Disp->>Orch: trigger SCHEDULED
-    Orch->>Parse: deduped search_trains
-    Orch->>Repo: cycle + journeys + usage
-  else unique conflict
-    Disp-->>API: skip duplicate
-  end
-```
+## Quote semantics
 
-The hourly wake does **not** search fares. It only asks whether 08:00 / 14:00 / 20:00 local wall time has already arrived in the watch timezone. DST is handled by `Intl` + IANA zones, never fixed UTC offsets.
+Normalisation, price types, confidence classes and the ranking contract under
+uncertainty are specified in [`QUOTE_SEMANTICS.md`](./QUOTE_SEMANTICS.md) and
+implemented in `domain/ranking.ts`. The rule that matters architecturally: a
+midpoint is a sort key and never a displayed price.
 
-## Alert sequence
+## Caching and rate limiting
 
-```mermaid
-sequenceDiagram
-  participant Orch as runWatchCycle
-  participant Opp as OpportunityComparator
-  participant Mail as Resend
-  participant User
-  Orch->>Opp: previous fingerprint vs ranked qualifying
-  alt first drop, better price, or better convenience
-    Orch->>Mail: HTML + text
-    Mail-->>Orch: accepted / failed
-    Orch->>User: email CTA to RailDrop watch
-  else unchanged
-    Orch-->>Orch: persist cycle, no mail
-  end
-```
+Both sit on `MemoryTtlStore` (`lib/quotes/store.ts`): a bounded map with a sweep
+on write and LRU eviction at a hard cap. No background timer — an interval keeps
+a serverless instance alive and does nothing while the process is frozen between
+invocations, so sweeping happens on write, which is when the map grows anyway.
 
-## Scheduler design
+### The tradeoff, stated plainly
 
-- Logical slots: `MORNING` 08:00, `AFTERNOON` 14:00, `EVENING` 20:00.
-- Catch-up: any hourly wake after a slot hour claims that slot if the unique row is missing and the local date is still today.
-- Manual `Check now` is `MANUAL` and does not consume a slot.
-- Initial create is `INITIAL` and is accounted separately in usage.
+**This is per-instance memory, and that is a real limitation, not an
+implementation detail.**
 
-## Provider abstraction
+- **Rate limiting.** Each instance holds its own buckets. A configured limit of
+  30 requests/minute is 30 _per instance_; across a fleet of ten the effective
+  limit is 300. It raises the cost of casual abuse and does not stop a
+  determined caller. **It is a courtesy, not a control.**
+- **Caching.** The same split means a cold instance misses on a key a warm one
+  holds. That costs latency and an upstream call, not correctness.
+- **Account-linked quotes** are additionally protected by key construction
+  (account context and user id are both in the key) and by refusals in _both_
+  `cacheSet` and `cacheGet`. A personalised fare cannot be read from a public
+  key even if one were somehow written.
 
-```ts
-interface FareProvider {
-  searchTrips(request: FareSearchRequest): Promise<FareSearchResult>;
-  getStations(): Promise<Station[]>;
-  healthCheck(): Promise<{ ok: boolean; message: string; latencyMs: number }>;
-}
-```
-
-Production provider: `ParseFareProvider` calling
-
-`POST https://api.parse.bot/scraper/f800c27d-0aaa-4ca0-864e-4dc69e20f764/search_trains`
-
-with `origin`, `destination`, `departure_date`, `num_adults`. Credits: 2 per successful call, configurable via `PROVIDER_CREDITS_PER_SEARCH`.
-
-Normalization is isolated in `parse-normalizer.ts`. The rest of RailDrop never stores Parse JSON as its working model.
+`MemoryTtlStore` implements the `TtlStore` interface precisely so a Supabase- or
+KV-backed implementation is a drop-in. Until that exists, anything that depends
+on a _global_ limit — billing, quota enforcement, abuse response — must not
+assume this one holds.
 
 ## Booking handoff
 
-`BookingLinkResolver` order:
+`booking/booking-link-resolver.ts` maps a provider and a route to a deep link.
+Destinations are allowlisted per provider; a URL arriving in a source payload is
+never followed. `/book` is an interstitial that states what is known and what is
+not before sending the rider on.
 
-1. Provider-supplied HTTPS booking URL for the itinerary, if present.
-2. No official, documented, stable Amtrak search deep link was verified. Do not invent query-string booking URLs.
-3. Fallback: official Amtrak home (`https://www.amtrak.com/home.html`) plus copyable itinerary details.
+## Configuration and source gating
 
-A generic Amtrak URL is labeled as a handoff, never as an exact fare deep link.
+`lib/config.ts` parses the environment through a zod schema once and caches it.
+Every source has a `*Configured()` predicate, and `sourceStatusSummary()` renders
+the whole picture on `/admin`. A source that lacks credentials reports
+`partner_approval` — distinct from `disabled` and from a source that answered
+with no cars, because those are three different sentences to show a rider.
 
-## Schema rationale
-
-Tables follow the product nouns: `watches`, `fare_check_cycles`, `fare_snapshots` (per date), `journey_options`, `provider_requests`, `scheduled_check_runs`, `alerts`, `notification_deliveries`, `booking_price_events`, `stations`, `provider_usage_daily`.
-
-A cycle is one logical refresh of the whole window. Snapshots keep per-date success vs empty inventory vs provider failure.
-
-`search_cache` stores normalized journeys for a short freshness window so overlapping watches share one external search.
-
-## Idempotency model
-
-`scheduled_check_runs (watch_id, local_check_date, check_slot)` is unique. Concurrent cron deliveries, retries, and overlapping deploys lose the insert and skip.
-
-Provider retries are bounded (3) with jitter and only for 429 / 5xx / explicit retryable errors. 401 / 400 / 422 are not retried.
-
-## Cost model
-
-Default ±1 watch = 3 `search_trains` per cycle. Three scheduled cycles = 9 successful calls/day before cross-watch dedup. Credits are configuration, not constants in ranking logic. Settings shows daily usage and warns when `credits_today * 30` exceeds `PROVIDER_MONTHLY_CREDIT_BUDGET`.
-
-Completed and paused watches are not dispatched.
-
-## Failure matrix
-
-| Situation                  | Cycle status               | UI                              | Alert                      |
-| -------------------------- | -------------------------- | ------------------------------- | -------------------------- |
-| All dates return journeys  | `SUCCESS`                  | Cheapest in window              | If opportunity is new      |
-| Mix of success and timeout | `PARTIAL_SUCCESS`          | Best found + failed dates named | Allowed, copy is qualified |
-| All dates fail             | `PROVIDER_ERROR`           | Fare data unavailable           | No                         |
-| All dates empty            | `NO_AVAILABLE_ITINERARIES` | No cheaper fare yet             | No                         |
-| Price semantics unknown    | Fare excluded              | Not ranked                      | Never                      |
-
-Zero inventory is not an API failure.
-
-## Security boundaries
-
-- Browser: anon Supabase key only.
-- Server: service role, `PARSE_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
-- RLS: users read only their watches and child rows.
-- Stations are public reference data.
-- Logs redact secret-like keys.
-- No reservation numbers, cards, or Amtrak passwords.
-- `E2E_TEST=1` is refused when `NODE_ENV` or `VERCEL_ENV` is production.
-- Missing `PARSE_API_KEY` disables search. It never enables fixture data in production.
+`assertNoSilentMocks()` refuses to let fixtures run in production.
+`assertPublicOrigin()` refuses a production build whose absolute URLs resolve to
+loopback.
 
 ## Deployment
 
-- App: Vercel (or any Next host) with `vercel.json` hourly cron.
-- Database + Auth: Supabase.
-- Email: Resend.
-- Local/E2E: `MemoryRepository` + `FixtureFareProvider` only when `E2E_TEST=1`.
+Next.js 16 App Router on Vercel. `appOrigin()` resolves the public origin from
+`NEXT_PUBLIC_APP_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → `VERCEL_URL` →
+localhost; `robots.ts` and `sitemap.ts` resolve it per request rather than
+baking a build-time value into a static file.
+
+Security headers ship from `next.config.ts`. The CSP is currently
+**report-only** and deliberately so: the app talks to a tile host, a routing
+host and a geocoder, and a wrong policy breaks the map rather than the page.
+It carries `https://unpkg.com` in `script-src` and `style-src` only because
+MapLibre is loaded from that CDN at runtime; bundling the library (see
+[`AUDIT.md` § 0.5](./AUDIT.md)) removes both entries.
