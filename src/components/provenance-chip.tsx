@@ -50,6 +50,8 @@ export function ProvenanceChip({ quote }: { quote: NormalizedQuote }) {
   };
 
   const market = typeof quote.metadata?.marketNote === "string" ? quote.metadata.marketNote : null;
+  const feeGap =
+    typeof quote.metadata?.feeModelNote === "string" ? quote.metadata.feeModelNote : null;
 
   return (
     <>
@@ -89,6 +91,11 @@ export function ProvenanceChip({ quote }: { quote: NormalizedQuote }) {
 
             <p className="prov-summary">{prov.summary}</p>
             {market ? <p className="prov-market">{market}</p> : null}
+            {feeGap ? (
+              <p className="prov-market prov-gap" data-testid="fee-gap">
+                {feeGap}
+              </p>
+            ) : null}
 
             {rows.length > 0 ? (
               <dl className="prov-rows">

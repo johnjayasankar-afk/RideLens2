@@ -244,6 +244,21 @@ export function provenanceRows(quote: NormalizedQuote): ProvenanceRow[] {
     });
   }
 
+  /*
+   * What the fee stack does not include. Named rather than merely implied by
+   * a wide band: a rider can act on "airport levies are not included" and
+   * cannot act on "low confidence".
+   */
+  const feeNote = str(m.feeModelNote);
+  if (feeNote) {
+    rows.push({
+      label: "Regulatory fees",
+      value: "Not modeled here",
+      kind: "note",
+      detail: feeNote,
+    });
+  }
+
   const traffic = num(m.trafficMinutes);
   if (traffic !== null) {
     rows.push({

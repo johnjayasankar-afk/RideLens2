@@ -2486,3 +2486,10 @@ h1.admin-title {
   margin-top: 36px;
   font-size: 13.5px;
 }
+
+/* A named gap in the fee model — amber, because it is something to check
+   rather than context. */
+.prov-gap {
+  background: var(--amber-bg);
+  color: var(--amber-t);
+}

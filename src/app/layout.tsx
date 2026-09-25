@@ -76,7 +76,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </div>
         </header>
         <main id="main">{children}</main>
-<EmbedAnnounce />
+        <EmbedAnnounce />
         <LabsUI />
         <footer className="site-footer">
           <div className="shell site-footer-inner">

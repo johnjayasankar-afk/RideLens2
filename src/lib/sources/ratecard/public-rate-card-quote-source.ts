@@ -18,6 +18,7 @@ import type {
 } from "@/lib/domain/types";
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
 import { resolveMarket, type MarketResolution } from "@/lib/sources/ratecard/rates";
+import { feeModelFor, unmodeledFeeNote } from "@/lib/sources/ratecard/market-fees";
 import type { QuoteSource } from "@/lib/sources/types";
 
 /**
@@ -25,6 +26,17 @@ import type { QuoteSource } from "@/lib/sources/types";
  * wrong so much as untested here, and the band is the only place to put that.
  */
 const EXTRAPOLATION_BAND_WIDENING = 2.2;
+
+/**
+ * How much wider a band gets when the market's regulatory fees are not
+ * modeled.
+ *
+ * Smaller than the extrapolation widening because the shortfall is bounded:
+ * per-trip levies and airport fees are a few dollars, not a different city's
+ * tariff. It is a stand-in for a number nobody has looked up, and the card
+ * says which fees are missing rather than only that the band is wide.
+ */
+const UNMODELED_FEE_WIDENING = 1.5;
 
 /**
  * Every provider this source knows how to price. Which of them a given
@@ -146,17 +158,26 @@ export class PublicRateCardQuoteSource implements QuoteSource {
      * can never print a borrowed card as an exact figure.
      */
     const extrapolated = input.market.basis === "EXTRAPOLATED";
-    const spread = extrapolated ? EXTRAPOLATION_BAND_WIDENING : 1;
+    const feesUnmodeled = !feeModelFor(input.market.id).modeled;
+    /*
+     * Two independent reasons to be less sure, so they compound rather than
+     * one overriding the other: a card borrowed from another city whose fees
+     * are also unmodeled is worse than either alone.
+     */
+    const spread =
+      (extrapolated ? EXTRAPOLATION_BAND_WIDENING : 1) *
+      (feesUnmodeled ? UNMODELED_FEE_WIDENING : 1);
+    const widened = extrapolated || feesUnmodeled;
     const centre = (fare.low + Math.max(fare.low, fare.high)) / 2;
-    const rawLow = extrapolated ? centre - (centre - fare.low) * spread - centre * 0.12 : fare.low;
-    const rawHigh = extrapolated
-      ? centre + (Math.max(fare.low, fare.high) - centre) * spread + centre * 0.12
+    const rawLow = widened ? centre - (centre - fare.low) * spread - centre * 0.08 : fare.low;
+    const rawHigh = widened
+      ? centre + (Math.max(fare.low, fare.high) - centre) * spread + centre * 0.08
       : Math.max(fare.low, fare.high);
 
     const minMinor = dollarsToMinor(Math.max(0, rawLow));
     const maxMinor = dollarsToMinor(Math.max(rawLow, rawHigh));
     const receivedAt = now.toISOString();
-    const priceType = extrapolated
+    const priceType = widened
       ? "ESTIMATE_RANGE"
       : (input.priceType ?? (minMinor === maxMinor ? "ESTIMATE" : "ESTIMATE_RANGE"));
 
@@ -210,6 +231,8 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         marketId: input.market.id,
         marketBasis: input.market.basis,
         marketDistanceKm: Math.round(input.market.distanceKm),
+        feesModeled: !feesUnmodeled,
+        feeModelNote: unmodeledFeeNote(input.market.id, fare.marketName),
         marketNote:
           input.market.basis === "EXTRAPOLATED"
             ? `No rate card for this area. Calibrated to ${fare.marketName}, ${Math.round(input.market.distanceKm)} km away — band widened and confidence lowered.`
