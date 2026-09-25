@@ -124,6 +124,54 @@ export function getCityRate(id: string): CityRate {
   };
 }
 
+/**
+ * Inside this, a metro's published card is the right instrument for the trip.
+ * It is wide enough to cover the suburbs a city's fares genuinely reach.
+ */
+export const CALIBRATED_RADIUS_KM = 45;
+
+/**
+ * Past this there is no defensible basis at all, and the honest answer is that
+ * RideLens has no rate data here.
+ *
+ * Between the two radii the nearest card is still the best evidence available,
+ * but it is evidence about somewhere else — so the band widens and the quote
+ * says which city it borrowed from and how far away that is.
+ */
+export const EXTRAPOLATION_LIMIT_KM = 150;
+
+export type MarketBasis = "CALIBRATED" | "EXTRAPOLATED" | "UNCOVERED";
+
+export interface MarketResolution {
+  basis: MarketBasis;
+  /** Nearest market with a rate card. Present even when UNCOVERED, to name it. */
+  id: string;
+  city: CityRate;
+  distanceKm: number;
+}
+
+/**
+ * Which rate card applies here, and how much to trust it.
+ *
+ * `nearestCity` returns the closest of 49 city centres with no distance cap
+ * and a default of "new-york", so a query from Billings, Montana received Salt
+ * Lake City's card — 622 km away — at full displayed confidence. Fargo got
+ * Minneapolis from 345 km, and Kauai got Honolulu from another island.
+ *
+ * Distance is the thing that decides whether a card is a measurement or a
+ * guess, so it comes back with the answer instead of being discarded.
+ */
+export function resolveMarket(lat: number, lng: number): MarketResolution {
+  const nearest = nearestCity(lat, lng);
+  const basis: MarketBasis =
+    nearest.distanceKm <= CALIBRATED_RADIUS_KM
+      ? "CALIBRATED"
+      : nearest.distanceKm <= EXTRAPOLATION_LIMIT_KM
+        ? "EXTRAPOLATED"
+        : "UNCOVERED";
+  return { basis, id: nearest.id, city: nearest.city, distanceKm: nearest.distanceKm };
+}
+
 export function nearestCity(
   lat: number,
   lng: number,

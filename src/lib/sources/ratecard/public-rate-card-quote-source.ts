@@ -17,8 +17,19 @@ import type {
   SourceQuoteResult,
 } from "@/lib/domain/types";
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
-import { nearestCity } from "@/lib/sources/ratecard/rates";
+import {
+  CALIBRATED_RADIUS_KM,
+  EXTRAPOLATION_LIMIT_KM,
+  resolveMarket,
+  type MarketResolution,
+} from "@/lib/sources/ratecard/rates";
 import type { QuoteSource } from "@/lib/sources/types";
+
+/**
+ * How much wider a borrowed card's band gets. A card from 120 km away is not
+ * wrong so much as untested here, and the band is the only place to put that.
+ */
+const EXTRAPOLATION_BAND_WIDENING = 2.2;
 
 /**
  * Every provider this source knows how to price. Which of them a given
@@ -108,6 +119,7 @@ export class PublicRateCardQuoteSource implements QuoteSource {
     priceType?: NormalizedQuote["priceType"];
     weatherSurgeLift?: number;
     weatherLabel?: string;
+    market: MarketResolution;
   }): NormalizedQuote {
     const now = new Date();
     const providerKey =
@@ -131,10 +143,27 @@ export class PublicRateCardQuoteSource implements QuoteSource {
       weatherSurgeLift: input.weatherSurgeLift,
     });
 
-    const minMinor = dollarsToMinor(fare.low);
-    const maxMinor = dollarsToMinor(Math.max(fare.low, fare.high));
+    /*
+     * A borrowed rate card is evidence about somewhere else, and the band has
+     * to say so. Widening around the centre rather than scaling the ends keeps
+     * the midpoint — still the best guess available — while making the
+     * uncertainty visible, and it forces priceType to ESTIMATE_RANGE so the UI
+     * can never print a borrowed card as an exact figure.
+     */
+    const extrapolated = input.market.basis === "EXTRAPOLATED";
+    const spread = extrapolated ? EXTRAPOLATION_BAND_WIDENING : 1;
+    const centre = (fare.low + Math.max(fare.low, fare.high)) / 2;
+    const rawLow = extrapolated ? centre - (centre - fare.low) * spread - centre * 0.12 : fare.low;
+    const rawHigh = extrapolated
+      ? centre + (Math.max(fare.low, fare.high) - centre) * spread + centre * 0.12
+      : Math.max(fare.low, fare.high);
+
+    const minMinor = dollarsToMinor(Math.max(0, rawLow));
+    const maxMinor = dollarsToMinor(Math.max(rawLow, rawHigh));
     const receivedAt = now.toISOString();
-    const priceType = input.priceType ?? (minMinor === maxMinor ? "ESTIMATE" : "ESTIMATE_RANGE");
+    const priceType = extrapolated
+      ? "ESTIMATE_RANGE"
+      : (input.priceType ?? (minMinor === maxMinor ? "ESTIMATE" : "ESTIMATE_RANGE"));
 
     const wait = estimatePickupWait({
       provider: providerKey,
@@ -183,6 +212,13 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         methodology:
           "Live OSRM + RideWise/TLC rate cards + NY fee stack + corridor anchors + simulated marketplace (TOD, hotspots, weather via Open-Meteo, provider personality, ~55s ticks). Empower calibrated ~30% under Uber/Lyft (Obi Q1 2026). Not a live partner API quote — confirm in-app.",
         city: fare.marketName,
+        marketId: input.market.id,
+        marketBasis: input.market.basis,
+        marketDistanceKm: Math.round(input.market.distanceKm),
+        marketNote:
+          input.market.basis === "EXTRAPOLATED"
+            ? `No rate card for this area. Calibrated to ${fare.marketName}, ${Math.round(input.market.distanceKm)} km away — band widened and confidence lowered.`
+            : `Calibrated to ${fare.marketName}'s published rate card.`,
         demand: fare.demandLabel,
         demandCenter: fare.demandCenter,
         band: fare.band,
@@ -222,6 +258,50 @@ export class PublicRateCardQuoteSource implements QuoteSource {
       const miles = route.miles;
       const osrmMinutes = route.minutes;
 
+      /*
+       * Which rate card applies, how far away it was written, and therefore
+       * which providers a rider can actually hail here. Both used to be
+       * assumed: the provider list was hardcoded, and the nearest city was
+       * taken at any distance.
+       */
+      const market = resolveMarket(request.pickup.lat, request.pickup.lng);
+      const marketId = market.id;
+
+      /*
+       * Past the extrapolation limit there is no rate card worth borrowing.
+       * Returning nothing with a reason is the honest answer; returning a
+       * card from 600 km away at normal confidence is what this replaces.
+       */
+      if (market.basis === "UNCOVERED") {
+        /*
+         * A typed failure, not an empty success. `ok: true` with no quotes
+         * reaches the UI as a blank screen with nothing to read; a failure
+         * flows into coverage.sourcesFailed, which the results pane already
+         * knows how to show.
+         */
+        return {
+          sourceId: this.id,
+          ok: false,
+          quotes: [],
+          failure: {
+            sourceId: this.id,
+            code: "NO_RATE_CARD_FOR_AREA",
+            message:
+              `RideLens has no rate data for this area yet. The nearest market it models is ` +
+              `${market.city.name}, ${Math.round(market.distanceKm)} km away — too far to price ` +
+              `this trip from, so nothing is shown rather than a number borrowed from another city.`,
+            retryable: false,
+          },
+          latencyMs: Date.now() - started,
+          raw: {
+            marketId,
+            marketBasis: market.basis,
+            marketDistanceKm: Math.round(market.distanceKm),
+            nearestMarketName: market.city.name,
+          },
+        };
+      }
+
       const common = {
         miles,
         osrmMinutes,
@@ -231,15 +311,8 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         routingVia: route.via,
         weatherSurgeLift: weather.surgeLift,
         weatherLabel: `${weather.label}:${weather.precipMm}mm`,
+        market,
       };
-
-      /*
-       * Which market this route is priced against, and therefore which
-       * providers a rider can actually hail here. The list used to be
-       * hardcoded, so a Phoenix comparison offered a Curb fare computed from
-       * the New York TLC meter.
-       */
-      const marketId = nearestCity(request.pickup.lat, request.pickup.lng).id;
 
       const candidates: NormalizedQuote[] = [
         this.buildFromFare({
