@@ -10,8 +10,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rl = rateLimit(rateLimitKey({ ip, action: "book" }), 60, 60);
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
@@ -24,10 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isAllowedBookingUrl(parsed.data.url)) {
-    return NextResponse.json(
-      { error: "Booking URL not allowlisted" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Booking URL not allowlisted" }, { status: 400 });
   }
 
   return NextResponse.json({

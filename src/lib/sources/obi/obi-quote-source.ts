@@ -49,13 +49,7 @@ function parseProviderKey(key: string): {
   const serviceLevel = rest.join("/") || "Standard";
   const p = (rawProvider || "other").toLowerCase();
   const provider: ProviderId =
-    p === "uber" ||
-    p === "lyft" ||
-    p === "empower" ||
-    p === "curb" ||
-    p === "waymo"
-      ? p
-      : "other";
+    p === "uber" || p === "lyft" || p === "empower" || p === "curb" || p === "waymo" ? p : "other";
   return { provider, serviceLevel };
 }
 
@@ -228,9 +222,7 @@ export class ObiQuoteSource implements QuoteSource {
           tripDurationSeconds: parsed.data.durationMinutes
             ? Math.round(parsed.data.durationMinutes * 60)
             : null,
-          distanceMeters: parsed.data.distanceKm
-            ? Math.round(parsed.data.distanceKm * 1000)
-            : null,
+          distanceMeters: parsed.data.distanceKm ? Math.round(parsed.data.distanceKm * 1000) : null,
           availability: "AVAILABLE",
           source: this.id,
           sourceMethod: "licensed_aggregation",
@@ -286,9 +278,6 @@ function providerLabel(p: ProviderId): string {
   return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
-export function buildObiLocationPair(
-  pickup: CanonicalLocation,
-  destination: CanonicalLocation,
-) {
+export function buildObiLocationPair(pickup: CanonicalLocation, destination: CanonicalLocation) {
   return { pickup, destination };
 }

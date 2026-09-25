@@ -1,8 +1,4 @@
-import type {
-  CanonicalLocation,
-  ProviderId,
-  BookingHandoff,
-} from "@/lib/domain/types";
+import type { CanonicalLocation, ProviderId, BookingHandoff } from "@/lib/domain/types";
 import { getEnv } from "@/lib/config";
 import { assertAllowlistedUrl } from "@/lib/booking/allowed-hosts";
 
@@ -35,9 +31,7 @@ export function resolveUber(ctx: BookingContext): BookingHandoff {
   if (clientId) url += `&client_id=${encodeURIComponent(clientId)}`;
   // Uber deep links expect real product UUIDs — skip rate-card slugs like "uberx".
   const uberProductId =
-    ctx.productId && /^[0-9a-f-]{20,}$/i.test(ctx.productId)
-      ? ctx.productId
-      : undefined;
+    ctx.productId && /^[0-9a-f-]{20,}$/i.test(ctx.productId) ? ctx.productId : undefined;
   if (uberProductId) {
     url += `&product_id=${encodeURIComponent(uberProductId)}`;
   }

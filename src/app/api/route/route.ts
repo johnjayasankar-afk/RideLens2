@@ -13,25 +13,19 @@ const schema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rl = rateLimit(rateLimitKey({ ip, action: "route" }), 60, 60);
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
 
-  const parsed = schema.safeParse(
-    Object.fromEntries(req.nextUrl.searchParams.entries()),
-  );
+  const parsed = schema.safeParse(Object.fromEntries(req.nextUrl.searchParams.entries()));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
   }
 
   const { fromLat, fromLng, toLat, toLng } = parsed.data;
-  const route = await fetchDrivingRoute(
-    { lat: fromLat, lng: fromLng },
-    { lat: toLat, lng: toLng },
-  );
+  const route = await fetchDrivingRoute({ lat: fromLat, lng: fromLng }, { lat: toLat, lng: toLng });
 
   return NextResponse.json({
     route: {

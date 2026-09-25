@@ -1,10 +1,4 @@
-export type ProviderId =
-  | "uber"
-  | "lyft"
-  | "empower"
-  | "curb"
-  | "waymo"
-  | "other";
+export type ProviderId = "uber" | "lyft" | "empower" | "curb" | "waymo" | "other";
 
 export type RideCategory =
   | "STANDARD"
@@ -20,11 +14,7 @@ export type RideCategory =
   | "OTHER";
 
 export type QuoteType =
-  | "UPFRONT_QUOTE"
-  | "ESTIMATE"
-  | "ESTIMATE_RANGE"
-  | "METERED_ESTIMATE"
-  | "UNKNOWN";
+  "UPFRONT_QUOTE" | "ESTIMATE" | "ESTIMATE_RANGE" | "METERED_ESTIMATE" | "UNKNOWN";
 
 export type Freshness = "LIVE" | "RECENT" | "STALE" | "EXPIRED";
 
@@ -32,12 +22,7 @@ export type AccountContext = "PUBLIC" | "ACCOUNT_LINKED" | "UNKNOWN";
 
 export type ConfidenceClass = "HIGH" | "MEDIUM" | "LOW" | "UNCERTAIN";
 
-export type QuoteSessionStatus =
-  | "PENDING"
-  | "RUNNING"
-  | "PARTIAL"
-  | "SUCCESS"
-  | "FAILED";
+export type QuoteSessionStatus = "PENDING" | "RUNNING" | "PARTIAL" | "SUCCESS" | "FAILED";
 
 export type Availability = "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
 

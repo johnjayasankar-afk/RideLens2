@@ -37,11 +37,7 @@ export function mapProductToCategory(
   return "OTHER";
 }
 
-export const STANDARD_COMPARABLE: RideCategory[] = [
-  "STANDARD",
-  "ECONOMY",
-  "TAXI",
-];
+export const STANDARD_COMPARABLE: RideCategory[] = ["STANDARD", "ECONOMY", "TAXI"];
 
 export function isStandardComparable(category: RideCategory): boolean {
   return STANDARD_COMPARABLE.includes(category);

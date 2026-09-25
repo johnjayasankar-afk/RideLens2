@@ -33,10 +33,7 @@ function bboxOf(coords: [number, number][]): [number, number, number, number] {
   return [w, s, e, n];
 }
 
-function decodePolyline(
-  str: string,
-  precision = 5,
-): [number, number][] {
+function decodePolyline(str: string, precision = 5): [number, number][] {
   let index = 0;
   let lat = 0;
   let lng = 0;
@@ -75,10 +72,7 @@ export async function fetchDrivingRoute(
   destination: { lat: number; lng: number },
   signal?: AbortSignal,
 ): Promise<DrivingRoute> {
-  const endpoints = [
-    osrmBase(),
-    "https://routing.openstreetmap.de/routed-car",
-  ];
+  const endpoints = [osrmBase(), "https://routing.openstreetmap.de/routed-car"];
 
   let lastError: unknown;
   for (const base of endpoints) {
@@ -133,9 +127,7 @@ export async function fetchDrivingRoute(
   const dLng = toRad(destination.lng - pickup.lng);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(pickup.lat)) *
-      Math.cos(toRad(destination.lat)) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos(toRad(pickup.lat)) * Math.cos(toRad(destination.lat)) * Math.sin(dLng / 2) ** 2;
   const straight = 2 * R * Math.asin(Math.sqrt(a));
   const meters = straight * 1.35;
   const seconds = (meters / 1000 / 28) * 3600;

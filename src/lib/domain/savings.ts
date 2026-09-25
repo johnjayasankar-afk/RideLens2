@@ -11,8 +11,8 @@ export function defaultBaseline(
   const rest = ranked.filter((q) => q.id !== best.id);
   if (rest.length === 0) return null;
 
-  const recognizable = rest.find((q) =>
-    RECOGNIZABLE.includes(q.provider) && q.provider !== best.provider,
+  const recognizable = rest.find(
+    (q) => RECOGNIZABLE.includes(q.provider) && q.provider !== best.provider,
   );
   return recognizable ?? rest[0] ?? null;
 }

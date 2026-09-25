@@ -8,12 +8,13 @@ import type {
   RankingMode,
   RideCategory,
 } from "@/lib/domain/types";
+import { formatQuotePrice, formatMoneyMinor, quoteTypeLabel } from "@/lib/domain/money";
 import {
-  formatQuotePrice,
-  formatMoneyMinor,
-  quoteTypeLabel,
-} from "@/lib/domain/money";
-import { freshnessLabel, freshnessStatus, computeFreshness, expiryCountdown } from "@/lib/domain/freshness";
+  freshnessLabel,
+  freshnessStatus,
+  computeFreshness,
+  expiryCountdown,
+} from "@/lib/domain/freshness";
 import { categoryLabel } from "@/lib/domain/taxonomy";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
@@ -110,7 +111,10 @@ function humanizeDemand(raw: string | undefined): string | null {
     baseline: "Steady market",
     off_peak: "Off-peak",
   };
-  const key = base.replace(/\+tick\d+.*$/, "").replace(/heat\d+pct/, "").trim();
+  const key = base
+    .replace(/\+tick\d+.*$/, "")
+    .replace(/heat\d+pct/, "")
+    .trim();
   const mapped = map[key];
   if (mapped) return mapped;
   if (key.includes("am_commute") || key.includes("morning")) return "Morning commute";
@@ -128,10 +132,8 @@ function marketTone(mult: number | undefined): {
     return { label: "Market steady", className: "market-chip is-calm" };
   }
   if (mult >= 1.35) return { label: "Market hot", className: "market-chip is-hot" };
-  if (mult >= 1.15)
-    return { label: "Elevated demand", className: "market-chip is-warm" };
-  if (mult <= 0.98)
-    return { label: "Soft market", className: "market-chip is-calm" };
+  if (mult >= 1.15) return { label: "Elevated demand", className: "market-chip is-warm" };
+  if (mult <= 0.98) return { label: "Soft market", className: "market-chip is-calm" };
   return { label: "Market steady", className: "market-chip is-calm" };
 }
 
@@ -142,8 +144,7 @@ function confidenceFromBand(band: number | undefined): {
   if (band == null) return null;
   // tighter band → higher confidence (2% → ~90, 3.5% → ~70)
   const pct = Math.max(55, Math.min(94, Math.round(100 - band * 900)));
-  const label =
-    pct >= 85 ? "High confidence" : pct >= 72 ? "Solid estimate" : "Wider band";
+  const label = pct >= 85 ? "High confidence" : pct >= 72 ? "Solid estimate" : "Wider band";
   return { label, pct };
 }
 
@@ -170,9 +171,7 @@ function humanizeFeeKey(key: string): string {
 }
 
 function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
-  const fees = quote.metadata?.feeBreakdown as
-    | Record<string, number>
-    | undefined;
+  const fees = quote.metadata?.feeBreakdown as Record<string, number> | undefined;
   const center = quote.metadata?.centerFare as number | undefined;
   const band = quote.metadata?.band as number | undefined;
   const city = quote.metadata?.city as string | undefined;
@@ -193,9 +192,7 @@ function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
         {center != null ? (
           <p>
             Center <strong>{formatMoneyMinor(Math.round(center * 100))}</strong>
-            {band != null ? (
-              <span className="muted"> (±{(band * 100).toFixed(1)}%)</span>
-            ) : null}
+            {band != null ? <span className="muted"> (±{(band * 100).toFixed(1)}%)</span> : null}
           </p>
         ) : null}
         {confidence ? (
@@ -205,10 +202,7 @@ function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
               <span className="muted">{confidence.pct}%</span>
             </div>
             <div className="confidence-track">
-              <span
-                className="confidence-fill"
-                style={{ width: `${confidence.pct}%` }}
-              />
+              <span className="confidence-fill" style={{ width: `${confidence.pct}%` }} />
             </div>
           </div>
         ) : null}
@@ -219,12 +213,8 @@ function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
             {demandMult != null ? ` · ×${demandMult.toFixed(2)}` : ""}
           </p>
         ) : null}
-        {weather && !weather.startsWith("dry") ? (
-          <p className="muted">Weather: {weather}</p>
-        ) : null}
-        {anchor ? (
-          <p className="muted">Corridor: {anchor.replace(/_/g, " ")}</p>
-        ) : null}
+        {weather && !weather.startsWith("dry") ? <p className="muted">Weather: {weather}</p> : null}
+        {anchor ? <p className="muted">Corridor: {anchor.replace(/_/g, " ")}</p> : null}
         <p className="muted">
           <span className={tone.className}>{tone.label}</span>
         </p>
@@ -284,17 +274,11 @@ function QuoteCard({
   const waitLow = quote.metadata?.waitLowSeconds as number | undefined;
   const waitHigh = quote.metadata?.waitHighSeconds as number | undefined;
   const driveSec = quote.tripDurationSeconds;
-  const totalSec =
-    pickupSec != null && driveSec != null ? pickupSec + driveSec : null;
-  const arriveLabel =
-    totalSec != null ? formatClock(now, totalSec) : "—";
+  const totalSec = pickupSec != null && driveSec != null ? pickupSec + driveSec : null;
+  const arriveLabel = totalSec != null ? formatClock(now, totalSec) : "—";
 
-  const pickupAddr = String(
-    quote.metadata?.pickupAddress || pickupLabel || "",
-  );
-  const destAddr = String(
-    quote.metadata?.destinationAddress || destinationLabel || "",
-  );
+  const pickupAddr = String(quote.metadata?.pickupAddress || pickupLabel || "");
+  const destAddr = String(quote.metadata?.destinationAddress || destinationLabel || "");
 
   const bookParams = new URLSearchParams({
     provider: quote.provider,
@@ -305,8 +289,7 @@ function QuoteCard({
   if (handoff?.url) bookParams.set("url", handoff.url);
   if (returnTo) bookParams.set("returnTo", returnTo);
   const prefillsTrip =
-    Boolean(handoff?.prefills?.pickup) &&
-    Boolean(handoff?.prefills?.destination);
+    Boolean(handoff?.prefills?.pickup) && Boolean(handoff?.prefills?.destination);
   if (!prefillsTrip) bookParams.set("prefills", "0");
 
   // Always hand off through /book so every provider gets the same confirm step.
@@ -346,9 +329,7 @@ function QuoteCard({
       <div className="wait-row" aria-label="Trip timing">
         <div className="wait-cell">
           <span className="wait-label">Pickup</span>
-          <span className="wait-value">
-            {formatWaitRange(pickupSec, waitLow, waitHigh)}
-          </span>
+          <span className="wait-value">{formatWaitRange(pickupSec, waitLow, waitHigh)}</span>
         </div>
         <div className="wait-cell">
           <span className="wait-label">Drive</span>
@@ -368,9 +349,7 @@ function QuoteCard({
         <span className="meta-chip">{categoryLabel(quote.normalizedCategory)}</span>
         <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
         <span className={`meta-chip ${tone.className}`}>{tone.label}</span>
-        {showWeather ? (
-          <span className="meta-chip market-chip is-rain">Weather lift</span>
-        ) : null}
+        {showWeather ? <span className="meta-chip market-chip is-rain">Weather lift</span> : null}
         <span className="meta-chip">
           <span className={statusDotClass(quote, now)} aria-hidden />
           {freshnessLine(quote, now)}
@@ -384,10 +363,7 @@ function QuoteCard({
         <p className="delta muted">
           +{formatMoneyMinor(deltaMinor)} vs best
           {waitDeltaSec != null && waitDeltaSec > 30 ? (
-            <span>
-              {" "}
-              · +{Math.round(waitDeltaSec / 60)} min wait
-            </span>
+            <span> · +{Math.round(waitDeltaSec / 60)} min wait</span>
           ) : null}
         </p>
       ) : null}
@@ -476,9 +452,7 @@ export function QuoteResults({
   const ranked = useMemo(() => {
     const raw = session?.quotes ?? [];
     const categoryFilter =
-      filter === "standard" || filter === "ALL"
-        ? filter
-        : ([filter] as RideCategory[]);
+      filter === "standard" || filter === "ALL" ? filter : ([filter] as RideCategory[]);
     return rankQuotes(raw, mode, categoryFilter);
   }, [session?.quotes, mode, filter]);
 
@@ -520,22 +494,13 @@ export function QuoteResults({
   const expected = session?.coverage.sourcesExpected ?? [];
   const succeeded = session?.coverage.sourcesSucceeded ?? [];
   const pendingSources = expected.filter(
-    (s) =>
-      !succeeded.includes(s) &&
-      !failures.some((f) => f.sourceId === s),
+    (s) => !succeeded.includes(s) && !failures.some((f) => f.sourceId === s),
   );
   const isPartial =
-    session?.status === "PARTIAL" ||
-    (Boolean(hero) && failures.length > 0 && succeeded.length > 0);
-  const failedEmpty =
-    Boolean(session) &&
-    !loading &&
-    (session?.quotes.length ?? 0) === 0;
+    session?.status === "PARTIAL" || (Boolean(hero) && failures.length > 0 && succeeded.length > 0);
+  const failedEmpty = Boolean(session) && !loading && (session?.quotes.length ?? 0) === 0;
   const filterEmpty =
-    Boolean(session) &&
-    !loading &&
-    (session?.quotes.length ?? 0) > 0 &&
-    ranked.length === 0;
+    Boolean(session) && !loading && (session?.quotes.length ?? 0) > 0 && ranked.length === 0;
 
   const insight = useMemo(() => {
     if (!hero) return null;
@@ -559,9 +524,7 @@ export function QuoteResults({
     if (hero.provider === "empower" && rest[0]) {
       const save = rest[0].rankingPriceMinor - hero.rankingPriceMinor;
       if (save > 800) {
-        parts.push(
-          `Empower leads by ${formatMoneyMinor(save)} on this route.`,
-        );
+        parts.push(`Empower leads by ${formatMoneyMinor(save)} on this route.`);
       }
     }
     if (!parts.length) return null;
@@ -571,20 +534,11 @@ export function QuoteResults({
   const tripStats = useMemo(() => {
     const q = hero || ranked[0];
     if (!q && !mapRoute) return null;
-    const waits = ranked
-      .map((x) => x.pickupEtaSeconds)
-      .filter((n): n is number => n != null);
-    const drives = ranked
-      .map((x) => x.tripDurationSeconds)
-      .filter((n): n is number => n != null);
-    const versusNext =
-      hero && rest[0]
-        ? rest[0].rankingPriceMinor - hero.rankingPriceMinor
-        : null;
+    const waits = ranked.map((x) => x.pickupEtaSeconds).filter((n): n is number => n != null);
+    const drives = ranked.map((x) => x.tripDurationSeconds).filter((n): n is number => n != null);
+    const versusNext = hero && rest[0] ? rest[0].rankingPriceMinor - hero.rankingPriceMinor : null;
     return {
-      miles:
-        mapRoute?.miles ??
-        (q?.distanceMeters ? q.distanceMeters / 1609.344 : null),
+      miles: mapRoute?.miles ?? (q?.distanceMeters ? q.distanceMeters / 1609.344 : null),
       minWait: waits.length ? Math.min(...waits) : null,
       minDrive:
         mapRoute?.minutes != null
@@ -593,8 +547,7 @@ export function QuoteResults({
             ? Math.min(...drives)
             : null,
       bestMid: hero?.rankingPriceMinor ?? null,
-      versusNext:
-        versusNext != null && versusNext > 0 ? versusNext : null,
+      versusNext: versusNext != null && versusNext > 0 ? versusNext : null,
     };
   }, [hero, ranked, rest, mapRoute]);
 
@@ -610,10 +563,7 @@ export function QuoteResults({
       return {
         lat: session.pickup.lat,
         lng: session.pickup.lng,
-        label:
-          session.pickup.name ||
-          session.pickup.formattedAddress.split(",")[0] ||
-          "From",
+        label: session.pickup.name || session.pickup.formattedAddress.split(",")[0] || "From",
       };
     }
     return null;
@@ -632,9 +582,7 @@ export function QuoteResults({
         lat: session.destination.lat,
         lng: session.destination.lng,
         label:
-          session.destination.name ||
-          session.destination.formattedAddress.split(",")[0] ||
-          "To",
+          session.destination.name || session.destination.formattedAddress.split(",")[0] || "To",
       };
     }
     return null;
@@ -676,14 +624,8 @@ export function QuoteResults({
 
   const copyAll = async () => {
     if (!ranked.length) return;
-    const from =
-      mapPickup?.label ||
-      session?.pickup.formattedAddress.split(",")[0] ||
-      "From";
-    const to =
-      mapDest?.label ||
-      session?.destination.formattedAddress.split(",")[0] ||
-      "To";
+    const from = mapPickup?.label || session?.pickup.formattedAddress.split(",")[0] || "From";
+    const to = mapDest?.label || session?.destination.formattedAddress.split(",")[0] || "To";
     const lines = [
       `RideLens · ${from} → ${to}`,
       insight?.text || null,
@@ -709,10 +651,7 @@ export function QuoteResults({
       : "";
 
   return (
-    <section
-      className={`results${loading ? " is-loading" : ""}`}
-      ref={resultsTopRef}
-    >
+    <section className={`results${loading ? " is-loading" : ""}`} ref={resultsTopRef}>
       <p className="sr-only" aria-live="polite">
         {resultsAnnounce}
       </p>
@@ -731,15 +670,9 @@ export function QuoteResults({
         <div className="route-summary muted">
           {session || (pickup && destination) ? (
             <>
-              <span>
-                {mapPickup?.label ||
-                  session?.pickup.formattedAddress.split(",")[0]}
-              </span>
+              <span>{mapPickup?.label || session?.pickup.formattedAddress.split(",")[0]}</span>
               <span aria-hidden>→</span>
-              <span>
-                {mapDest?.label ||
-                  session?.destination.formattedAddress.split(",")[0]}
-              </span>
+              <span>{mapDest?.label || session?.destination.formattedAddress.split(",")[0]}</span>
             </>
           ) : (
             <span>Resolving route…</span>
@@ -748,20 +681,12 @@ export function QuoteResults({
         <div className="toolbar-actions">
           {hero ? (
             <button type="button" className="ghost" onClick={copyBest}>
-              {copied === "best"
-                ? "Copied"
-                : copied === "fail"
-                  ? "Copy failed"
-                  : "Copy best"}
+              {copied === "best" ? "Copied" : copied === "fail" ? "Copy failed" : "Copy best"}
             </button>
           ) : null}
           {ranked.length > 0 ? (
             <button type="button" className="ghost" onClick={copyAll}>
-              {copied === "all"
-                ? "Copied"
-                : copied === "fail"
-                  ? "Copy failed"
-                  : "Copy all"}
+              {copied === "all" ? "Copied" : copied === "fail" ? "Copy failed" : "Copy all"}
             </button>
           ) : null}
           <button
@@ -787,12 +712,9 @@ export function QuoteResults({
             {marketTone(hero.metadata?.demandCenter as number | undefined).label}
           </span>
           {hero.metadata?.demandCenter != null ? (
-            <span className="muted mono">
-              ×{Number(hero.metadata.demandCenter).toFixed(2)}
-            </span>
+            <span className="muted mono">×{Number(hero.metadata.demandCenter).toFixed(2)}</span>
           ) : null}
-          {hero.metadata?.weather &&
-          !String(hero.metadata.weather).startsWith("dry") ? (
+          {hero.metadata?.weather && !String(hero.metadata.weather).startsWith("dry") ? (
             <span className="market-chip is-rain">Weather active</span>
           ) : (
             <span className="muted">Clear conditions</span>
@@ -862,15 +784,11 @@ export function QuoteResults({
       ) : null}
 
       {tripStats &&
-      (tripStats.miles != null ||
-        tripStats.minWait != null ||
-        tripStats.bestMid != null) ? (
+      (tripStats.miles != null || tripStats.minWait != null || tripStats.bestMid != null) ? (
         <div className="trip-stats">
           {tripStats.miles != null ? (
             <div>
-              <span className="stat-value">
-                {tripStats.miles.toFixed(1)}
-              </span>
+              <span className="stat-value">{tripStats.miles.toFixed(1)}</span>
               <span className="stat-label">Miles</span>
             </div>
           ) : null}
@@ -892,17 +810,13 @@ export function QuoteResults({
           ) : null}
           {tripStats.bestMid != null ? (
             <div>
-              <span className="stat-value">
-                {formatMoneyMinor(tripStats.bestMid)}
-              </span>
+              <span className="stat-value">{formatMoneyMinor(tripStats.bestMid)}</span>
               <span className="stat-label">Best estimate</span>
             </div>
           ) : null}
           {tripStats.versusNext != null ? (
             <div className="trip-stat-desktop">
-              <span className="stat-value">
-                {formatMoneyMinor(tripStats.versusNext)}
-              </span>
+              <span className="stat-value">{formatMoneyMinor(tripStats.versusNext)}</span>
               <span className="stat-label">Saves vs next</span>
             </div>
           ) : null}
@@ -972,9 +886,9 @@ export function QuoteResults({
           <div className="pending-logos">
             {pendingSources.map((s) => {
               const lower = s.toLowerCase();
-              const provider = (
-                ["uber", "lyft", "empower", "curb"] as const
-              ).find((p) => lower.includes(p));
+              const provider = (["uber", "lyft", "empower", "curb"] as const).find((p) =>
+                lower.includes(p),
+              );
               const label = provider
                 ? provider
                 : lower.includes("rate")
@@ -982,9 +896,7 @@ export function QuoteResults({
                   : s.replace(/_/g, " ");
               return (
                 <span key={s} className="pending-chip">
-                  {provider ? (
-                    <ProviderLogo provider={provider} size={24} />
-                  ) : null}
+                  {provider ? <ProviderLogo provider={provider} size={24} /> : null}
                   <span>{label}</span>
                 </span>
               );
@@ -998,11 +910,7 @@ export function QuoteResults({
           <div className="section-label-row">
             <p className="section-label">{heroTitle(mode)}</p>
             {onReverseTrip && pickup && destination ? (
-              <button
-                type="button"
-                className="chip reverse-chip"
-                onClick={onReverseTrip}
-              >
+              <button type="button" className="chip reverse-chip" onClick={onReverseTrip}>
                 Going back? Swap trip
               </button>
             ) : null}
@@ -1034,11 +942,7 @@ export function QuoteResults({
                 now={now}
                 returnTo={returnTo}
                 animate={animateEntrance}
-                deltaMinor={
-                  hero
-                    ? q.rankingPriceMinor - hero.rankingPriceMinor
-                    : undefined
-                }
+                deltaMinor={hero ? q.rankingPriceMinor - hero.rankingPriceMinor : undefined}
                 waitDeltaSec={
                   hero?.pickupEtaSeconds != null && q.pickupEtaSeconds != null
                     ? q.pickupEtaSeconds - hero.pickupEtaSeconds
@@ -1093,11 +997,7 @@ export function QuoteResults({
         <div className="banner warn empty-filter" role="status">
           <p>No quotes matched this filter. Try All, or refresh prices.</p>
           <div className="empty-filter-actions">
-            <button
-              type="button"
-              className="chip active"
-              onClick={() => onFilterChange("ALL")}
-            >
+            <button type="button" className="chip active" onClick={() => onFilterChange("ALL")}>
               Show all
             </button>
             <button type="button" className="ghost" onClick={onRefresh}>
@@ -1108,9 +1008,9 @@ export function QuoteResults({
       ) : null}
 
       <p className="fineprint muted">
-        Estimates blend live road distance, published rate cards, corridor
-        anchors, and a simulated marketplace (time, zone heat, weather). Provider
-        apps may show promos or account pricing — always confirm before booking.
+        Estimates blend live road distance, published rate cards, corridor anchors, and a simulated
+        marketplace (time, zone heat, weather). Provider apps may show promos or account pricing —
+        always confirm before booking.
       </p>
     </section>
   );

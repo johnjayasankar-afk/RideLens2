@@ -28,12 +28,12 @@ Expired quotes are never ranked as current.
 
 ## Confidence
 
-| Type | Confidence |
-| --- | --- |
-| Exact UPFRONT | HIGH |
-| Single ESTIMATE | MEDIUM |
-| Narrow range (≤15% width) | MEDIUM |
-| Wider range | LOW / UNCERTAIN |
+| Type                      | Confidence      |
+| ------------------------- | --------------- |
+| Exact UPFRONT             | HIGH            |
+| Single ESTIMATE           | MEDIUM          |
+| Narrow range (≤15% width) | MEDIUM          |
+| Wider range               | LOW / UNCERTAIN |
 
 ## Ranking under uncertainty
 

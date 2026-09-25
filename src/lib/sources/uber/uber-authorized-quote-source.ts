@@ -49,8 +49,7 @@ export class UberAuthorizedQuoteSource implements QuoteSource {
         status: "disabled",
         p50LatencyMs: null,
         lastSuccessAt: null,
-        lastError:
-          "Competitive comparison not authorized under Uber API Terms § II B",
+        lastError: "Competitive comparison not authorized under Uber API Terms § II B",
         providersSurfaced: [],
       };
     }
@@ -59,9 +58,7 @@ export class UberAuthorizedQuoteSource implements QuoteSource {
       status: env.UBER_CLIENT_ID ? "healthy" : "misconfigured",
       p50LatencyMs: null,
       lastSuccessAt: null,
-      lastError: env.UBER_CLIENT_ID
-        ? null
-        : "UBER_CLIENT_ID/SECRET required",
+      lastError: env.UBER_CLIENT_ID ? null : "UBER_CLIENT_ID/SECRET required",
       providersSurfaced: ["uber"],
     };
   }
@@ -121,8 +118,7 @@ export function normalizeUberEstimateFixture(
   const receivedAt = now.toISOString();
   const min = raw.low_estimate * 100;
   const max = raw.high_estimate * 100;
-  const priceType =
-    min === max ? ("ESTIMATE" as const) : ("ESTIMATE_RANGE" as const);
+  const priceType = min === max ? ("ESTIMATE" as const) : ("ESTIMATE_RANGE" as const);
   return {
     id: randomUUID(),
     provider: "uber",

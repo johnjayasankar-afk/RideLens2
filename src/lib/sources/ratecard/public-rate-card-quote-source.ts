@@ -12,10 +12,7 @@ import type {
 } from "@/lib/domain/types";
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
 import type { QuoteSource } from "@/lib/sources/types";
-import {
-  computeProductFare,
-  type FareProduct,
-} from "@/lib/sources/ratecard/fare-engine";
+import { computeProductFare, type FareProduct } from "@/lib/sources/ratecard/fare-engine";
 import { estimatePickupWait, type WaitCategory } from "@/lib/sources/ratecard/wait-eta";
 import { fetchWeatherSignal } from "@/lib/sources/ratecard/weather-signal";
 
@@ -123,9 +120,7 @@ export class PublicRateCardQuoteSource implements QuoteSource {
     const minMinor = dollarsToMinor(fare.low);
     const maxMinor = dollarsToMinor(Math.max(fare.low, fare.high));
     const receivedAt = now.toISOString();
-    const priceType =
-      input.priceType ??
-      (minMinor === maxMinor ? "ESTIMATE" : "ESTIMATE_RANGE");
+    const priceType = input.priceType ?? (minMinor === maxMinor ? "ESTIMATE" : "ESTIMATE_RANGE");
 
     const wait = estimatePickupWait({
       provider: providerKey,
@@ -207,16 +202,8 @@ export class PublicRateCardQuoteSource implements QuoteSource {
     const started = Date.now();
     try {
       const [route, weather] = await Promise.all([
-        fetchDrivingRoute(
-          request.pickup,
-          request.destination,
-          request.signal,
-        ),
-        fetchWeatherSignal(
-          request.pickup.lat,
-          request.pickup.lng,
-          request.signal,
-        ),
+        fetchDrivingRoute(request.pickup, request.destination, request.signal),
+        fetchWeatherSignal(request.pickup.lat, request.pickup.lng, request.signal),
       ]);
       const miles = route.miles;
       const osrmMinutes = route.minutes;

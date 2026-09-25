@@ -22,10 +22,7 @@ describe("public rate cards", () => {
 
   it("keeps NYC UberX bands tight for ~18mi / 45min off-peak", () => {
     const m = nearestCity(40.7225, -73.9945);
-    const demand = demandMultiplier(
-      new Date("2026-09-03T14:00:00"),
-      m.city.surge,
-    );
+    const demand = demandMultiplier(new Date("2026-09-03T14:00:00"), m.city.surge);
     expect(demand.band).toBeLessThanOrEqual(0.03);
 
     const fees = tripFees(
@@ -33,9 +30,7 @@ describe("public rate cards", () => {
       { lat: 40.6413, lng: -73.7781 },
       "new-york",
     );
-    const center =
-      computeFareDollars(m.city.uber, 17.8, 45, demand.center) +
-      fees.addOnDollars;
+    const center = computeFareDollars(m.city.uber, 17.8, 45, demand.center) + fees.addOnDollars;
     const { low, high } = fareBand(center, demand.band);
 
     expect(center).toBeGreaterThan(40);

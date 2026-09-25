@@ -8,11 +8,7 @@ export function minorToDollars(minor: number): number {
   return minor / 100;
 }
 
-export function formatMoneyMinor(
-  minor: number,
-  currency = "USD",
-  locale = "en-US",
-): string {
+export function formatMoneyMinor(minor: number, currency = "USD", locale = "en-US"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
@@ -21,36 +17,25 @@ export function formatMoneyMinor(
   }).format(minorToDollars(minor));
 }
 
-export function formatMoneyRange(
-  minMinor: number,
-  maxMinor: number,
-  currency = "USD",
-): string {
+export function formatMoneyRange(minMinor: number, maxMinor: number, currency = "USD"): string {
   if (minMinor === maxMinor) return formatMoneyMinor(minMinor, currency);
   return `${formatMoneyMinor(minMinor, currency)} to ${formatMoneyMinor(maxMinor, currency).replace(/^[^\d-]*/, "")}`;
 }
 
 /** Display-facing price. Never invent a midpoint for the user. */
-export function formatQuotePrice(quote: Pick<
-  NormalizedQuote,
-  | "priceType"
-  | "priceMinMinor"
-  | "priceMaxMinor"
-  | "displayPriceMinor"
-  | "currency"
->): string {
+export function formatQuotePrice(
+  quote: Pick<
+    NormalizedQuote,
+    "priceType" | "priceMinMinor" | "priceMaxMinor" | "displayPriceMinor" | "currency"
+  >,
+): string {
   const currency = quote.currency || "USD";
   const isRange =
-    quote.priceType === "ESTIMATE_RANGE" ||
-    quote.priceMinMinor !== quote.priceMaxMinor;
+    quote.priceType === "ESTIMATE_RANGE" || quote.priceMinMinor !== quote.priceMaxMinor;
 
   let body: string;
   if (isRange) {
-    body = formatMoneyRange(
-      quote.priceMinMinor,
-      quote.priceMaxMinor,
-      currency,
-    );
+    body = formatMoneyRange(quote.priceMinMinor, quote.priceMaxMinor, currency);
   } else {
     body = formatMoneyMinor(quote.displayPriceMinor, currency);
   }

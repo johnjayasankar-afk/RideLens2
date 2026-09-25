@@ -107,10 +107,7 @@ const NY_TOLLS: TollGate[] = [
   },
 ];
 
-function hitsGate(
-  coords: [number, number][],
-  gate: TollGate,
-): boolean {
+function hitsGate(coords: [number, number][], gate: TollGate): boolean {
   const r2 = gate.radius * gate.radius;
   for (const [lng, lat] of coords) {
     const dLat = lat - gate.lat;
@@ -139,16 +136,11 @@ export function estimateRouteTolls(
   }
 
   // NJ river crossings only if the path actually enters New Jersey
-  const entersNJ = coordinates.some(
-    ([lng, lat]) => lng < -74.025 && lat > 40.68 && lat < 40.92,
-  );
+  const entersNJ = coordinates.some(([lng, lat]) => lng < -74.025 && lat > 40.68 && lat < 40.92);
 
   const hit = NY_TOLLS.filter((g) => {
     if (g.amount <= 0) return false;
-    if (
-      (g.id === "lincoln" || g.id === "holland" || g.id === "gw_bridge") &&
-      !entersNJ
-    ) {
+    if ((g.id === "lincoln" || g.id === "holland" || g.id === "gw_bridge") && !entersNJ) {
       return false;
     }
     return hitsGate(coordinates, g);
@@ -178,10 +170,7 @@ export function estimateRouteTolls(
   return {
     amount: Math.round(amount * 100) / 100,
     gateId: primary.id,
-    label:
-      selected.length === 1
-        ? primary.label
-        : selected.map((g) => g.label).join(" + "),
+    label: selected.length === 1 ? primary.label : selected.map((g) => g.label).join(" + "),
     gatesHit: selected.map((g) => g.id),
     items,
   };

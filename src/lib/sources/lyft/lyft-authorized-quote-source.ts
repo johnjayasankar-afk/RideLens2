@@ -51,9 +51,7 @@ export class LyftAuthorizedQuoteSource implements QuoteSource {
   capabilities(): SourceCapabilities {
     const env = getEnv();
     const ok = Boolean(
-      env.LYFT_COMPARISON_AUTHORIZED &&
-        env.LYFT_CLIENT_ID &&
-        env.LYFT_CLIENT_SECRET,
+      env.LYFT_COMPARISON_AUTHORIZED && env.LYFT_CLIENT_ID && env.LYFT_CLIENT_SECRET,
     );
     return {
       supportsPrice: ok,
@@ -107,9 +105,7 @@ export class LyftAuthorizedQuoteSource implements QuoteSource {
     if (this.tokenCache && this.tokenCache.expiresAt > Date.now() + 60_000) {
       return this.tokenCache.token;
     }
-    const basic = Buffer.from(
-      `${env.LYFT_CLIENT_ID}:${env.LYFT_CLIENT_SECRET}`,
-    ).toString("base64");
+    const basic = Buffer.from(`${env.LYFT_CLIENT_ID}:${env.LYFT_CLIENT_SECRET}`).toString("base64");
     const res = await fetch("https://api.lyft.com/oauth/token", {
       method: "POST",
       headers: {
@@ -133,11 +129,7 @@ export class LyftAuthorizedQuoteSource implements QuoteSource {
   async getQuotes(request: QuoteRequest): Promise<SourceQuoteResult> {
     const started = Date.now();
     const env = getEnv();
-    if (
-      !env.LYFT_COMPARISON_AUTHORIZED ||
-      !env.LYFT_CLIENT_ID ||
-      !env.LYFT_CLIENT_SECRET
-    ) {
+    if (!env.LYFT_COMPARISON_AUTHORIZED || !env.LYFT_CLIENT_ID || !env.LYFT_CLIENT_SECRET) {
       return {
         sourceId: this.id,
         ok: false,
@@ -217,48 +209,44 @@ export class LyftAuthorizedQuoteSource implements QuoteSource {
 
       const now = new Date();
       const receivedAt = now.toISOString();
-      const quotes: NormalizedQuote[] = costParsed.data.cost_estimates.map(
-        (c) => {
-          const min = c.estimated_cost_cents_min ?? 0;
-          const max = c.estimated_cost_cents_max ?? min;
-          const priceType =
-            min === max ? ("ESTIMATE" as const) : ("ESTIMATE_RANGE" as const);
-          const name = c.display_name || c.ride_type;
-          return {
-            id: randomUUID(),
-            provider: "lyft" as const,
-            providerProductId: c.ride_type,
-            providerProductName: name,
-            normalizedCategory: mapProductToCategory("lyft", name, c.ride_type),
-            priceType,
-            priceMinMinor: min,
-            priceMaxMinor: max,
-            displayPriceMinor: Math.round((min + max) / 2),
-            rankingPriceMinor: Math.round((min + max) / 2),
-            currency: c.currency || "USD",
-            pickupEtaSeconds: etaMap.get(c.ride_type) ?? null,
-            tripDurationSeconds: null,
-            distanceMeters: null,
-            availability:
-              c.can_request_ride === false ? "UNAVAILABLE" : "AVAILABLE",
-            source: this.id,
-            sourceMethod: "authorized_direct" as const,
-            accountContext: request.accountContext,
-            receivedAt,
-            providerTimestamp: null,
-            expiresAt: new Date(now.getTime() + 90_000).toISOString(),
-            freshness: computeFreshness(receivedAt, null, now),
-            bookingHandoff: resolveBookingHandoff("lyft", {
-              pickup: request.pickup,
-              destination: request.destination,
-              productId: c.ride_type,
-              productName: name,
-            }),
-            confidenceClass: confidenceForQuoteType(priceType, min, max),
-            metadata: { primetime: c.primetime_percentage },
-          };
-        },
-      );
+      const quotes: NormalizedQuote[] = costParsed.data.cost_estimates.map((c) => {
+        const min = c.estimated_cost_cents_min ?? 0;
+        const max = c.estimated_cost_cents_max ?? min;
+        const priceType = min === max ? ("ESTIMATE" as const) : ("ESTIMATE_RANGE" as const);
+        const name = c.display_name || c.ride_type;
+        return {
+          id: randomUUID(),
+          provider: "lyft" as const,
+          providerProductId: c.ride_type,
+          providerProductName: name,
+          normalizedCategory: mapProductToCategory("lyft", name, c.ride_type),
+          priceType,
+          priceMinMinor: min,
+          priceMaxMinor: max,
+          displayPriceMinor: Math.round((min + max) / 2),
+          rankingPriceMinor: Math.round((min + max) / 2),
+          currency: c.currency || "USD",
+          pickupEtaSeconds: etaMap.get(c.ride_type) ?? null,
+          tripDurationSeconds: null,
+          distanceMeters: null,
+          availability: c.can_request_ride === false ? "UNAVAILABLE" : "AVAILABLE",
+          source: this.id,
+          sourceMethod: "authorized_direct" as const,
+          accountContext: request.accountContext,
+          receivedAt,
+          providerTimestamp: null,
+          expiresAt: new Date(now.getTime() + 90_000).toISOString(),
+          freshness: computeFreshness(receivedAt, null, now),
+          bookingHandoff: resolveBookingHandoff("lyft", {
+            pickup: request.pickup,
+            destination: request.destination,
+            productId: c.ride_type,
+            productName: name,
+          }),
+          confidenceClass: confidenceForQuoteType(priceType, min, max),
+          metadata: { primetime: c.primetime_percentage },
+        };
+      });
 
       return {
         sourceId: this.id,

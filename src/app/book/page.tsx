@@ -38,9 +38,7 @@ function BookInner() {
   const urlOk = rawUrl ? isAllowedBookingUrl(rawUrl) : false;
   const backHref = safeReturnTo(params.get("returnTo"));
   const needsManualTrip =
-    params.get("prefills") === "0" ||
-    providerRaw === "empower" ||
-    providerRaw === "curb";
+    params.get("prefills") === "0" || providerRaw === "empower" || providerRaw === "curb";
   const [copied, setCopied] = useState(false);
 
   const copyAddresses = async () => {
@@ -94,24 +92,19 @@ function BookInner() {
       {needsManualTrip ? (
         <div className="banner warn" role="status">
           <p>
-            {label} doesn’t accept deep-linked pins from RideLens. Copy the
-            addresses, then enter the trip in the {label} app and confirm the
-            final fare.
+            {label} doesn’t accept deep-linked pins from RideLens. Copy the addresses, then enter
+            the trip in the {label} app and confirm the final fare.
           </p>
         </div>
       ) : (
         <p className="muted book-disclaimer">
-          You’ll finish the request in the {label} app. Confirm pickup,
-          destination, and the final fare before you ride.
+          You’ll finish the request in the {label} app. Confirm pickup, destination, and the final
+          fare before you ride.
         </p>
       )}
 
       {needsManualTrip && (pickup || destination) ? (
-        <button
-          type="button"
-          className="book book-continue"
-          onClick={() => void copyAddresses()}
-        >
+        <button type="button" className="book book-continue" onClick={() => void copyAddresses()}>
           {copied ? "Addresses copied" : "Copy addresses to paste"}
         </button>
       ) : null}
@@ -128,17 +121,13 @@ function BookInner() {
         </a>
       ) : (
         <p className="banner warn" role="alert">
-          This booking link isn’t available right now. Open {label} from your
-          phone and enter the trip there.
+          This booking link isn’t available right now. Open {label} from your phone and enter the
+          trip there.
         </p>
       )}
 
       {!needsManualTrip && (pickup || destination) ? (
-        <button
-          type="button"
-          className="ghost"
-          onClick={() => void copyAddresses()}
-        >
+        <button type="button" className="ghost" onClick={() => void copyAddresses()}>
           {copied ? "Addresses copied" : "Copy addresses"}
         </button>
       ) : null}

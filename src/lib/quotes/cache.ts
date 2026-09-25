@@ -22,9 +22,7 @@ export function buildQuoteCacheKey(input: {
 }): string {
   const round = (n: number) => n.toFixed(5);
   const userPart =
-    input.accountContext === "ACCOUNT_LINKED" && input.userId
-      ? `u:${input.userId}`
-      : "public";
+    input.accountContext === "ACCOUNT_LINKED" && input.userId ? `u:${input.userId}` : "public";
   const filterPart = input.categoryFilter ?? "standard";
   const modePart = input.rankingMode ?? "cheapest";
   return [

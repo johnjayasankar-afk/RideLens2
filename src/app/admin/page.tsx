@@ -22,8 +22,7 @@ function unauthorized() {
       <p className="eyebrow">Admin</p>
       <h1 className="brand status-title">Unauthorized</h1>
       <p className="muted status-copy">
-        Set <code>RIDELENS_ADMIN_SECRET</code> and open{" "}
-        <code>/admin?secret=…</code>, or send header{" "}
+        Set <code>RIDELENS_ADMIN_SECRET</code> and open <code>/admin?secret=…</code>, or send header{" "}
         <code>x-admin-secret</code>.
       </p>
       <div className="status-actions">
@@ -54,14 +53,9 @@ export default async function AdminPage({
   const jar = await cookies();
 
   const provided =
-    params.secret ||
-    hdrs.get("x-admin-secret") ||
-    jar.get("ridelens_admin")?.value ||
-    "";
+    params.secret || hdrs.get("x-admin-secret") || jar.get("ridelens_admin")?.value || "";
 
-  const allowed = secret
-    ? provided === secret
-    : env.NODE_ENV !== "production";
+  const allowed = secret ? provided === secret : env.NODE_ENV !== "production";
 
   if (!allowed) return unauthorized();
 
@@ -75,9 +69,7 @@ export default async function AdminPage({
   const usage = getUsageToday();
   const sessions = listRecentSessions(12);
   const summary = sourceStatusSummary(env);
-  const enabledCount = Object.values(summary).filter((v) =>
-    String(v).startsWith("enabled"),
-  ).length;
+  const enabledCount = Object.values(summary).filter((v) => String(v).startsWith("enabled")).length;
 
   return (
     <div className="shell admin-shell">
@@ -91,10 +83,7 @@ export default async function AdminPage({
       </p>
 
       <div className="admin-stats">
-        <Stat
-          label="Live capable"
-          value={isProductionLiveCapable(env) ? "Yes" : "No"}
-        />
+        <Stat label="Live capable" value={isProductionLiveCapable(env) ? "Yes" : "No"} />
         <Stat label="Comparisons today" value={String(usage.comparisons)} />
         <Stat label="Source calls" value={String(usage.sourceCalls)} />
         <Stat
@@ -132,7 +121,9 @@ export default async function AdminPage({
             <article key={s.id} className="admin-session-card">
               <div className="admin-session-top">
                 <code>{s.id.slice(0, 8)}</code>
-                <span className={`admin-pill ${s.status === "SUCCESS" ? "is-ok" : s.status === "PARTIAL" ? "is-warn" : "is-bad"}`}>
+                <span
+                  className={`admin-pill ${s.status === "SUCCESS" ? "is-ok" : s.status === "PARTIAL" ? "is-warn" : "is-bad"}`}
+                >
                   {s.status}
                 </span>
               </div>

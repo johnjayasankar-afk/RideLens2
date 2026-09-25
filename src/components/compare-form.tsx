@@ -100,10 +100,7 @@ function saveRecent(pickup: PlaceValue, destination: PlaceValue) {
       savedAt: Date.now(),
     };
     const prev = loadRecent().filter((r) => r.id !== next.id);
-    localStorage.setItem(
-      RECENT_KEY,
-      JSON.stringify([next, ...prev].slice(0, 6)),
-    );
+    localStorage.setItem(RECENT_KEY, JSON.stringify([next, ...prev].slice(0, 6)));
   } catch {
     /* private mode / quota */
   }
@@ -123,19 +120,14 @@ function decodePlace(raw: string | null): PlaceValue | null {
   return { lat, lng, formattedAddress: label, label };
 }
 
-function haversineMeters(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6_371_000;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
@@ -145,23 +137,13 @@ function parseMode(raw: string | null): RankingMode {
 }
 
 function parseFilter(raw: string | null): FilterId {
-  if (
-    raw === "ALL" ||
-    raw === "XL" ||
-    raw === "PREMIUM" ||
-    raw === "TAXI" ||
-    raw === "standard"
-  ) {
+  if (raw === "ALL" || raw === "XL" || raw === "PREMIUM" || raw === "TAXI" || raw === "standard") {
     return raw;
   }
   return "standard";
 }
 
-export function CompareForm({
-  liveCapable,
-}: {
-  liveCapable: boolean;
-}) {
+export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [pickup, setPickup] = useState<PlaceValue | null>(null);
   const [destination, setDestination] = useState<PlaceValue | null>(null);
   const [locating, setLocating] = useState(false);
@@ -213,11 +195,11 @@ export function CompareForm({
 
   const canSubmit = Boolean(
     pickup &&
-      destination &&
-      Number.isFinite(pickup.lat) &&
-      Number.isFinite(pickup.lng) &&
-      Number.isFinite(destination.lat) &&
-      Number.isFinite(destination.lng),
+    destination &&
+    Number.isFinite(pickup.lat) &&
+    Number.isFinite(pickup.lng) &&
+    Number.isFinite(destination.lat) &&
+    Number.isFinite(destination.lng),
   );
 
   const routeKey =
@@ -317,10 +299,7 @@ export function CompareForm({
         const lng = pos.coords.longitude;
         let label = "Current location";
         try {
-          const r = await fetch(
-            `/api/places/reverse?lat=${lat}&lng=${lng}`,
-            { signal: ac.signal },
-          );
+          const r = await fetch(`/api/places/reverse?lat=${lat}&lng=${lng}`, { signal: ac.signal });
           if (ac.signal.aborted) return;
           if (r.ok) {
             const data = (await r.json()) as {
@@ -344,15 +323,11 @@ export function CompareForm({
         if (ac.signal.aborted) return;
         setLocating(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setError(
-            "Location permission denied. Search for a pickup address instead.",
-          );
+          setError("Location permission denied. Search for a pickup address instead.");
         } else if (err.code === err.TIMEOUT) {
           setError("Location timed out. Try again or search for an address.");
         } else {
-          setError(
-            "Couldn’t read your location. Search for a pickup address instead.",
-          );
+          setError("Couldn’t read your location. Search for a pickup address instead.");
         }
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -373,9 +348,7 @@ export function CompareForm({
 
       const dist = haversineMeters(pickup, destination);
       if (dist < NEAR_IDENTICAL_M) {
-        setError(
-          "Pickup and destination are nearly the same place. Choose a clearer destination.",
-        );
+        setError("Pickup and destination are nearly the same place. Choose a clearer destination.");
         setSession(null);
         setMapRoute(null);
         lastComparedKey.current = null;
@@ -437,13 +410,9 @@ export function CompareForm({
           if (res.status === 429) {
             const secs = data.retryAfterSeconds ?? 60;
             setRetryAfter(secs);
-            throw new Error(
-              `Too many compares — try again in about ${secs}s.`,
-            );
+            throw new Error(`Too many compares — try again in about ${secs}s.`);
           }
-          throw new Error(
-            data.message || data.error || `Request failed (${res.status})`,
-          );
+          throw new Error(data.message || data.error || `Request failed (${res.status})`);
         }
 
         const contentType = res.headers.get("content-type") || "";
@@ -462,9 +431,7 @@ export function CompareForm({
             const chunks = buffer.split("\n\n");
             buffer = chunks.pop() || "";
             for (const chunk of chunks) {
-              const line = chunk
-                .split("\n")
-                .find((l) => l.startsWith("data: "));
+              const line = chunk.split("\n").find((l) => l.startsWith("data: "));
               if (!line) continue;
               try {
                 const event = JSON.parse(line.slice(6)) as {
@@ -478,18 +445,14 @@ export function CompareForm({
                   if (event.session.status === "SUCCESS" || event.session.status === "PARTIAL") {
                     refreshFailCount.current = 0;
                   }
-                  if (
-                    event.session.status === "SUCCESS" &&
-                    !autoRefreshArmed.current
-                  ) {
+                  if (event.session.status === "SUCCESS" && !autoRefreshArmed.current) {
                     autoRefreshArmed.current = true;
                     setAutoRefresh(true);
                     setShareNote("Auto-refresh on: turn off anytime");
                     window.setTimeout(() => setShareNote(null), 3200);
                   }
                 }
-                if (event.type === "error")
-                  setError(event.message || "Stream error");
+                if (event.type === "error") setError(event.message || "Stream error");
               } catch {
                 /* ignore malformed SSE */
               }
@@ -502,10 +465,7 @@ export function CompareForm({
             if (data.session.status === "SUCCESS" || data.session.status === "PARTIAL") {
               refreshFailCount.current = 0;
             }
-            if (
-              data.session.status === "SUCCESS" &&
-              !autoRefreshArmed.current
-            ) {
+            if (data.session.status === "SUCCESS" && !autoRefreshArmed.current) {
               autoRefreshArmed.current = true;
               setAutoRefresh(true);
               setShareNote("Auto-refresh on: turn off anytime");
@@ -533,8 +493,7 @@ export function CompareForm({
 
   // Deep-link one-shot compare
   useEffect(() => {
-    if (!hydrated || !pickup || !destination || deepLinkCompareDone.current)
-      return;
+    if (!hydrated || !pickup || !destination || deepLinkCompareDone.current) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("from") && params.get("to")) {
       deepLinkCompareDone.current = true;
@@ -646,9 +605,7 @@ export function CompareForm({
       }
       if (!typing && e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        const el = document.querySelector<HTMLInputElement>(
-          'input[aria-label="From"]',
-        );
+        const el = document.querySelector<HTMLInputElement>('input[aria-label="From"]');
         el?.focus();
       }
     };
@@ -668,7 +625,11 @@ export function CompareForm({
     const routeLine = `${pickup.label.split(",")[0]} → ${destination.label.split(",")[0]}`;
     let text = routeLine;
     if (session?.quotes?.length) {
-      const best = rankQuotes(session.quotes, mode, filter === "standard" || filter === "ALL" ? filter : [filter as "XL" | "PREMIUM" | "TAXI"])[0];
+      const best = rankQuotes(
+        session.quotes,
+        mode,
+        filter === "standard" || filter === "ALL" ? filter : [filter as "XL" | "PREMIUM" | "TAXI"],
+      )[0];
       if (best) {
         text = `${routeLine} · Best: ${best.providerProductName} ${formatQuotePrice(best)}`;
       }
@@ -718,9 +679,7 @@ export function CompareForm({
     return /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
   }, []);
 
-  const proximity = pickup
-    ? { lat: pickup.lat, lng: pickup.lng }
-    : { lat: 40.7128, lng: -74.006 };
+  const proximity = pickup ? { lat: pickup.lat, lng: pickup.lng } : { lat: 40.7128, lng: -74.006 };
 
   return (
     <div className="compare-root">
@@ -728,8 +687,8 @@ export function CompareForm({
         <p className="eyebrow">{timeEyebrow}</p>
         <h1 className="brand">RideLens</h1>
         <p className="lede muted">
-          Live roads. Real rate cards. A marketplace that moves with the clock —
-          before you open Uber, Lyft, Empower, or Curb.
+          Live roads. Real rate cards. A marketplace that moves with the clock — before you open
+          Uber, Lyft, Empower, or Curb.
         </p>
 
         <div className="provider-strip" aria-label="Supported providers">
@@ -780,40 +739,40 @@ export function CompareForm({
             role="group"
             aria-label="Quick places"
           >
-              <div className="quick-picks-head">
-                <span className="muted">Quick fill</span>
-                <div className="quick-target">
-                  <button
-                    type="button"
-                    className={quickTarget === "from" ? "chip active" : "chip"}
-                    aria-pressed={quickTarget === "from"}
-                    onClick={() => setQuickTarget("from")}
-                  >
-                    From
-                  </button>
-                  <button
-                    type="button"
-                    className={quickTarget === "to" ? "chip active" : "chip"}
-                    aria-pressed={quickTarget === "to"}
-                    onClick={() => setQuickTarget("to")}
-                  >
-                    To
-                  </button>
-                </div>
-              </div>
-              <div className="quick-picks-row">
-                {QUICK_PICKS.map((q) => (
-                  <button
-                    key={q.label}
-                    type="button"
-                    className="chip quick-chip"
-                    onClick={() => applyQuickPick(q.place)}
-                  >
-                    {q.label}
-                  </button>
-                ))}
+            <div className="quick-picks-head">
+              <span className="muted">Quick fill</span>
+              <div className="quick-target">
+                <button
+                  type="button"
+                  className={quickTarget === "from" ? "chip active" : "chip"}
+                  aria-pressed={quickTarget === "from"}
+                  onClick={() => setQuickTarget("from")}
+                >
+                  From
+                </button>
+                <button
+                  type="button"
+                  className={quickTarget === "to" ? "chip active" : "chip"}
+                  aria-pressed={quickTarget === "to"}
+                  onClick={() => setQuickTarget("to")}
+                >
+                  To
+                </button>
               </div>
             </div>
+            <div className="quick-picks-row">
+              {QUICK_PICKS.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  className="chip quick-chip"
+                  onClick={() => applyQuickPick(q.place)}
+                >
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="route-actions">
             <button
@@ -825,11 +784,7 @@ export function CompareForm({
             >
               Swap
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={useCurrentLocation}
-            >
+            <button type="button" className="ghost" onClick={useCurrentLocation}>
               {locating ? "Cancel locating" : "Use current location"}
             </button>
             {pickup || destination || session ? (
@@ -926,21 +881,21 @@ export function CompareForm({
         {offline ? (
           <div className="banner warn" role="status">
             <p>
-              You’re offline. Saved route and recent places still work locally —
-              compare needs a connection.
+              You’re offline. Saved route and recent places still work locally — compare needs a
+              connection.
             </p>
           </div>
         ) : null}
 
         {!liveCapable ? (
           <p className="banner warn" role="status">
-            Live provider feeds are not configured yet. Estimates still use
-            routing and published rate cards when available.
+            Live provider feeds are not configured yet. Estimates still use routing and published
+            rate cards when available.
           </p>
         ) : (
           <p className="banner quiet" role="status">
-            Estimates update with traffic, time of day, hotspots, and weather.
-            Final fare is always confirmed in the provider app.
+            Estimates update with traffic, time of day, hotspots, and weather. Final fare is always
+            confirmed in the provider app.
           </p>
         )}
 
@@ -953,9 +908,7 @@ export function CompareForm({
               disabled={loading || (retryAfter != null && retryAfter > 0)}
               onClick={() => compare(true)}
             >
-              {retryAfter != null && retryAfter > 0
-                ? `Retry in ${retryAfter}s`
-                : "Retry"}
+              {retryAfter != null && retryAfter > 0 ? `Retry in ${retryAfter}s` : "Retry"}
             </button>
           </div>
         ) : null}
@@ -964,9 +917,7 @@ export function CompareForm({
       {session || loading || (pickup && destination && !error) ? (
         <QuoteResults
           session={session}
-          loading={
-            loading || Boolean(pickup && destination && !session && !error)
-          }
+          loading={loading || Boolean(pickup && destination && !session && !error)}
           mode={mode}
           filter={filter}
           onModeChange={setMode}
@@ -997,8 +948,8 @@ export function CompareForm({
             </div>
             <p className="results-empty-kicker">Ready when you are</p>
             <p className="results-empty-copy muted">
-              Choose From and To: we’ll map the route and line up Uber, Lyft,
-              Empower, and Curb side by side.
+              Choose From and To: we’ll map the route and line up Uber, Lyft, Empower, and Curb side
+              by side.
             </p>
           </div>
           <p className="results-empty-mobile muted">

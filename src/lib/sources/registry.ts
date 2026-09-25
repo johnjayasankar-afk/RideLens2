@@ -61,9 +61,7 @@ export function sourceStatusSummary(env: AppEnv = getEnv()) {
         : "partner_approval",
     curb: curbConfigured(env) ? "enabled" : "partner_approval",
     empower: empowerConfigured(env) ? "enabled" : "partner_approval",
-    uber: uberComparisonAuthorized(env)
-      ? "enabled"
-      : "comparison_restricted",
+    uber: uberComparisonAuthorized(env) ? "enabled" : "comparison_restricted",
     fixtures: fixturesAllowed(env) ? "enabled_non_prod" : "disabled",
   };
 }

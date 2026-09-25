@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("RideLens anonymous flow", () => {
-  test("home renders and compare disables without destination", async ({
-    page,
-  }) => {
+  test("home renders and compare disables without destination", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "RideLens" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Compare rides" })).toBeDisabled();

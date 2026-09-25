@@ -18,13 +18,7 @@ import { hotspotHeat } from "@/lib/sources/ratecard/hotspots";
 export type MarketplaceProvider = "uber" | "lyft" | "empower" | "curb";
 
 export type MarketplaceProduct =
-  | "uberx"
-  | "comfort"
-  | "uberxl"
-  | "lyft"
-  | "lyft_xl"
-  | "taxi"
-  | "empower";
+  "uberx" | "comfort" | "uberxl" | "lyft" | "lyft_xl" | "taxi" | "empower";
 
 export type MarketplaceState = {
   /** Multiplier on metered TNC fare (taxi uses 1 + additive peaks). */
@@ -83,10 +77,7 @@ function hourFloat(now: Date): number {
   );
 }
 
-function haversineKm(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
@@ -294,10 +285,7 @@ export function productElasticity(product: MarketplaceProduct): number {
   }
 }
 
-export function providerScale(
-  provider: MarketplaceProvider,
-  rawDemand: number,
-): number {
+export function providerScale(provider: MarketplaceProvider, rawDemand: number): number {
   switch (provider) {
     case "uber":
       // RideWise: AM ~1.3, PM ~1.4 when demand is fully peaked
@@ -325,15 +313,10 @@ export function microVolatility(input: {
 }): { tick: number; jitter: number; secondsToNextTick: number } {
   const ms = input.now.getTime();
   const tick = Math.floor(ms / TICK_MS);
-  const secondsToNextTick = Math.max(
-    1,
-    Math.ceil((TICK_MS - (ms % TICK_MS)) / 1000),
-  );
+  const secondsToNextTick = Math.max(1, Math.ceil((TICK_MS - (ms % TICK_MS)) / 1000));
 
   const cell = `${geoCell(input.pickup.lat, input.pickup.lng)}>${geoCell(input.destination.lat, input.destination.lng)}`;
-  const seed = hash32(
-    `${input.provider}|${input.product}|${cell}|${tick}`,
-  );
+  const seed = hash32(`${input.provider}|${input.product}|${cell}|${tick}`);
   const u = unitNoise(seed);
   const u2 = unitNoise(seed ^ 0xa5a5a5a5);
 
@@ -390,18 +373,14 @@ export function trafficMarketplaceBoost(
   miles: number,
   osrmMinutes: number,
 ): number {
-  const mph =
-    osrmMinutes > 0 && miles > 0 ? miles / (osrmMinutes / 60) : 18;
+  const mph = osrmMinutes > 0 && miles > 0 ? miles / (osrmMinutes / 60) : 18;
   let boost = 1 + Math.max(0, multiplier - 1) * 0.55;
   if (mph < 10) boost *= 1.06;
   if (mph < 7) boost *= 1.08;
   return Math.min(1.45, boost);
 }
 
-export function waitMarketplaceBoost(
-  provider: MarketplaceProvider,
-  multiplier: number,
-): number {
+export function waitMarketplaceBoost(provider: MarketplaceProvider, multiplier: number): number {
   const excess = Math.max(0, multiplier - 1);
   const base =
     provider === "empower"
@@ -440,8 +419,7 @@ export function computeMarketplaceState(input: {
   const elast = productElasticity(input.product);
   const weatherLift = input.weatherSurgeLift ?? 1;
 
-  const rawDemand =
-    (tod.lift + zone.heat + cal.lift) * elast * Math.max(1, weatherLift);
+  const rawDemand = (tod.lift + zone.heat + cal.lift) * elast * Math.max(1, weatherLift);
 
   let multiplier = providerScale(input.provider, rawDemand);
   const micro = microVolatility({
@@ -457,12 +435,7 @@ export function computeMarketplaceState(input: {
     multiplier *= 1 + (weatherLift - 1) * 0.65;
   }
 
-  const maxMult =
-    input.provider === "empower"
-      ? 1.45
-      : input.provider === "curb"
-        ? 1.15
-        : 1.85;
+  const maxMult = input.provider === "empower" ? 1.45 : input.provider === "curb" ? 1.15 : 1.85;
   multiplier = Math.min(maxMult, Math.max(0.92, multiplier));
 
   let additiveDollars = 0;
@@ -481,11 +454,7 @@ export function computeMarketplaceState(input: {
   const feeJitter = (unitNoise(feeSeed) - 0.5) * 0.3;
   additiveDollars += Math.round(feeJitter * 100) / 100;
 
-  const trafficBoost = trafficMarketplaceBoost(
-    multiplier,
-    input.miles,
-    input.osrmMinutes,
-  );
+  const trafficBoost = trafficMarketplaceBoost(multiplier, input.miles, input.osrmMinutes);
   const waitBoost = waitMarketplaceBoost(input.provider, multiplier);
 
   const factors: Record<string, number> = {

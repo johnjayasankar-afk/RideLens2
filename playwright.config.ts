@@ -10,13 +10,20 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "E2E_TEST=1 NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 npm run dev -- --hostname 127.0.0.1 --port 3000",
+    command:
+      "E2E_TEST=1 NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 npm run dev -- --hostname 127.0.0.1 --port 3000",
     url: "http://127.0.0.1:3000/api/health",
     reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
-    { name: "mobile", use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 } } },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: "mobile",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 } },
+    },
   ],
 });

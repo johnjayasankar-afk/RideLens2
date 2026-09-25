@@ -43,10 +43,7 @@ export type WaitEstimate = {
   confidence: "medium" | "low";
 };
 
-function haversineKm(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
@@ -84,10 +81,7 @@ function isAirportPickup(lat: number, lng: number): boolean {
 /**
  * Supply density at pickup — strongest predictor of wait.
  */
-export function pickupDensity(
-  lat: number,
-  lng: number,
-): WaitEstimate["density"] {
+export function pickupDensity(lat: number, lng: number): WaitEstimate["density"] {
   if (isAirportPickup(lat, lng)) return "airport";
 
   // Manhattan / Midtown–Downtown core
@@ -108,9 +102,7 @@ export function pickupDensity(
     { lat: 47.6062, lng: -122.3321 },
     { lat: 33.749, lng: -84.388 },
   ];
-  const nearest = Math.min(
-    ...hubs.map((h) => haversineKm({ lat, lng }, h)),
-  );
+  const nearest = Math.min(...hubs.map((h) => haversineKm({ lat, lng }, h)));
   if (nearest < 6) return "inner";
   if (nearest < 18) return "outer";
   if (nearest < 40) return "suburb";
@@ -258,9 +250,7 @@ export function estimatePickupWait(input: {
     highSeconds: Math.round(high * 60),
     density,
     label: `Modeled wait (${density} supply, ${input.provider}${
-      input.marketplaceWaitBoost && input.marketplaceWaitBoost > 1.05
-        ? ", elevated demand"
-        : ""
+      input.marketplaceWaitBoost && input.marketplaceWaitBoost > 1.05 ? ", elevated demand" : ""
     })`,
     confidence: density === "sparse" || density === "suburb" ? "low" : "medium",
   };

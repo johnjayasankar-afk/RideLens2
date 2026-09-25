@@ -99,19 +99,14 @@ const RATE_OVERRIDES: Record<string, Partial<CityRate>> = {
 
 export const CITY_RATES = cityRates as Record<string, CityRate>;
 
-function haversineKm(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -129,7 +124,10 @@ export function getCityRate(id: string): CityRate {
   };
 }
 
-export function nearestCity(lat: number, lng: number): {
+export function nearestCity(
+  lat: number,
+  lng: number,
+): {
   id: string;
   city: CityRate;
   distanceKm: number;
@@ -184,16 +182,12 @@ export function computeFareDollars(
   minutes: number,
   multiplier: number,
 ): number {
-  const raw =
-    rates.base + rates.perMile * miles + rates.perMin * minutes + rates.booking;
+  const raw = rates.base + rates.perMile * miles + rates.perMin * minutes + rates.booking;
   const floored = Math.max(rates.minimum ?? rates.base + rates.booking, raw);
   return floored * multiplier;
 }
 
-export function fareBand(
-  centerFare: number,
-  band: number,
-): { low: number; high: number } {
+export function fareBand(centerFare: number, band: number): { low: number; high: number } {
   const low = centerFare * (1 - band);
   const high = centerFare * (1 + band);
   return { low: Math.round(low * 100) / 100, high: Math.round(high * 100) / 100 };
@@ -256,7 +250,10 @@ export function tripFees(
       addOnDollars = 2.5; // airport access / typical add-on, kept small
     }
     // Congestion surcharge when trip touches Manhattan core (not already flat)
-    if (!jfkLeg && (inManhattanCore(pickup.lat, pickup.lng) || inManhattanCore(destination.lat, destination.lng))) {
+    if (
+      !jfkLeg &&
+      (inManhattanCore(pickup.lat, pickup.lng) || inManhattanCore(destination.lat, destination.lng))
+    ) {
       addOnDollars += 2.75;
     }
   } else if (airport) {
@@ -275,6 +272,5 @@ export function airportSurcharge(
   pickup: { lat: number; lng: number },
   destination: { lat: number; lng: number },
 ): number {
-  return tripFees(pickup, destination, nearestCity(pickup.lat, pickup.lng).id)
-    .addOnDollars;
+  return tripFees(pickup, destination, nearestCity(pickup.lat, pickup.lng).id).addOnDollars;
 }

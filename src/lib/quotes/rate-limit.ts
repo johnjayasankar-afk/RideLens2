@@ -10,11 +10,7 @@ export type RateLimitResult =
   | { allowed: true; remaining: number }
   | { allowed: false; remaining: 0; retryAfterSeconds: number };
 
-export function rateLimit(
-  key: string,
-  max?: number,
-  windowSeconds?: number,
-): RateLimitResult {
+export function rateLimit(key: string, max?: number, windowSeconds?: number): RateLimitResult {
   const env = getEnv();
   const limit = max ?? env.RATE_LIMIT_MAX_REQUESTS;
   const windowMs = (windowSeconds ?? env.RATE_LIMIT_WINDOW_SECONDS) * 1000;
@@ -34,11 +30,7 @@ export function rateLimit(
   return { allowed: true, remaining: limit - bucket.timestamps.length };
 }
 
-export function rateLimitKey(parts: {
-  ip?: string;
-  userId?: string;
-  action: string;
-}): string {
+export function rateLimitKey(parts: { ip?: string; userId?: string; action: string }): string {
   if (parts.userId) return `user:${parts.userId}:${parts.action}`;
   return `anon:${parts.ip || "unknown"}:${parts.action}`;
 }

@@ -4,10 +4,7 @@ const emptyToUndefined = (v: unknown) =>
   v === "" || v === undefined || v === null ? undefined : v;
 
 const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
-const optionalUrl = z.preprocess(
-  emptyToUndefined,
-  z.string().url().optional(),
-);
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -18,9 +15,7 @@ export const envSchema = z.object({
 
   OBI_API_KEY: optionalString,
   OBI_API_SECRET: optionalString,
-  OBI_API_BASE_URL: z
-    .string()
-    .default("https://api.obifareai.com"),
+  OBI_API_BASE_URL: z.string().default("https://api.obifareai.com"),
 
   UBER_CLIENT_ID: optionalString,
   UBER_CLIENT_SECRET: optionalString,
@@ -42,9 +37,7 @@ export const envSchema = z.object({
   CURB_API_KEY: optionalString,
   CURB_API_BASE_URL: optionalUrl,
 
-  LOCATION_PROVIDER: z
-    .enum(["mapbox", "google", "nominatim", "photon"])
-    .default("photon"),
+  LOCATION_PROVIDER: z.enum(["mapbox", "google", "nominatim", "photon"]).default("photon"),
   LOCATION_PROVIDER_API_KEY: optionalString,
   NEXT_PUBLIC_MAP_KEY: optionalString,
 
@@ -86,19 +79,11 @@ export function obiConfigured(env: AppEnv = getEnv()): boolean {
 }
 
 export function lyftConfigured(env: AppEnv = getEnv()): boolean {
-  return Boolean(
-    env.LYFT_CLIENT_ID &&
-      env.LYFT_CLIENT_SECRET &&
-      env.LYFT_COMPARISON_AUTHORIZED,
-  );
+  return Boolean(env.LYFT_CLIENT_ID && env.LYFT_CLIENT_SECRET && env.LYFT_COMPARISON_AUTHORIZED);
 }
 
 export function uberComparisonAuthorized(env: AppEnv = getEnv()): boolean {
-  return Boolean(
-    env.UBER_COMPARISON_AUTHORIZED &&
-      env.UBER_CLIENT_ID &&
-      env.UBER_CLIENT_SECRET,
-  );
+  return Boolean(env.UBER_COMPARISON_AUTHORIZED && env.UBER_CLIENT_ID && env.UBER_CLIENT_SECRET);
 }
 
 export function curbConfigured(env: AppEnv = getEnv()): boolean {
@@ -132,8 +117,6 @@ export function isProductionLiveCapable(env: AppEnv = getEnv()): boolean {
 
 export function assertNoSilentMocks(env: AppEnv = getEnv()): void {
   if (env.NODE_ENV === "production" && env.RIDELENS_ALLOW_FIXTURES) {
-    throw new Error(
-      "RIDELENS_ALLOW_FIXTURES must never be enabled in production.",
-    );
+    throw new Error("RIDELENS_ALLOW_FIXTURES must never be enabled in production.");
   }
 }

@@ -80,11 +80,7 @@ export class FixtureQuoteSource implements QuoteSource {
       }),
       confidenceClass:
         partial.confidenceClass ??
-        confidenceForQuoteType(
-          partial.priceType,
-          partial.priceMinMinor,
-          partial.priceMaxMinor,
-        ),
+        confidenceForQuoteType(partial.priceType, partial.priceMinMinor, partial.priceMaxMinor),
       metadata: { fixture: true },
     });
 

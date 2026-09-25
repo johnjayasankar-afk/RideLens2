@@ -159,9 +159,7 @@ export class CurbFlowQuoteSource implements QuoteSource {
       const receivedAt = now.toISOString();
       const quotes: NormalizedQuote[] = parsed.data.quotes.map((q) => {
         const minor = dollarsToMinor(q.fare_amount);
-        const priceType = q.upfront
-          ? ("UPFRONT_QUOTE" as const)
-          : ("ESTIMATE" as const);
+        const priceType = q.upfront ? ("UPFRONT_QUOTE" as const) : ("ESTIMATE" as const);
         return {
           id: randomUUID(),
           provider: "curb" as const,

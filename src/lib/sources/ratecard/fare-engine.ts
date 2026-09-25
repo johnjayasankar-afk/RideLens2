@@ -15,23 +15,13 @@ import {
   nearestCity,
   type RateParts,
 } from "@/lib/sources/ratecard/rates";
-import {
-  estimateRouteTolls,
-  trafficContextFactor,
-} from "@/lib/sources/ratecard/tolls";
+import { estimateRouteTolls, trafficContextFactor } from "@/lib/sources/ratecard/tolls";
 import { computeMarketplaceState } from "@/lib/sources/ratecard/marketplace-dynamics";
 import { directionalAsymmetry } from "@/lib/sources/ratecard/hotspots";
 
 export type LatLng = { lat: number; lng: number };
 
-export type FareProduct =
-  | "uberx"
-  | "comfort"
-  | "uberxl"
-  | "lyft"
-  | "lyft_xl"
-  | "taxi"
-  | "empower";
+export type FareProduct = "uberx" | "comfort" | "uberxl" | "lyft" | "lyft_xl" | "taxi" | "empower";
 
 export type ComputedFare = {
   center: number;
@@ -158,8 +148,7 @@ export function buildNyFeeStack(
   const dropNyc = inNYC(destination.lat, destination.lng);
   const crossJurisdiction = pickNyc !== dropNyc;
 
-  const nearJfk = (p: LatLng) =>
-    Math.hypot(p.lat - 40.6413, p.lng - (-73.7781)) < 0.04;
+  const nearJfk = (p: LatLng) => Math.hypot(p.lat - 40.6413, p.lng - -73.7781) < 0.04;
   const jfkLeg =
     (nearJfk(pickup) && inManhattanBelow96(destination.lat, destination.lng)) ||
     (nearJfk(destination) && inManhattanBelow96(pickup.lat, pickup.lng));
@@ -271,14 +260,14 @@ const CORRIDOR_ANCHORS: CorridorAnchor[] = [
   {
     id: "manhattan_to_jfk",
     pickupIn: (p) => inManhattanBelow96(p.lat, p.lng),
-    destIn: (p) => Math.hypot(p.lat - 40.6413, p.lng - (-73.7781)) < 0.045,
+    destIn: (p) => Math.hypot(p.lat - 40.6413, p.lng - -73.7781) < 0.045,
     // RideWise / FAQ mid: $55–85 → center ~68–70
     uberxAvg: 68,
     weight: 0.42,
   },
   {
     id: "jfk_to_manhattan",
-    pickupIn: (p) => Math.hypot(p.lat - 40.6413, p.lng - (-73.7781)) < 0.045,
+    pickupIn: (p) => Math.hypot(p.lat - 40.6413, p.lng - -73.7781) < 0.045,
     destIn: (p) => inManhattanBelow96(p.lat, p.lng),
     uberxAvg: 62,
     weight: 0.42,
@@ -286,14 +275,14 @@ const CORRIDOR_ANCHORS: CorridorAnchor[] = [
   {
     id: "manhattan_to_lga",
     pickupIn: (p) => inManhattanBelow96(p.lat, p.lng),
-    destIn: (p) => Math.hypot(p.lat - 40.7769, p.lng - (-73.874)) < 0.04,
+    destIn: (p) => Math.hypot(p.lat - 40.7769, p.lng - -73.874) < 0.04,
     // RideWise LGA→downtown $32–47; Midtown↔LGA ~$38–45
     uberxAvg: 40,
     weight: 0.38,
   },
   {
     id: "lga_to_manhattan",
-    pickupIn: (p) => Math.hypot(p.lat - 40.7769, p.lng - (-73.874)) < 0.04,
+    pickupIn: (p) => Math.hypot(p.lat - 40.7769, p.lng - -73.874) < 0.04,
     destIn: (p) => inManhattanBelow96(p.lat, p.lng),
     uberxAvg: 38,
     weight: 0.38,
@@ -301,46 +290,34 @@ const CORRIDOR_ANCHORS: CorridorAnchor[] = [
   {
     id: "manhattan_to_ewr",
     pickupIn: (p) => inManhattanBelow96(p.lat, p.lng),
-    destIn: (p) => Math.hypot(p.lat - 40.6895, p.lng - (-74.1745)) < 0.05,
+    destIn: (p) => Math.hypot(p.lat - 40.6895, p.lng - -74.1745) < 0.05,
     // RideWise EWR→downtown $34–51 + tolls → ~$48 mid
     uberxAvg: 48,
     weight: 0.36,
   },
   {
     id: "ewr_to_manhattan",
-    pickupIn: (p) => Math.hypot(p.lat - 40.6895, p.lng - (-74.1745)) < 0.05,
+    pickupIn: (p) => Math.hypot(p.lat - 40.6895, p.lng - -74.1745) < 0.05,
     destIn: (p) => inManhattanBelow96(p.lat, p.lng),
     uberxAvg: 46,
     weight: 0.36,
   },
   {
     id: "midtown_to_williamsburg",
-    pickupIn: (p) =>
-      p.lat > 40.748 && p.lat < 40.762 && p.lng > -74.0 && p.lng < -73.97,
-    destIn: (p) =>
-      p.lat > 40.71 && p.lat < 40.73 && p.lng > -73.97 && p.lng < -73.95,
+    pickupIn: (p) => p.lat > 40.748 && p.lat < 40.762 && p.lng > -74.0 && p.lng < -73.97,
+    destIn: (p) => p.lat > 40.71 && p.lat < 40.73 && p.lng > -73.97 && p.lng < -73.95,
     // RideWise Bryant Park → Williamsburg ~$22–35 off-peak / $58 peak crawl
     uberxAvg: 28,
     weight: 0.28,
   },
 ];
 
-function findAnchor(
-  pickup: LatLng,
-  destination: LatLng,
-): CorridorAnchor | null {
-  return (
-    CORRIDOR_ANCHORS.find(
-      (a) => a.pickupIn(pickup) && a.destIn(destination),
-    ) ?? null
-  );
+function findAnchor(pickup: LatLng, destination: LatLng): CorridorAnchor | null {
+  return CORRIDOR_ANCHORS.find((a) => a.pickupIn(pickup) && a.destIn(destination)) ?? null;
 }
 
 /** Product rate cards — NYC overrides use RideWise Sep 2026. */
-export function productRates(
-  marketId: string,
-  product: FareProduct,
-): RateParts {
+export function productRates(marketId: string, product: FareProduct): RateParts {
   const city = getCityRate(marketId);
   switch (product) {
     case "uberx":
@@ -416,10 +393,7 @@ export function uncertaintyBand(input: {
   return Math.min(0.035, Math.round(band * 1000) / 1000);
 }
 
-export function fareBandDollars(
-  center: number,
-  band: number,
-): { low: number; high: number } {
+export function fareBandDollars(center: number, band: number): { low: number; high: number } {
   const low = Math.round(center * (1 - band) * 100) / 100;
   const high = Math.round(center * (1 + band) * 100) / 100;
   return { low, high };
@@ -461,17 +435,14 @@ export function computeProductFare(input: {
     weatherSurgeLift: input.weatherSurgeLift,
   });
   const ctx = trafficContextFactor(input.miles, input.osrmMinutes);
-  const trafficMinutes =
-    input.osrmMinutes * traffic.factor * ctx * marketplace.trafficBoost;
+  const trafficMinutes = input.osrmMinutes * traffic.factor * ctx * marketplace.trafficBoost;
   const fees = buildNyFeeStack(input.pickup, input.destination, input.provider);
   const rates = productRates(market.id, input.product);
   const tolls = estimateRouteTolls(input.routeCoordinates);
 
   if (fees.nycJfkFlatTaxi != null && input.product === "taxi") {
     // Flat fare still gets taxi peak/night additives when TLC applies them on top
-    const center = snapFareCenter(
-      fees.nycJfkFlatTaxi + marketplace.additiveDollars,
-    );
+    const center = snapFareCenter(fees.nycJfkFlatTaxi + marketplace.additiveDollars);
     return {
       center,
       low: center,
@@ -497,14 +468,8 @@ export function computeProductFare(input: {
     };
   }
 
-  const metered = computeFareDollars(
-    rates,
-    input.miles,
-    trafficMinutes,
-    marketplace.multiplier,
-  );
-  const appliesBcf =
-    input.provider === "uber" || input.provider === "lyft";
+  const metered = computeFareDollars(rates, input.miles, trafficMinutes, marketplace.multiplier);
+  const appliesBcf = input.provider === "uber" || input.provider === "lyft";
   // Empower: modeled without Black Car Fund / sales tax stack (app quotes often omit)
   const bcf =
     appliesBcf &&
@@ -519,8 +484,7 @@ export function computeProductFare(input: {
     inNYC(input.destination.lat, input.destination.lng)
       ? metered * 0.02
       : 0;
-  const salesTax =
-    appliesBcf && market.id === "new-york" ? metered * NY_SALES_TAX : 0;
+  const salesTax = appliesBcf && market.id === "new-york" ? metered * NY_SALES_TAX : 0;
 
   const feeBreakdown: Record<string, number> = {
     ...fees.breakdown,
@@ -536,12 +500,7 @@ export function computeProductFare(input: {
   }
 
   const feesDollars =
-    fees.addOnDollars +
-    bcf +
-    tnc +
-    salesTax +
-    tolls.amount +
-    marketplace.additiveDollars;
+    fees.addOnDollars + bcf + tnc + salesTax + tolls.amount + marketplace.additiveDollars;
   let rateCardTotal = metered + feesDollars;
 
   if (
@@ -578,10 +537,12 @@ export function computeProductFare(input: {
             : 1.18; // comfort premium vs UberX all-in
     // Scale published corridor averages with the same marketplace tick
     const anchorFare = anchor.uberxAvg * scale * marketplace.multiplier;
-    anchorWeight =
-      input.product === "comfort" ? anchor.weight * 0.5 : anchor.weight;
+    anchorWeight = input.product === "comfort" ? anchor.weight * 0.5 : anchor.weight;
     // Slightly reduce anchor pull when marketplace is hot so live tick matters more
-    const liveWeight = Math.min(0.62, anchorWeight * (1.15 - Math.min(0.25, marketplace.multiplier - 1)));
+    const liveWeight = Math.min(
+      0.62,
+      anchorWeight * (1.15 - Math.min(0.25, marketplace.multiplier - 1)),
+    );
     center = rateCardTotal * (1 - liveWeight) + anchorFare * liveWeight;
     anchorWeight = liveWeight;
   }
@@ -602,10 +563,7 @@ export function computeProductFare(input: {
     product: input.product,
   });
   // Widen band slightly when marketplace is moving fast
-  const liveBand = Math.min(
-    0.04,
-    band + Math.max(0, marketplace.multiplier - 1) * 0.04,
-  );
+  const liveBand = Math.min(0.04, band + Math.max(0, marketplace.multiplier - 1) * 0.04);
   center = snapFareCenter(center);
   const { low, high } = fareBandDollars(center, liveBand);
 

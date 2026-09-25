@@ -28,13 +28,13 @@ Replace `YOUR_USERNAME` with your GitHub username.
 3. Framework: **Next.js**. Build command: `next build` (default).
 4. Add environment variables before the first production deploy:
 
-| Name | Value |
-| --- | --- |
-| `NEXT_PUBLIC_APP_URL` | your Vercel URL, e.g. `https://ridelens.vercel.app` |
-| `LOCATION_PROVIDER` | `photon` (no key) |
-| `RATE_CARD_SOURCE_ENABLED` | `true` |
-| `OSRM_BASE_URL` | `https://router.project-osrm.org` |
-| `RIDELENS_ADMIN_SECRET` | output of `openssl rand -hex 24` (recommended) |
+| Name                       | Value                                               |
+| -------------------------- | --------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`      | your Vercel URL, e.g. `https://ridelens.vercel.app` |
+| `LOCATION_PROVIDER`        | `photon` (no key)                                   |
+| `RATE_CARD_SOURCE_ENABLED` | `true`                                              |
+| `OSRM_BASE_URL`            | `https://router.project-osrm.org`                   |
+| `RIDELENS_ADMIN_SECRET`    | output of `openssl rand -hex 24` (recommended)      |
 
 Optional later (partner APIs — see `SETUP_REQUIRED.md`): `OBI_*`, `UBER_*`, `LYFT_*`, `EMPOWER_*`, `CURB_*`, Mapbox/Google keys.
 

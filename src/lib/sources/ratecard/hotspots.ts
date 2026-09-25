@@ -16,21 +16,68 @@ export type Hotspot = {
 };
 
 const HOTSPOTS: Hotspot[] = [
-  { id: "times_square", lat: 40.758, lng: -73.9855, r: 0.45, heat: 0.12, activeHours: [[10, 24], [0, 2]] },
+  {
+    id: "times_square",
+    lat: 40.758,
+    lng: -73.9855,
+    r: 0.45,
+    heat: 0.12,
+    activeHours: [
+      [10, 24],
+      [0, 2],
+    ],
+  },
   { id: "penn_station", lat: 40.7506, lng: -73.9935, r: 0.35, heat: 0.11, activeHours: [[6, 23]] },
   { id: "port_authority", lat: 40.757, lng: -73.99, r: 0.3, heat: 0.1, activeHours: [[6, 23]] },
   { id: "grand_central", lat: 40.7527, lng: -73.9772, r: 0.3, heat: 0.09, activeHours: [[7, 22]] },
-  { id: "msg", lat: 40.7505, lng: -73.9934, r: 0.4, heat: 0.14, activeHours: [[17, 24], [0, 1]] },
-  { id: "barclays", lat: 40.6826, lng: -73.9754, r: 0.4, heat: 0.12, activeHours: [[17, 24], [0, 1]] },
-  { id: "fidi", lat: 40.7074, lng: -74.0113, r: 0.5, heat: 0.06, activeHours: [[7, 10], [16, 20]] },
-  { id: "williamsburg_waterfront", lat: 40.7214, lng: -73.9577, r: 0.45, heat: 0.08, activeHours: [[18, 24], [0, 3]] },
+  {
+    id: "msg",
+    lat: 40.7505,
+    lng: -73.9934,
+    r: 0.4,
+    heat: 0.14,
+    activeHours: [
+      [17, 24],
+      [0, 1],
+    ],
+  },
+  {
+    id: "barclays",
+    lat: 40.6826,
+    lng: -73.9754,
+    r: 0.4,
+    heat: 0.12,
+    activeHours: [
+      [17, 24],
+      [0, 1],
+    ],
+  },
+  {
+    id: "fidi",
+    lat: 40.7074,
+    lng: -74.0113,
+    r: 0.5,
+    heat: 0.06,
+    activeHours: [
+      [7, 10],
+      [16, 20],
+    ],
+  },
+  {
+    id: "williamsburg_waterfront",
+    lat: 40.7214,
+    lng: -73.9577,
+    r: 0.45,
+    heat: 0.08,
+    activeHours: [
+      [18, 24],
+      [0, 3],
+    ],
+  },
   { id: "ues_1st", lat: 40.7736, lng: -73.9566, r: 0.4, heat: 0.05, activeHours: [[16, 20]] },
 ];
 
-function haversineKm(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-): number {
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);

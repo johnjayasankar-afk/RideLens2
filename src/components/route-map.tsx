@@ -60,8 +60,7 @@ declare global {
   }
 }
 
-const STYLE =
-  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const CSS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
 const JS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 
@@ -81,9 +80,7 @@ function loadMapLibre(): Promise<MapLibreGlobal> {
       link.href = CSS_HREF;
       document.head.appendChild(link);
     }
-    const existing = document.querySelector(
-      `script[src="${JS_HREF}"]`,
-    ) as HTMLScriptElement | null;
+    const existing = document.querySelector(`script[src="${JS_HREF}"]`) as HTMLScriptElement | null;
     const done = () => {
       if (window.maplibregl) resolve(window.maplibregl);
       else reject(new Error("MapLibre failed to load"));
@@ -144,14 +141,8 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
           attributionControl: false,
           cooperativeGestures: true,
         });
-        map.addControl(
-          new ml.NavigationControl({ visualizePitch: false }),
-          "top-right",
-        );
-        map.addControl(
-          new ml.AttributionControl({ compact: true }),
-          "bottom-right",
-        );
+        map.addControl(new ml.NavigationControl({ visualizePitch: false }), "top-right");
+        map.addControl(new ml.AttributionControl({ compact: true }), "bottom-right");
         map.on("load", () => {
           setReady(true);
           map.resize();
@@ -198,15 +189,11 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
 
     const a = new ml.Marker({ element: makePin("#1f6b4a", "A") })
       .setLngLat([pickupLng, pickupLat])
-      .setPopup(
-        new ml.Popup({ offset: 18, closeButton: false }).setText(pickupLabel),
-      )
+      .setPopup(new ml.Popup({ offset: 18, closeButton: false }).setText(pickupLabel))
       .addTo(map);
     const b = new ml.Marker({ element: makePin("#1d4e84", "B") })
       .setLngLat([destLng, destLat])
-      .setPopup(
-        new ml.Popup({ offset: 18, closeButton: false }).setText(destLabel),
-      )
+      .setPopup(new ml.Popup({ offset: 18, closeButton: false }).setText(destLabel))
       .addTo(map);
     markersRef.current = [a, b];
 
@@ -216,8 +203,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
 
     const applyRoute = () => {
       const coords =
-        route?.geometry.coordinates?.length &&
-        route.geometry.coordinates.length >= 2
+        route?.geometry.coordinates?.length && route.geometry.coordinates.length >= 2
           ? route.geometry.coordinates
           : ([
               [pickupLng, pickupLat],
@@ -271,16 +257,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
 
     if (map.isStyleLoaded()) applyRoute();
     else map.once("idle", applyRoute);
-  }, [
-    ready,
-    pickupLat,
-    pickupLng,
-    pickupLabel,
-    destLat,
-    destLng,
-    destLabel,
-    route,
-  ]);
+  }, [ready, pickupLat, pickupLng, pickupLabel, destLat, destLng, destLabel, route]);
 
   return (
     <div
@@ -323,9 +300,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
         )}
       </div>
       {failed ? (
-        <p className="route-map-fallback muted">
-          Map tiles unavailable: route stats still apply.
-        </p>
+        <p className="route-map-fallback muted">Map tiles unavailable: route stats still apply.</p>
       ) : null}
     </div>
   );

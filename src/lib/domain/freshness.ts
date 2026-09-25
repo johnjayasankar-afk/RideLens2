@@ -14,13 +14,11 @@ export function computeFreshness(
   now: Date = new Date(),
   thresholds = FRESHNESS_THRESHOLDS,
 ): Freshness {
-  const received =
-    typeof receivedAt === "string" ? new Date(receivedAt) : receivedAt;
+  const received = typeof receivedAt === "string" ? new Date(receivedAt) : receivedAt;
   const ageMs = now.getTime() - received.getTime();
 
   if (expiresAt) {
-    const exp =
-      typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
+    const exp = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
     if (now.getTime() >= exp.getTime()) return "EXPIRED";
   }
 
@@ -53,20 +51,14 @@ export function freshnessLabel(
   now: Date = new Date(),
 ): string {
   if (freshness === "EXPIRED") return "expired";
-  const ageSec = Math.max(
-    0,
-    Math.floor((now.getTime() - new Date(receivedAt).getTime()) / 1000),
-  );
+  const ageSec = Math.max(0, Math.floor((now.getTime() - new Date(receivedAt).getTime()) / 1000));
   if (ageSec < 5) return "just now";
   if (ageSec < 60) return `${ageSec} sec ago`;
   const mins = Math.floor(ageSec / 60);
   return `${mins} min ago`;
 }
 
-export function expiryCountdown(
-  expiresAt: string | null,
-  now: Date = new Date(),
-): string | null {
+export function expiryCountdown(expiresAt: string | null, now: Date = new Date()): string | null {
   if (!expiresAt) return null;
   const remaining = new Date(expiresAt).getTime() - now.getTime();
   if (remaining <= 0) return "Expired";

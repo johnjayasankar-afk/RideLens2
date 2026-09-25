@@ -12,11 +12,7 @@ import type {
   RideCategory,
   SourceQuoteResult,
 } from "@/lib/domain/types";
-import {
-  buildQuoteCacheKey,
-  cacheGet,
-  cacheSet,
-} from "@/lib/quotes/cache";
+import { buildQuoteCacheKey, cacheGet, cacheSet } from "@/lib/quotes/cache";
 import { discoverEnabledSources } from "@/lib/sources/registry";
 import type { QuoteSource } from "@/lib/sources/types";
 
@@ -209,10 +205,7 @@ export async function runQuoteSession(input: {
             ...session,
             coverage: {
               ...session.coverage,
-              sourcesSucceeded: [
-                ...session.coverage.sourcesSucceeded,
-                result.sourceId,
-              ],
+              sourcesSucceeded: [...session.coverage.sourcesSucceeded, result.sourceId],
               providersReturned: [
                 ...new Set([
                   ...session.coverage.providersReturned,
@@ -240,11 +233,7 @@ export async function runQuoteSession(input: {
 
         const reconciled = reconcileQuotes(withFreshness(allCandidates));
         // Keep full catalog in session; UI filters client-side so XL/Premium chips work.
-        const ranked = rankQuotes(
-          reconciled.visible,
-          session.rankingMode,
-          "ALL",
-        );
+        const ranked = rankQuotes(reconciled.visible, session.rankingMode, "ALL");
 
         session = {
           ...session,
@@ -268,11 +257,7 @@ export async function runQuoteSession(input: {
   void results;
 
   const reconciled = reconcileQuotes(withFreshness(allCandidates));
-  const ranked = rankQuotes(
-    reconciled.visible,
-    session.rankingMode,
-    "ALL",
-  );
+  const ranked = rankQuotes(reconciled.visible, session.rankingMode, "ALL");
 
   session = {
     ...session,
@@ -296,11 +281,7 @@ export async function runQuoteSession(input: {
   return session;
 }
 
-export function recordUsage(event: {
-  sourceId: string;
-  ok: boolean;
-  latencyMs: number;
-}): void {
+export function recordUsage(event: { sourceId: string; ok: boolean; latencyMs: number }): void {
   // In-memory rollup for admin dashboard; persisted when Supabase configured
   const key = `${new Date().toISOString().slice(0, 10)}`;
   const bucket = usageDaily.get(key) ?? {
@@ -348,8 +329,6 @@ export function getUsageToday() {
   return {
     ...bucket,
     avgLatencyMs:
-      bucket.sourceCalls === 0
-        ? null
-        : Math.round(bucket.latencySum / bucket.sourceCalls),
+      bucket.sourceCalls === 0 ? null : Math.round(bucket.latencySum / bucket.sourceCalls),
   };
 }

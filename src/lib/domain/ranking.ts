@@ -40,19 +40,11 @@ function overlapRatio(aMin: number, aMax: number, bMin: number, bMax: number): n
 export function comparePrices(
   a: Pick<
     NormalizedQuote,
-    | "priceMinMinor"
-    | "priceMaxMinor"
-    | "rankingPriceMinor"
-    | "priceType"
-    | "confidenceClass"
+    "priceMinMinor" | "priceMaxMinor" | "rankingPriceMinor" | "priceType" | "confidenceClass"
   >,
   b: Pick<
     NormalizedQuote,
-    | "priceMinMinor"
-    | "priceMaxMinor"
-    | "rankingPriceMinor"
-    | "priceType"
-    | "confidenceClass"
+    "priceMinMinor" | "priceMaxMinor" | "rankingPriceMinor" | "priceType" | "confidenceClass"
   >,
 ): PriceComparison {
   // Non-overlapping: a entirely below b
@@ -71,12 +63,7 @@ export function comparePrices(
     };
   }
 
-  const overlap = overlapRatio(
-    a.priceMinMinor,
-    a.priceMaxMinor,
-    b.priceMinMinor,
-    b.priceMaxMinor,
-  );
+  const overlap = overlapRatio(a.priceMinMinor, a.priceMaxMinor, b.priceMinMinor, b.priceMaxMinor);
 
   const bothHigh =
     a.confidenceClass === "HIGH" &&
@@ -86,8 +73,7 @@ export function comparePrices(
 
   if (bothHigh) {
     const delta = b.priceMinMinor - a.priceMinMinor;
-    if (delta > 0)
-      return { relation: "cheaper", savingsMinor: delta, label: "Cheaper" };
+    if (delta > 0) return { relation: "cheaper", savingsMinor: delta, label: "Cheaper" };
     if (delta < 0)
       return {
         relation: "more_expensive",

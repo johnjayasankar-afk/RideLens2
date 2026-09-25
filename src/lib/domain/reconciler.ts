@@ -1,10 +1,4 @@
-import type {
-  Discrepancy,
-  NormalizedQuote,
-  ProviderId,
-  QuoteType,
-  RideCategory,
-} from "./types";
+import type { Discrepancy, NormalizedQuote, ProviderId, QuoteType, RideCategory } from "./types";
 
 const SOURCE_QUALITY: Record<string, number> = {
   obi: 100,
@@ -49,12 +43,7 @@ function freshnessScore(q: NormalizedQuote): number {
 
 export function scoreCandidate(q: NormalizedQuote): number {
   const src = SOURCE_QUALITY[q.source] ?? 5;
-  return (
-    src +
-    quoteTypeScore(q.priceType) +
-    accountScore(q) +
-    freshnessScore(q)
-  );
+  return src + quoteTypeScore(q.priceType) + accountScore(q) + freshnessScore(q);
 }
 
 function productKey(q: NormalizedQuote): string {
@@ -78,9 +67,7 @@ export interface ReconcileResult {
   allCandidates: NormalizedQuote[];
 }
 
-export function reconcileQuotes(
-  candidates: NormalizedQuote[],
-): ReconcileResult {
+export function reconcileQuotes(candidates: NormalizedQuote[]): ReconcileResult {
   const groups = new Map<string, NormalizedQuote[]>();
   for (const q of candidates) {
     const key = productKey(q);
@@ -93,9 +80,7 @@ export function reconcileQuotes(
   const discrepancies: Discrepancy[] = [];
 
   for (const [, group] of groups) {
-    const sorted = [...group].sort(
-      (a, b) => scoreCandidate(b) - scoreCandidate(a),
-    );
+    const sorted = [...group].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
     const winner = sorted[0]!;
     visible.push(winner);
 

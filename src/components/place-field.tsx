@@ -239,12 +239,7 @@ export const PlaceField = forwardRef<
     if (gen !== resolveGen.current) return;
     setPending(false);
 
-    if (
-      lat == null ||
-      lng == null ||
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
+    if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
       selectedRef.current = false;
       setHint("Couldn’t pin that place: try another suggestion.");
       setOpen(true);
@@ -281,9 +276,7 @@ export const PlaceField = forwardRef<
   };
 
   return (
-    <div
-      className={`place-field${value ? " is-selected" : ""}${open ? " is-open" : ""}`}
-    >
+    <div className={`place-field${value ? " is-selected" : ""}${open ? " is-open" : ""}`}>
       <div className="place-field-head">
         <span className="place-label">{label}</span>
         {value ? (
@@ -303,9 +296,7 @@ export const PlaceField = forwardRef<
           aria-busy={pending}
           aria-describedby={hint && !value ? hintId : undefined}
           aria-activedescendant={
-            open && suggestions[activeIndex]
-              ? `${listId}-opt-${activeIndex}`
-              : undefined
+            open && suggestions[activeIndex] ? `${listId}-opt-${activeIndex}` : undefined
           }
           aria-label={label}
           autoFocus={autoFocus}
@@ -365,9 +356,7 @@ export const PlaceField = forwardRef<
             if (e.key === "ArrowUp") {
               e.preventDefault();
               if (!suggestions.length) return;
-              setActiveIndex(
-                (i) => (i - 1 + suggestions.length) % suggestions.length,
-              );
+              setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
               return;
             }
             if (e.key === "Enter") {
@@ -416,9 +405,7 @@ export const PlaceField = forwardRef<
               onClick={() => void pick(s)}
             >
               <strong>{s.primaryText}</strong>
-              {s.secondaryText ? (
-                <span className="muted">{s.secondaryText}</span>
-              ) : null}
+              {s.secondaryText ? <span className="muted">{s.secondaryText}</span> : null}
             </li>
           ))}
         </ul>

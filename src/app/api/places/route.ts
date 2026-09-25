@@ -6,8 +6,7 @@ import { placesQuerySchema } from "@/lib/validation/schemas";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rl = rateLimit(rateLimitKey({ ip, action: "places" }), 60, 60);
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });

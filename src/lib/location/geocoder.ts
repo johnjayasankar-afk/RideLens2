@@ -12,10 +12,7 @@ export interface PlaceSuggestion {
 }
 
 export interface Geocoder {
-  autocomplete(
-    query: string,
-    proximity?: { lat: number; lng: number },
-  ): Promise<PlaceSuggestion[]>;
+  autocomplete(query: string, proximity?: { lat: number; lng: number }): Promise<PlaceSuggestion[]>;
   resolve(placeIdOrQuery: string): Promise<CanonicalLocation | null>;
   reverse(lat: number, lng: number): Promise<CanonicalLocation | null>;
 }
@@ -111,9 +108,7 @@ export function formatPlaceLabel(parts: AddressParts): {
   formattedAddress: string;
 } {
   const line =
-    [parts.housenumber, parts.street].filter(Boolean).join(" ").trim() ||
-    parts.name?.trim() ||
-    "";
+    [parts.housenumber, parts.street].filter(Boolean).join(" ").trim() || parts.name?.trim() || "";
 
   const city = parts.city || parts.locality || parts.district || parts.suburb;
   const region = abbreviateRegion(parts.state);
@@ -123,17 +118,12 @@ export function formatPlaceLabel(parts: AddressParts): {
     .join(", ");
 
   const primaryText = line || secondaryText || "Selected place";
-  const formattedAddress = [primaryText, secondaryText]
-    .filter(Boolean)
-    .join(", ");
+  const formattedAddress = [primaryText, secondaryText].filter(Boolean).join(", ");
 
   return { primaryText, secondaryText, formattedAddress };
 }
 
-function photonOsmId(props: {
-  osm_type?: string;
-  osm_id?: number | string;
-}): string {
+function photonOsmId(props: { osm_type?: string; osm_id?: number | string }): string {
   const t = (props.osm_type || "N").charAt(0).toUpperCase();
   return `photon:${t}${props.osm_id ?? "0"}`;
 }
@@ -288,8 +278,7 @@ export class PhotonGeocoder implements Geocoder {
         if (seen.has(key)) continue;
         seen.add(key);
         const props = f.properties || {};
-        const rank =
-          placeRank(props) + queryMatchBoost(raw, props.name || s.primaryText);
+        const rank = placeRank(props) + queryMatchBoost(raw, props.name || s.primaryText);
         out.push(Object.assign(s, { _rank: rank }));
       }
       if (out.some((s) => (s as PlaceSuggestion & { _rank?: number })._rank! >= 100)) {
@@ -355,9 +344,7 @@ export class PhotonGeocoder implements Geocoder {
         properties?: AddressParts & { osm_type?: string; osm_id?: number };
       }>;
     };
-    const s = data.features?.[0]
-      ? this.featureToSuggestion(data.features[0])
-      : null;
+    const s = data.features?.[0] ? this.featureToSuggestion(data.features[0]) : null;
     if (!s || s.lat == null || s.lng == null) return null;
     return {
       lat: s.lat,
@@ -628,9 +615,7 @@ export class GoogleGeocoder implements Geocoder {
     proximity?: { lat: number; lng: number },
   ): Promise<PlaceSuggestion[]> {
     if (!query.trim()) return [];
-    const url = new URL(
-      "https://maps.googleapis.com/maps/api/place/autocomplete/json",
-    );
+    const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
     url.searchParams.set("input", query);
     url.searchParams.set("key", this.key);
     if (proximity) {
@@ -653,10 +638,7 @@ export class GoogleGeocoder implements Geocoder {
       placeId: p.place_id,
       primaryText: p.structured_formatting.main_text,
       secondaryText: p.structured_formatting.secondary_text,
-      formattedAddress: [
-        p.structured_formatting.main_text,
-        p.structured_formatting.secondary_text,
-      ]
+      formattedAddress: [p.structured_formatting.main_text, p.structured_formatting.secondary_text]
         .filter(Boolean)
         .join(", "),
       // coords filled via resolve on select
@@ -665,14 +647,9 @@ export class GoogleGeocoder implements Geocoder {
 
   async resolve(placeIdOrQuery: string): Promise<CanonicalLocation | null> {
     if (!placeIdOrQuery.includes(" ") && placeIdOrQuery.length > 8) {
-      const url = new URL(
-        "https://maps.googleapis.com/maps/api/place/details/json",
-      );
+      const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
       url.searchParams.set("place_id", placeIdOrQuery);
-      url.searchParams.set(
-        "fields",
-        "geometry,formatted_address,name,address_component",
-      );
+      url.searchParams.set("fields", "geometry,formatted_address,name,address_component");
       url.searchParams.set("key", this.key);
       const res = await fetch(url);
       if (res.ok) {
@@ -691,9 +668,7 @@ export class GoogleGeocoder implements Geocoder {
         const r = data.result;
         if (r) {
           const comps = r.address_components || [];
-          const streetNum = comps.find((c) =>
-            c.types.includes("street_number"),
-          )?.long_name;
+          const streetNum = comps.find((c) => c.types.includes("street_number"))?.long_name;
           const route = comps.find((c) => c.types.includes("route"))?.long_name;
           const city = comps.find((c) => c.types.includes("locality"))?.long_name;
           const region = comps.find((c) =>
@@ -810,9 +785,7 @@ export async function canonicalizeRoute(input: {
 }): Promise<{ pickup: CanonicalLocation; destination: CanonicalLocation }> {
   const geo = getGeocoder();
 
-  async function one(
-    side: typeof input.pickup,
-  ): Promise<CanonicalLocation> {
+  async function one(side: typeof input.pickup): Promise<CanonicalLocation> {
     if (side.lat != null && side.lng != null) {
       const addr =
         side.formattedAddress ||
@@ -833,9 +806,6 @@ export async function canonicalizeRoute(input: {
     return resolved;
   }
 
-  const [pickup, destination] = await Promise.all([
-    one(input.pickup),
-    one(input.destination),
-  ]);
+  const [pickup, destination] = await Promise.all([one(input.pickup), one(input.destination)]);
   return { pickup, destination };
 }
