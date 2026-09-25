@@ -484,7 +484,7 @@ export function CompareForm({
                   ) {
                     autoRefreshArmed.current = true;
                     setAutoRefresh(true);
-                    setShareNote("Auto-refresh on — turn off anytime");
+                    setShareNote("Auto-refresh on: turn off anytime");
                     window.setTimeout(() => setShareNote(null), 3200);
                   }
                 }
@@ -508,7 +508,7 @@ export function CompareForm({
             ) {
               autoRefreshArmed.current = true;
               setAutoRefresh(true);
-              setShareNote("Auto-refresh on — turn off anytime");
+              setShareNote("Auto-refresh on: turn off anytime");
               window.setTimeout(() => setShareNote(null), 3200);
             }
           }
@@ -589,14 +589,14 @@ export function CompareForm({
 
   useEffect(() => {
     if (!pickup || !destination) {
-      document.title = "RideLens — Every ride. One comparison.";
+      document.title = "RideLens · Every ride. One comparison.";
       return;
     }
     const a = pickup.label.split(",")[0];
     const b = destination.label.split(",")[0];
     document.title = `${a} → ${b} · RideLens`;
     return () => {
-      document.title = "RideLens — Every ride. One comparison.";
+      document.title = "RideLens · Every ride. One comparison.";
     };
   }, [pickup, destination]);
 
@@ -685,7 +685,7 @@ export function CompareForm({
       window.setTimeout(() => setShareNote(null), 2000);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
-      setShareNote("Couldn’t share — copy from the address bar");
+      setShareNote("Couldn’t share: copy from the address bar");
       window.setTimeout(() => setShareNote(null), 2500);
     }
   };
@@ -875,7 +875,7 @@ export function CompareForm({
 
           {!canSubmit ? (
             <p className="route-help muted">
-              Pick From and To — or Quick fill. Press{" "}
+              Pick From and To, or Quick fill. Press{" "}
               <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
               <kbd className="kbd">Enter</kbd> to compare.
             </p>
@@ -997,12 +997,12 @@ export function CompareForm({
             </div>
             <p className="results-empty-kicker">Ready when you are</p>
             <p className="results-empty-copy muted">
-              Choose From and To — we’ll map the route and line up Uber, Lyft,
+              Choose From and To: we’ll map the route and line up Uber, Lyft,
               Empower, and Curb side by side.
             </p>
           </div>
           <p className="results-empty-mobile muted">
-            Pin From and To above — then Compare to see every ride side by side.
+            Pin From and To above, then Compare to see every ride side by side.
           </p>
         </aside>
       )}

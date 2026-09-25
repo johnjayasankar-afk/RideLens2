@@ -324,7 +324,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
       </div>
       {failed ? (
         <p className="route-map-fallback muted">
-          Map tiles unavailable — route stats still apply.
+          Map tiles unavailable: route stats still apply.
         </p>
       ) : null}
     </div>

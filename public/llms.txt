@@ -1,0 +1,21 @@
+# RideLens
+
+> Every ride, one comparison. Map the trip once on live roads, then line up Uber,
+> Lyft, Empower and Curb side by side, ranked by price, soonest pickup or value.
+
+Quote types are kept distinct and never averaged into one invented number: an
+upfront price stays upfront, a range stays a range, an estimate is labelled as one,
+and a stale quote never wins. The final fare is always confirmed in the provider app.
+
+## What it does
+
+- Routes the trip once, on live roads, and reuses that route for every provider.
+- Applies each published rate card, the local fee stack and a marketplace model
+  that moves with time of day, hotspots and weather.
+- Ranks by price, soonest, or value, and shows the pickup wait beside each fare.
+
+## Elsewhere
+
+- [Labs](https://labs.johnjayasankar.com/)
+- [Case study](https://johnjayasankar.com/work/ridelens)
+- Contact: johnjayasankar@gmail.com

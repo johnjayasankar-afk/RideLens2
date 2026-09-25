@@ -77,7 +77,7 @@ function formatWaitRange(
     const lo = Math.max(1, Math.round(low / 60));
     const hi = Math.max(lo, Math.round(high / 60));
     if (lo === hi) return `~${lo} min`;
-    return `${lo}–${hi} min`;
+    return `${lo} to ${hi} min`;
   }
   return formatTripMins(mid);
 }
@@ -808,7 +808,7 @@ export function QuoteResults({
               onClick={onRefresh}
               disabled={loading}
             >
-              Market tick due — refresh now
+              Market tick due · refresh now
             </button>
           ) : null}
         </div>
@@ -816,7 +816,7 @@ export function QuoteResults({
 
       {agingQuotes ? (
         <div className="banner warn banner-with-action" role="status">
-          <p>Estimates are aging — refresh for a sharper read.</p>
+          <p>Estimates are aging: refresh for a sharper read.</p>
           <button
             type="button"
             className="ghost banner-retry"

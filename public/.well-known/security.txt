@@ -1,0 +1,4 @@
+Contact: mailto:johnjayasankar@gmail.com
+Expires: 2027-09-20T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://ride-lens2.vercel.app/.well-known/security.txt

@@ -27,7 +27,7 @@ export function formatMoneyRange(
   currency = "USD",
 ): string {
   if (minMinor === maxMinor) return formatMoneyMinor(minMinor, currency);
-  return `${formatMoneyMinor(minMinor, currency)}–${formatMoneyMinor(maxMinor, currency).replace(/^[^\d-]*/, "")}`;
+  return `${formatMoneyMinor(minMinor, currency)} to ${formatMoneyMinor(maxMinor, currency).replace(/^[^\d-]*/, "")}`;
 }
 
 /** Display-facing price. Never invent a midpoint for the user. */

@@ -111,7 +111,7 @@ export function reconcileQuotes(
           category: winner.normalizedCategory as RideCategory,
           quotes: [winner, ...material],
           deltaMinor: materialDelta(winner, worst),
-          message: `Price may have changed — confirm in ${winner.provider}. Sources disagree by $${(materialDelta(winner, worst) / 100).toFixed(2)}.`,
+          message: `Price may have changed: confirm in ${winner.provider}. Sources disagree by $${(materialDelta(winner, worst) / 100).toFixed(2)}.`,
         });
       }
     }

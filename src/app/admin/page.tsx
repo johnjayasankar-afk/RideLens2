@@ -87,7 +87,7 @@ export default async function AdminPage({
       <p className="eyebrow">Internal</p>
       <h1 className="brand admin-title">RideLens status</h1>
       <p className="muted admin-lede">
-        Source health, usage, and recent sessions — not a public accuracy claim.
+        Source health, usage, and recent sessions: not a public accuracy claim.
       </p>
 
       <div className="admin-stats">

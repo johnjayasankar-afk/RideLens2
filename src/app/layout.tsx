@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./labs-glass.css";
+import { LabsUI } from "@/components/labs-ui";
 
 // The Labs family type, self-hosted: Inter for reading, IBM Plex Mono for keys and figures.
 const sans = localFont({
@@ -22,7 +24,7 @@ const mono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3000"),
-  title: "RideLens — Every ride. One comparison.",
+  title: "RideLens · Every ride. One comparison.",
   description:
     "Compare Uber, Lyft, Empower, and Curb with live routing, marketplace-aware fare estimates, and pickup waits — before you book.",
   applicationName: "RideLens",
@@ -33,14 +35,14 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   openGraph: {
-    title: "RideLens — Every ride. One comparison.",
+    title: "RideLens · Every ride. One comparison.",
     description: "Live route + rate-card estimates for Uber, Lyft, Empower, and Curb.",
     type: "website",
     siteName: "RideLens",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RideLens — Every ride. One comparison.",
+    title: "RideLens · Every ride. One comparison.",
     description: "Live route + rate-card estimates for Uber, Lyft, Empower, and Curb.",
   },
 };
@@ -71,6 +73,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </div>
         </header>
         <main id="main">{children}</main>
+        <LabsUI />
         <footer className="site-footer">
           <div className="shell site-footer-inner">
             <p className="footer-brand brand">

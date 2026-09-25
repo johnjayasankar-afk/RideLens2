@@ -133,7 +133,7 @@ export const PlaceField = forwardRef<
           setOpen(true);
           setSearchedEmpty(true);
           setPending(false);
-          setHint("Couldn’t search places — try again in a moment.");
+          setHint("Couldn’t search places: try again in a moment.");
           return;
         }
 
@@ -159,7 +159,7 @@ export const PlaceField = forwardRef<
         setOpen(true);
         setSearchedEmpty(true);
         setPending(false);
-        setHint("Couldn’t search places — check your connection.");
+        setHint("Couldn’t search places: check your connection.");
       } finally {
         if (id === requestId.current) setPending(false);
       }
@@ -246,7 +246,7 @@ export const PlaceField = forwardRef<
       !Number.isFinite(lng)
     ) {
       selectedRef.current = false;
-      setHint("Couldn’t pin that place — try another suggestion.");
+      setHint("Couldn’t pin that place: try another suggestion.");
       setOpen(true);
       return;
     }

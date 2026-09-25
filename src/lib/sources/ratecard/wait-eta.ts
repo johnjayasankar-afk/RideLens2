@@ -284,5 +284,5 @@ export function formatWaitRange(
   const lo = Math.max(1, Math.round(lowSeconds / 60));
   const hi = Math.max(lo, Math.round(highSeconds / 60));
   if (lo === hi) return `${lo} min`;
-  return `${lo}–${hi} min`;
+  return `${lo} to ${hi} min`;
 }

@@ -78,7 +78,7 @@ export class LyftAuthorizedQuoteSource implements QuoteSource {
         status: "disabled",
         p50LatencyMs: null,
         lastSuccessAt: null,
-        lastError: "LYFT_COMPARISON_AUTHORIZED not set — partner approval required",
+        lastError: "LYFT_COMPARISON_AUTHORIZED not set: partner approval required",
         providersSurfaced: [],
       };
     }
