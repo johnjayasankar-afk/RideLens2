@@ -70,6 +70,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </Link>
             <nav className="topnav" aria-label="Primary">
               <Link href="/#main">Compare</Link>
+              <Link href="/sources">Sources</Link>
             </nav>
           </div>
         </header>
@@ -84,6 +85,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <p className="muted footer-copy">
               Live routing + published rates + a marketplace model that tracks time, zone heat, and
               weather. Final fares are confirmed in the provider app.
+            </p>
+            <p className="muted footer-copy">
+              <Link href="/sources">Where every number comes from</Link>
             </p>
             <p className="footer-labs">
               An independent product by{" "}

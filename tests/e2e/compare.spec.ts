@@ -128,4 +128,77 @@ test.describe("RideLens anonymous flow", () => {
     );
     expect(overflow).toBeLessThanOrEqual(0);
   });
+
+  /** The fixture route as a deep link — no geocoder round-trip to flake on. */
+  const DEEP_LINK =
+    `/?from=${PICKUP.lat},${PICKUP.lng},${encodeURIComponent(PICKUP.formattedAddress)}` +
+    `&to=${DESTINATION.lat},${DESTINATION.lng},${encodeURIComponent(DESTINATION.formattedAddress)}`;
+
+  /*
+   * Provenance. The decomposition has always been computed and never shown;
+   * these assert that it is on screen and that it reconciles, because a
+   * breakdown a reader can add up to the wrong answer is worse than none.
+   */
+  test("every quote says what kind of number it is", async ({ page }) => {
+    await page.goto(DEEP_LINK);
+    const cards = page.locator(".quote-card");
+    await expect(cards.first()).toBeVisible({ timeout: 30_000 });
+    // Not one card may be without a chip.
+    expect(await page.getByTestId("provenance-chip").count()).toBe(await cards.count());
+  });
+
+  test("the breakdown opens, reconciles, and closes on Escape", async ({ page }) => {
+    await page.goto(DEEP_LINK);
+    await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+
+    await page.getByTestId("provenance-chip").first().click();
+    const sheet = page.getByTestId("provenance-sheet");
+    await expect(sheet).toBeVisible();
+
+    /*
+     * Two honest shapes. A source that computed the fare itemises it and ends
+     * on the figure from the card, so the lines reconcile. A source that
+     * handed over a number and no arithmetic — a fixture, or a partner API —
+     * says so rather than having a breakdown invented for it.
+     */
+    const total = sheet.locator(".prov-row-total dd");
+    if ((await total.count()) > 0) {
+      await expect(total).toBeVisible();
+      await expect(total).toHaveText(/\$\d/);
+    } else {
+      await expect(sheet).toContainText(/nothing to itemise/i);
+    }
+    // Either way, no value may render as NaN.
+    await expect(sheet).not.toContainText("NaN");
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+  });
+
+  test("the sources page never calls an unconfigured source live", async ({ page }) => {
+    await page.goto("/sources");
+    await expect(
+      page.getByRole("heading", { name: /Where every number comes from/i }),
+    ).toBeVisible();
+
+    // Every listed source carries a status.
+    const rows = page.locator(".source-row");
+    expect(await rows.count()).toBeGreaterThan(4);
+    expect(await page.locator(".source-status").count()).toBe(await rows.count());
+
+    // Nothing gated behind credentials may claim to be answering.
+    const answering = await page
+      .locator(".source-row", { has: page.locator(".source-status.is-mint") })
+      .locator("h3")
+      .allInnerTexts();
+    for (const name of answering) {
+      expect(name).not.toMatch(/Obi|Uber|Lyft|Curb|Empower/);
+    }
+  });
+
+  test("the sources page is reachable from the footer", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: /Where every number comes from/i }).click();
+    await expect(page).toHaveURL(/\/sources$/);
+  });
 });

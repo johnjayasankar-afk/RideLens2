@@ -2344,3 +2344,145 @@ h1.admin-title {
   font-size: 15px;
   font-weight: 700;
 }
+
+/* ── Sources page ─────────────────────────────────────────────────────────
+   A trust asset, so it reads as a document rather than a dashboard: one
+   column, generous measure, and status carried by a word rather than only a
+   colour. */
+.sources-page {
+  max-width: 720px;
+  padding-block: 32px 64px;
+}
+.sources-page h1 {
+  margin: 4px 0 14px;
+  font-size: clamp(26px, 4.4vw, 34px);
+  letter-spacing: -0.026em;
+}
+.sources-lede {
+  margin: 0 0 32px;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.sources-page h2 {
+  margin: 34px 0 12px;
+  font-size: 17px;
+  letter-spacing: -0.014em;
+}
+.sources-list,
+.coverage-list,
+.sources-never {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sources-never {
+  counter-reset: never;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.sources-never li {
+  counter-increment: never;
+  padding: 5px 0 5px 26px;
+  position: relative;
+}
+.sources-never li::before {
+  content: counter(never);
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--forest);
+  color: #f0f7f3;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.source-row {
+  padding: 16px 0;
+  border-top: 1px solid var(--line, #e6e1d6);
+}
+.source-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.source-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.source-status {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 600 11px/1.5 var(--font-body);
+  white-space: nowrap;
+}
+.source-status.is-mint {
+  background: var(--mint-bg);
+  color: var(--mint-t);
+}
+.source-status.is-amber {
+  background: var(--amber-bg);
+  color: var(--amber-t);
+}
+.source-status.is-rose {
+  background: var(--rose-bg);
+  color: var(--rose-t);
+}
+.source-status.is-muted {
+  background: #eee9dd;
+  color: var(--ink-3);
+}
+.source-feeds {
+  margin: 8px 0 10px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.source-meta {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.source-meta dt {
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.source-meta dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.coverage-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line, #e6e1d6);
+  font-size: 13.5px;
+}
+.coverage-list strong {
+  text-transform: capitalize;
+}
+.coverage-list span {
+  color: var(--ink-2);
+}
+.sources-note {
+  margin: 0 0 12px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.sources-foot {
+  margin-top: 36px;
+  font-size: 13.5px;
+}
