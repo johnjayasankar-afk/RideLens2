@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     usageToday: getUsageToday(),
     cache: cacheStats(),
     sources: health,
-    recentSessions: listRecentSessions(10).map((s) => ({
+    recentSessions: (await listRecentSessions(10)).map((s) => ({
       id: s.id,
       status: s.status,
       createdAt: s.createdAt,

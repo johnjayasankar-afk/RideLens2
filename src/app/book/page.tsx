@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProviderLogo } from "@/components/provider-logo";
 import { isAllowedBookingUrl } from "@/lib/booking/allowed-hosts";
@@ -20,10 +20,14 @@ const PROVIDER_HOME: Record<string, string> = {
   curb: "https://gocurb.com/",
 };
 
-function safeReturnTo(raw: string | null): string {
-  if (!raw) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
-  return raw;
+function formatBand(q: {
+  priceMinMinor: number;
+  priceMaxMinor: number;
+  currency?: string;
+}): string {
+  const lo = q.priceMinMinor / 100;
+  const hi = q.priceMaxMinor / 100;
+  return lo === hi ? `$${lo.toFixed(2)}` : `$${lo.toFixed(2)}–$${hi.toFixed(2)}`;
 }
 
 function BookInner() {
@@ -31,12 +35,62 @@ function BookInner() {
   const providerRaw = (params.get("provider") || "provider").toLowerCase();
   const provider = asProvider(providerRaw);
   const label = providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1);
-  const price = params.get("price") || "—";
-  const pickup = params.get("pickup") || "";
-  const destination = params.get("destination") || "";
+  /*
+   * Addresses arrive by session id, not in the query string.
+   *
+   * /book used to be linked as ?pickup=14+Prince+St&destination=JFK+Terminal+4,
+   * which writes a rider's origin and destination into the access log of every
+   * proxy in front of this app and into their browser history. The page needs
+   * them to show a confirmation and to offer a copy button, so it fetches them
+   * from the session instead — the URL carries only opaque ids.
+   */
+  const sessionId = params.get("s") || "";
+  const quoteId = params.get("q") || "";
+  const [trip, setTrip] = useState<{
+    pickup: string;
+    destination: string;
+    price: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let live = true;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/quotes/${encodeURIComponent(sessionId)}`);
+        if (!res.ok) return;
+        const body = await res.json();
+        const s = body.session;
+        const q = s?.quotes?.find((x: { id: string }) => x.id === quoteId) ?? s?.quotes?.[0];
+        if (!live) return;
+        setTrip({
+          pickup: s?.pickup?.formattedAddress ?? "",
+          destination: s?.destination?.formattedAddress ?? "",
+          price: q ? formatBand(q) : "—",
+        });
+      } catch {
+        /* The handoff still works without the confirmation detail. */
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [sessionId, quoteId]);
+
+  const price = trip?.price ?? "—";
+  const pickup = trip?.pickup ?? "";
+  const destination = trip?.destination ?? "";
   const rawUrl = params.get("url") || PROVIDER_HOME[providerRaw] || "";
   const urlOk = rawUrl ? isAllowedBookingUrl(rawUrl) : false;
-  const backHref = safeReturnTo(params.get("returnTo"));
+  /*
+   * Back through history rather than a returnTo parameter. That parameter
+   * held the whole deep link, addresses included, so taking them out of the
+   * top level of this URL had only moved them.
+   */
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
+    else window.location.assign("/");
+  };
   const needsManualTrip =
     params.get("prefills") === "0" || providerRaw === "empower" || providerRaw === "curb";
   const [copied, setCopied] = useState(false);
@@ -132,9 +186,9 @@ function BookInner() {
         </button>
       ) : null}
 
-      <a className="ghost book-back" href={backHref}>
+      <button type="button" className="ghost book-back" onClick={goBack}>
         Back to comparison
-      </a>
+      </button>
     </div>
   );
 }

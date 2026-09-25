@@ -13,6 +13,7 @@ import type {
   SourceQuoteResult,
 } from "@/lib/domain/types";
 import { buildQuoteCacheKey, cacheGet, cacheSet } from "@/lib/quotes/cache";
+import { putSession } from "@/lib/quotes/session-store";
 import { discoverEnabledSources } from "@/lib/sources/registry";
 import type { QuoteSource } from "@/lib/sources/types";
 
@@ -31,17 +32,12 @@ export type SourceProgressEvent =
       session: QuoteSession;
     };
 
-const sessions = new Map<string, QuoteSession>();
-
-export function getSession(id: string): QuoteSession | undefined {
-  return sessions.get(id);
-}
-
-export function listRecentSessions(limit = 20): QuoteSession[] {
-  return [...sessions.values()]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
-}
+/*
+ * Sessions live in session-store.ts now — memory in front of Supabase, so a
+ * request that lands on a different instance can still find one. Re-exported
+ * here because every existing caller imports them from the orchestrator.
+ */
+export { getSession, listRecentSessions, sessionsAreDurable } from "@/lib/quotes/session-store";
 
 function withFreshness(quotes: NormalizedQuote[]): NormalizedQuote[] {
   const now = new Date();
@@ -138,7 +134,7 @@ export async function runQuoteSession(input: {
         quotes: withFreshness(cached.quotes),
         updatedAt: now,
       };
-      sessions.set(sessionId, refreshed);
+      putSession(refreshed);
       input.onEvent?.({ type: "complete", session: refreshed });
       return refreshed;
     }
@@ -177,7 +173,7 @@ export async function runQuoteSession(input: {
         : input.categoryFilter,
   };
 
-  sessions.set(sessionId, session);
+  putSession(session);
   input.onEvent?.({ type: "session", session });
 
   if (sources.length === 0) {
@@ -260,7 +256,7 @@ export async function runQuoteSession(input: {
             ranked.length,
           ),
         };
-        sessions.set(sessionId, session);
+        putSession(session);
         input.onEvent?.({ type: "source_result", result, session });
         return result;
       }),
@@ -284,7 +280,7 @@ export async function runQuoteSession(input: {
       ranked.length,
     ),
   };
-  sessions.set(sessionId, session);
+  putSession(session);
 
   if (accountContext === "PUBLIC" && ranked.length > 0) {
     cacheSet(cacheKey, session, accountContext);

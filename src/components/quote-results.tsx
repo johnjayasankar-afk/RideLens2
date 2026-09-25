@@ -252,7 +252,7 @@ function QuoteCard({
   destinationLabel,
   index = 0,
   now,
-  returnTo,
+  sessionId,
   animate = true,
 }: {
   quote: NormalizedQuote;
@@ -261,9 +261,9 @@ function QuoteCard({
   waitDeltaSec?: number;
   pickupLabel?: string;
   destinationLabel?: string;
+  sessionId?: string;
   index?: number;
   now: Date;
-  returnTo?: string;
   animate?: boolean;
 }) {
   const handoff = quote.bookingHandoff;
@@ -279,17 +279,22 @@ function QuoteCard({
   const totalSec = pickupSec != null && driveSec != null ? pickupSec + driveSec : null;
   const arriveLabel = totalSec != null ? formatClock(now, totalSec) : "—";
 
-  const pickupAddr = String(quote.metadata?.pickupAddress || pickupLabel || "");
-  const destAddr = String(quote.metadata?.destinationAddress || destinationLabel || "");
-
-  const bookParams = new URLSearchParams({
-    provider: quote.provider,
-    price: formatQuotePrice(quote),
-    pickup: pickupAddr,
-    destination: destAddr,
-  });
+  /*
+   * Opaque ids only. The addresses used to travel in the query string, which
+   * puts a rider's origin and destination into every proxy access log and
+   * their browser history; /book resolves them from the session instead.
+   */
+  const bookParams = new URLSearchParams({ provider: quote.provider });
+  if (sessionId) bookParams.set("s", sessionId);
+  bookParams.set("q", quote.id);
   if (handoff?.url) bookParams.set("url", handoff.url);
-  if (returnTo) bookParams.set("returnTo", returnTo);
+  /*
+   * No returnTo. It carried the full deep link — "/?from=40.75,-73.98,Midtown
+   * &to=..." — so the addresses were still in the /book URL, one level down,
+   * after being taken out of the top level. /book goes back through browser
+   * history instead, which costs nothing and restores exactly where the rider
+   * was.
+   */
   const prefillsTrip =
     Boolean(handoff?.prefills?.pickup) && Boolean(handoff?.prefills?.destination);
   if (!prefillsTrip) bookParams.set("prefills", "0");
@@ -467,12 +472,6 @@ export function QuoteResults({
    */
   const everythingModeled = ranked.length > 0 && ranked.every((q) => provenanceOf(q).modeled);
   const rest = ranked.slice(1);
-
-  const returnTo = useMemo(() => {
-    if (typeof window === "undefined") return undefined;
-    const url = new URL(window.location.href);
-    return `${url.pathname}${url.search}` || "/";
-  }, [pickup?.lat, pickup?.lng, destination?.lat, destination?.lng, mode, filter]);
 
   const agingQuotes = useMemo(() => {
     if (!hero) return false;
@@ -934,13 +933,13 @@ export function QuoteResults({
             ) : null}
           </div>
           <QuoteCard
+            sessionId={session?.id}
             quote={hero}
             hero
             pickupLabel={tripPickupLabel}
             destinationLabel={tripDestLabel}
             index={0}
             now={now}
-            returnTo={returnTo}
             animate={animateEntrance}
           />
         </div>
@@ -952,13 +951,13 @@ export function QuoteResults({
           <div className="quote-list">
             {rest.map((q, i) => (
               <QuoteCard
+                sessionId={session?.id}
                 key={`${q.provider}:${q.providerProductId || q.providerProductName}`}
                 quote={q}
                 pickupLabel={tripPickupLabel}
                 destinationLabel={tripDestLabel}
                 index={i + 1}
                 now={now}
-                returnTo={returnTo}
                 animate={animateEntrance}
                 deltaMinor={hero ? q.rankingPriceMinor - hero.rankingPriceMinor : undefined}
                 waitDeltaSec={

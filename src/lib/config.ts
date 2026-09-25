@@ -99,6 +99,11 @@ export function fixturesAllowed(env: AppEnv = getEnv()): boolean {
   return Boolean(env.RIDELENS_ALLOW_FIXTURES);
 }
 
+/** Persistence is optional; without it the app runs on memory alone. */
+export function supabaseConfigured(env: AppEnv = getEnv()): boolean {
+  return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
 export function rateCardConfigured(env: AppEnv = getEnv()): boolean {
   return env.RATE_CARD_SOURCE_ENABLED !== false;
 }

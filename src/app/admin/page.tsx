@@ -133,7 +133,7 @@ export default async function AdminPage({
     })),
   );
   const usage = getUsageToday();
-  const sessions = listRecentSessions(12);
+  const sessions = await listRecentSessions(12);
   const summary = sourceStatusSummary(env);
   const enabledCount = Object.values(summary).filter((v) => String(v).startsWith("enabled")).length;
 

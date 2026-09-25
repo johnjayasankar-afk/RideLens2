@@ -5,6 +5,7 @@ import { appOrigin } from "@/lib/config";
 import "./globals.css";
 import "./labs-glass.css";
 import { LabsUI } from "@/components/labs-ui";
+import { EmbedAnnounce } from "@/components/embed-announce";
 
 // The Labs family type, self-hosted: Inter for reading, IBM Plex Mono for keys and figures.
 const sans = localFont({
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </div>
         </header>
         <main id="main">{children}</main>
+<EmbedAnnounce />
         <LabsUI />
         <footer className="site-footer">
           <div className="shell site-footer-inner">
