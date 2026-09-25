@@ -1,3 +1,10 @@
+/*
+ * Dynamic for the same reason as /book: a prerendered page cannot carry the
+ * nonce that src/proxy.ts puts in the content policy, so its scripts are
+ * refused and it never hydrates.
+ */
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 
 export default function NotFound() {

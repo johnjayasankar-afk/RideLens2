@@ -17,7 +17,7 @@
  * a number that would then need a footnote every time it was quoted.
  */
 import { gzipSync } from "node:zlib";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -50,9 +50,8 @@ function gzipKb(paths: readonly string[]): number {
 }
 
 function walk(dir: string, match: RegExp): string[] {
-  const { readdirSync } = require("node:fs") as typeof import("node:fs");
   const out: string[] = [];
-  let entries: import("node:fs").Dirent[];
+  let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {

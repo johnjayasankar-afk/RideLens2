@@ -353,11 +353,20 @@ function splitWords(el) {
   })(el);
 }
 
+/* Two frames out: past hydration, still before anyone notices. */
+function raf2(fn) {
+  if (typeof requestAnimationFrame !== "function") return fn();
+  requestAnimationFrame(() => requestAnimationFrame(fn));
+}
+
 function heads(sel) {
   if (REDUCED || !sel) return;
   const vh = window.innerHeight || 800;
   $$(sel).forEach((h) => {
     if (h.querySelector(".wd") || h.dataset.wdDone) return;
+    /* An invisible heading has nothing to animate, and splitting it only
+       gives a screen reader more nodes to walk. */
+    if (h.classList && h.classList.contains("sr-only")) return;
     const n = (h.textContent || "").trim().split(/\s+/).length;
     if (n < 2 || n > 26) return;
     h.dataset.wdDone = "1";
@@ -505,7 +514,29 @@ export function initLabsUI(config) {
         sheen();
       }
       reveal(cfg.reveal, cfg.cascade);
-      heads(cfg.headings);
+      /*
+       * Headings wait for the frame after paint, the rest do not.
+       *
+       * splitWords rewrites a heading's children into <span class="wd">
+       * tokens. If it reaches markup a framework server-rendered but has not
+       * hydrated yet, the framework finds a DOM it did not produce, throws a
+       * hydration mismatch and rebuilds the whole tree on the client. That is
+       * exactly what happened on /book: the layout hydrated and ran this,
+       * while the page's heading was still inside an unhydrated Suspense
+       * boundary. A single-word heading hid it elsewhere, because the
+       * splitter skips those.
+       *
+       * Two frames is after hydration in practice, and nothing here is load
+       * bearing enough to justify coupling a decorative layer to a
+       * framework's lifecycle.
+       */
+      raf2(() => {
+        try {
+          heads(cfg.headings);
+        } catch (e) {
+          /* decorative; never take the app down */
+        }
+      });
       parallax(cfg.parallax);
       tone(cfg.toneBar, cfg.toneDark);
       document.documentElement.classList.add("labs-ui-on");
