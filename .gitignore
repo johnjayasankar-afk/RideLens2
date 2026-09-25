@@ -5,3 +5,10 @@ node_modules/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# A copy of the standalone RideLens app landed here when this session moved
+# folders, and `git add -A` swept it in. It is a different product with its own
+# src/ tree, and this repo's tsconfig maps @/* to ./src/*, so every one of its
+# imports resolved to nothing and the Vercel typecheck failed with ~770 errors.
+ridelens/
+RideLens.zip

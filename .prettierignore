@@ -1,0 +1,6 @@
+# Not this app — a copy of the standalone RideLens landed here on a folder move.
+ridelens/
+.next/
+out/
+coverage/
+*.zip
