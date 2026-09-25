@@ -406,12 +406,11 @@ export function QuoteResults({
   destination: PlaceValue | null;
 }) {
   const [copied, setCopied] = useState<"best" | "all" | "fail" | null>(null);
-  const [tickLeft, setTickLeft] = useState<number | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const [animateEntrance, setAnimateEntrance] = useState(false);
+  /** Which session has already played its entrance. */
+  const [playedEntranceId, setPlayedEntranceId] = useState<string | null>(null);
   const resultsTopRef = useRef<HTMLElement | null>(null);
   const scrolledSessionId = useRef<string | null>(null);
-  const playedEntrance = useRef<string | null>(null);
 
   useEffect(() => {
     if (!session?.quotes?.length) return;
@@ -419,22 +418,20 @@ export function QuoteResults({
     return () => window.clearInterval(id);
   }, [session?.id, session?.updatedAt, session?.quotes?.length]);
 
+  /*
+   * Whether this session is still playing its entrance — answered during
+   * render rather than assigned by an effect. The effect below only marks it
+   * finished, and does so from a timeout callback, so nothing sets state in
+   * the effect body.
+   */
+  const animateEntrance = Boolean(session?.id) && !loading && playedEntranceId !== session?.id;
+
   useEffect(() => {
-    if (!session?.id || loading) {
-      setAnimateEntrance(false);
-      return;
-    }
-    if (playedEntrance.current === session.id) {
-      setAnimateEntrance(false);
-      return;
-    }
-    setAnimateEntrance(true);
-    const t = window.setTimeout(() => {
-      playedEntrance.current = session.id;
-      setAnimateEntrance(false);
-    }, 700);
+    const id = session?.id;
+    if (!animateEntrance || !id) return;
+    const t = window.setTimeout(() => setPlayedEntranceId(id), 700);
     return () => window.clearTimeout(t);
-  }, [session?.id, loading]);
+  }, [animateEntrance, session?.id]);
 
   useEffect(() => {
     if (!session?.id || loading) return;
@@ -473,22 +470,21 @@ export function QuoteResults({
     });
   }, [ranked, hero, now]);
 
-  useEffect(() => {
-    const next = hero?.metadata?.secondsToNextTick as number | undefined;
-    if (next == null || !Number.isFinite(next)) {
-      setTickLeft(null);
-      return;
-    }
-    setTickLeft(Math.max(0, Math.round(next)));
-    const id = window.setInterval(() => {
-      setTickLeft((n) => {
-        if (n == null) return null;
-        if (n <= 1) return 0;
-        return n - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [hero?.id, hero?.metadata?.secondsToNextTick, session?.updatedAt]);
+  /*
+   * Seconds until the marketplace reprices, computed rather than counted down.
+   *
+   * This was a second interval keeping its own state in step with the first.
+   * `now` already advances once a second for the freshness labels, so the
+   * remaining time is just arithmetic against the moment the session was
+   * quoted — one timer instead of two, and no state to drift.
+   */
+  const tickLeft = ((): number | null => {
+    const next = hero?.metadata?.secondsToNextTick;
+    if (typeof next !== "number" || !Number.isFinite(next)) return null;
+    const quotedAt = session?.updatedAt ? Date.parse(session.updatedAt) : now.getTime();
+    const elapsed = Number.isFinite(quotedAt) ? (now.getTime() - quotedAt) / 1000 : 0;
+    return Math.max(0, Math.round(next - elapsed));
+  })();
 
   const failures = session?.coverage.sourcesFailed ?? [];
   const expected = session?.coverage.sourcesExpected ?? [];

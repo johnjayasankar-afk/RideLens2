@@ -17,12 +17,7 @@ import type {
   SourceQuoteResult,
 } from "@/lib/domain/types";
 import { fetchDrivingRoute } from "@/lib/routing/osrm";
-import {
-  CALIBRATED_RADIUS_KM,
-  EXTRAPOLATION_LIMIT_KM,
-  resolveMarket,
-  type MarketResolution,
-} from "@/lib/sources/ratecard/rates";
+import { resolveMarket, type MarketResolution } from "@/lib/sources/ratecard/rates";
 import type { QuoteSource } from "@/lib/sources/types";
 
 /**

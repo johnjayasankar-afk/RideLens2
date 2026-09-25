@@ -89,6 +89,29 @@ test.describe("RideLens anonymous flow", () => {
   });
 
   /*
+   * Deep-link restore, which nothing covered before the state initialisation
+   * moved out of a mount effect. The fields used to arrive empty and be filled
+   * in a second render; now the URL is read during render, so a shared link
+   * paints with its route already in place.
+   */
+  test("a shared link restores its route, mode and filter", async ({ page }) => {
+    const from = `${PICKUP.lat},${PICKUP.lng},${encodeURIComponent(PICKUP.formattedAddress)}`;
+    const to = `${DESTINATION.lat},${DESTINATION.lng},${encodeURIComponent(DESTINATION.formattedAddress)}`;
+    await page.goto(`/?from=${from}&to=${to}&mode=fastest&filter=XL`);
+
+    await expect(page.getByPlaceholder("Search pickup address")).toHaveValue(/14 Prince St/);
+    await expect(page.getByPlaceholder("Search destination")).toHaveValue(/JFK Terminal 4/);
+    // And it compares on arrival rather than waiting to be asked.
+    await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("a bare URL opens an empty form and compares nothing", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByPlaceholder("Search pickup address")).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Compare rides" })).toBeDisabled();
+  });
+
+  /*
    * The tagline lives in the document title and the OG image; it is not
    * rendered into the page. The old assertion looked for it as visible text,
    * and for a string ("One live comparison") that appears nowhere in the

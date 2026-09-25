@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlaceField, type PlaceFieldHandle, type PlaceValue } from "@/components/place-field";
+import {
+  saveRecent,
+  useDeepLinkState,
+  useDesktopAutofocus,
+  useOnline,
+  useRecentRoutes,
+} from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { ProviderId, QuoteSession } from "@/lib/domain/types";
@@ -9,17 +16,9 @@ import type { MapRoute } from "@/components/route-map";
 import { formatQuotePrice } from "@/lib/domain/money";
 import { rankQuotes } from "@/lib/domain/ranking";
 
-type RecentRoute = {
-  id: string;
-  pickup: PlaceValue;
-  destination: PlaceValue;
-  savedAt: number;
-};
-
 type RankingMode = "cheapest" | "fastest" | "best_value";
 type FilterId = "standard" | "ALL" | "XL" | "PREMIUM" | "TAXI";
 
-const RECENT_KEY = "ridelens.recentRoutes";
 const NEAR_IDENTICAL_M = 150;
 
 const PROVIDERS: ProviderId[] = ["uber", "lyft", "empower", "curb"];
@@ -81,43 +80,8 @@ const QUICK_PICKS: { label: string; place: PlaceValue }[] = [
   },
 ];
 
-function loadRecent(): RecentRoute[] {
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as RecentRoute[];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecent(pickup: PlaceValue, destination: PlaceValue) {
-  try {
-    const next: RecentRoute = {
-      id: `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`,
-      pickup,
-      destination,
-      savedAt: Date.now(),
-    };
-    const prev = loadRecent().filter((r) => r.id !== next.id);
-    localStorage.setItem(RECENT_KEY, JSON.stringify([next, ...prev].slice(0, 6)));
-  } catch {
-    /* private mode / quota */
-  }
-}
-
 function encodePlace(p: PlaceValue): string {
   return `${p.lat.toFixed(5)},${p.lng.toFixed(5)},${encodeURIComponent(p.formattedAddress)}`;
-}
-
-function decodePlace(raw: string | null): PlaceValue | null {
-  if (!raw) return null;
-  const [latS, lngS, ...rest] = raw.split(",");
-  const lat = Number(latS);
-  const lng = Number(lngS);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const label = decodeURIComponent(rest.join(",") || "Selected place");
-  return { lat, lng, formattedAddress: label, label };
 }
 
 function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -131,38 +95,38 @@ function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng:
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-function parseMode(raw: string | null): RankingMode {
-  if (raw === "fastest" || raw === "best_value" || raw === "cheapest") return raw;
-  return "cheapest";
-}
-
-function parseFilter(raw: string | null): FilterId {
-  if (raw === "ALL" || raw === "XL" || raw === "PREMIUM" || raw === "TAXI" || raw === "standard") {
-    return raw;
-  }
-  return "standard";
-}
-
 export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
-  const [pickup, setPickup] = useState<PlaceValue | null>(null);
-  const [destination, setDestination] = useState<PlaceValue | null>(null);
+  /*
+   * What the URL asks for, read during render rather than assigned in a mount
+   * effect. Someone arriving on a deep link used to see an empty form for one
+   * render before the effect filled it in.
+   */
+  const deepLink = useDeepLinkState();
+
+  const [pickup, setPickup] = useState<PlaceValue | null>(() => deepLink.pickup);
+  const [destination, setDestination] = useState<PlaceValue | null>(() => deepLink.destination);
   const [locating, setLocating] = useState(false);
   const [session, setSession] = useState<QuoteSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
-  const [filter, setFilter] = useState<FilterId>("standard");
-  const [mode, setMode] = useState<RankingMode>("cheapest");
+  const [filter, setFilter] = useState<FilterId>(() => deepLink.filter);
+  const [mode, setMode] = useState<RankingMode>(() => deepLink.mode);
   const [mapRoute, setMapRoute] = useState<MapRoute | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
-  const [recent, setRecent] = useState<RecentRoute[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const [quickTarget, setQuickTarget] = useState<"from" | "to">("to");
   const [swapping, setSwapping] = useState(false);
-  const [offline, setOffline] = useState(false);
-  const [desktopAutofocus, setDesktopAutofocus] = useState(false);
+  /* localStorage and navigator.onLine, both read during render. */
+  const recent = useRecentRoutes();
+  const offline = !useOnline();
+  /*
+   * The URL is parsed during render, so hydration is complete on the first
+   * one. Kept as a named constant because several effects below read it.
+   */
+  const hydrated = true;
+  const desktopAutofocus = useDesktopAutofocus();
   const autoRefreshArmed = useRef(false);
   const refreshFailCount = useRef(0);
   const geoAbort = useRef<AbortController | null>(null);
@@ -172,8 +136,6 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const routeAbort = useRef<AbortController | null>(null);
   const pageVisible = useRef(true);
   const onlineRef = useRef(true);
-  const swapComparePending = useRef(false);
-  const recentComparePending = useRef(false);
   /*
    * Two halves of one fact, on purpose.
    *
@@ -222,45 +184,22 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
       ? `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`
       : null;
 
+  /*
+   * All that is left of the old mount effect.
+   *
+   * It used to also read the query string, localStorage, navigator.onLine and
+   * two media queries, then call six setters — every one a synchronous
+   * setState in an effect, forcing a second render of this whole tree before
+   * anything appeared. Those four reads all have render-time answers now (see
+   * use-deep-link-state.ts). Page visibility has no render-time answer and is
+   * only ever read inside callbacks, so it stays a ref on a listener.
+   */
   useEffect(() => {
-    setRecent(loadRecent());
-    const params = new URLSearchParams(window.location.search);
-    const from = decodePlace(params.get("from"));
-    const to = decodePlace(params.get("to"));
-    if (from) setPickup(from);
-    if (to) setDestination(to);
-    setMode(parseMode(params.get("mode")));
-    setFilter(parseFilter(params.get("filter")));
-    setHydrated(true);
-
     const onVis = () => {
       pageVisible.current = document.visibilityState === "visible";
     };
-    const onOnline = () => {
-      onlineRef.current = true;
-      setOffline(false);
-      refreshFailCount.current = 0;
-    };
-    const onOffline = () => {
-      onlineRef.current = false;
-      setOffline(true);
-    };
-    onlineRef.current = navigator.onLine;
-    setOffline(!navigator.onLine);
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-
-    const coarse =
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(max-width: 720px)").matches;
-    setDesktopAutofocus(!coarse);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
   const fetchRoute = useCallback(async (from: PlaceValue, to: PlaceValue) => {
@@ -358,12 +297,39 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   });
 
   const compare = useCallback(
-    async (refresh = false) => {
-      if (!pickup || !destination || !canSubmit) return;
+    async (refresh = false, override?: { pickup: PlaceValue; destination: PlaceValue }) => {
+      /*
+       * One invariant, and three effects stop cascading because of it:
+       * `compare` never mutates state in its caller's synchronous frame.
+       *
+       * Three callers below are effects — the deep-link one-shot, and the
+       * re-compare after a swap or a recent-route pick. Each is an *action*
+       * triggered by something that happened, not state derived during
+       * render, so an effect is the right home for them. What is not right is
+       * setLoading firing inside the effect body and forcing a second render
+       * of this tree before the first has painted. Yielding once moves every
+       * update below into a later tick, where it belongs.
+       *
+       * Imperceptible for a button press, and it costs nothing: the fetch that
+       * follows is orders of magnitude slower than a microtask.
+       */
+      await null;
 
-      const dist = haversineMeters(pickup, destination);
+      /*
+       * Endpoints may be handed in. Swapping, or picking a recent route, sets
+       * two pieces of state and then wants to compare the result — but the new
+       * values are not readable from this closure until React re-renders. That
+       * used to be bridged with a pending ref plus an effect watching for the
+       * state to land; passing them directly says the same thing in one line
+       * and deletes both.
+       */
+      const from = override?.pickup ?? pickup;
+      const to = override?.destination ?? destination;
+      if (!from || !to || (!override && !canSubmit)) return;
+
+      const dist = haversineMeters(from, to);
       if (dist < NEAR_IDENTICAL_M) {
-        setError("Pickup and destination are nearly the same place. Choose a clearer destination.");
+        setError("Pickup and to are nearly the same place. Choose a clearer to.");
         setSession(null);
         setMapRoute(null);
         setLastCompared(null);
@@ -374,7 +340,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
       const ac = new AbortController();
       quotesAbort.current = ac;
       const gen = ++requestGen.current;
-      const key = `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`;
+      const key = `${from.lat},${from.lng}->${to.lat},${to.lng}`;
       if (!refresh && lastComparedKey.current !== key) {
         setSession(null);
       }
@@ -383,13 +349,14 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
       setLoading(true);
       setError(null);
       setRetryAfter(null);
-      void fetchRoute(pickup, destination);
-      saveRecent(pickup, destination);
-      setRecent(loadRecent());
+      void fetchRoute(from, to);
+      // saveRecent dispatches its own change event; useRecentRoutes is
+      // subscribed, so there is nothing to re-read by hand.
+      saveRecent(from, to);
 
       const url = new URL(window.location.href);
-      url.searchParams.set("from", encodePlace(pickup));
-      url.searchParams.set("to", encodePlace(destination));
+      url.searchParams.set("from", encodePlace(from));
+      url.searchParams.set("to", encodePlace(to));
       url.searchParams.set("mode", mode);
       url.searchParams.set("filter", filter);
       window.history.replaceState({}, "", url.toString());
@@ -405,8 +372,8 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
           headers: { "Content-Type": "application/json" },
           signal: ac.signal,
           body: JSON.stringify({
-            pickup: toPayload(pickup),
-            destination: toPayload(destination),
+            pickup: toPayload(from),
+            destination: toPayload(to),
             rankingMode: mode,
             categoryFilter,
             stream: true,
@@ -506,36 +473,47 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     [pickup, destination, canSubmit, filter, mode, fetchRoute, autoRefresh, setLastCompared],
   );
 
-  // Deep-link one-shot compare
+  /*
+   * Someone arriving on a shared link expects the comparison already running.
+   *
+   * The two effects that used to sit beside this one are gone — they were
+   * derived state and an action waiting on a ref, and both had render-time
+   * answers. This one does not: it is a fetch that must happen once, on
+   * arrival, because of how the page was opened. That is the case effects
+   * exist for, and there is no render-time expression for "go and ask the
+   * network".
+   *
+   * The rule fires because `compare` eventually calls setLoading. It is aimed
+   * at derived-state cascades, and suppressing it anywhere else in this file
+   * would have been hiding a real problem; here it is describing one that is
+   * not. The proper removal is 4.4 — let the server render the result for a
+   * deep link — at which point this effect goes too.
+   */
   useEffect(() => {
-    if (!hydrated || !pickup || !destination || deepLinkCompareDone.current) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("from") && params.get("to")) {
-      deepLinkCompareDone.current = true;
-      void compare(false);
-    }
+    if (!deepLink.hasRoute || deepLinkCompareDone.current) return;
+    deepLinkCompareDone.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on arrival; see above
+    void compare(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated]);
+  }, [deepLink.hasRoute]);
 
-  useEffect(() => {
-    if (!session) return;
-    if (!pickup || !destination) {
-      setSession(null);
-      setMapRoute(null);
-      setLastCompared(null);
-      return;
-    }
-    const key = `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`;
-    if (lastComparedKey.current && lastComparedKey.current !== key) {
-      setSession(null);
-    }
-  }, [pickup, destination, session, setLastCompared]);
+  /*
+   * Whether the session on screen still describes the route in the fields.
+   *
+   * This used to be an effect that watched pickup/destination and called
+   * setSession(null) when they moved — derived state maintained by hand, which
+   * is both a cascading render and a frame in which the old comparison is
+   * still on screen under the new addresses. Comparing the two keys during
+   * render answers the same question before anything is painted.
+   */
+  const sessionIsCurrent =
+    session !== null && comparedKey !== null && routeKey !== null && comparedKey === routeKey;
+  const activeSession = sessionIsCurrent ? session : null;
 
   // Auto-compare when both places newly selected (not already compared)
   useEffect(() => {
     if (!hydrated || !canSubmit || !routeKey || loading) return;
     if (lastComparedKey.current === routeKey) return;
-    if (swapComparePending.current || recentComparePending.current) return;
     const t = window.setTimeout(() => {
       void compare(false);
     }, 280);
@@ -576,26 +554,16 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   const swapAndCompare = () => {
     if (!pickup && !destination) return;
-    swapComparePending.current = Boolean(pickup && destination);
     setSwapping(true);
     window.setTimeout(() => setSwapping(false), 450);
-    setPickup(destination);
-    setDestination(pickup);
+    const swappedPickup = destination;
+    const swappedDestination = pickup;
+    setPickup(swappedPickup);
+    setDestination(swappedDestination);
+    if (swappedPickup && swappedDestination) {
+      void compare(false, { pickup: swappedPickup, destination: swappedDestination });
+    }
   };
-
-  useEffect(() => {
-    if (!swapComparePending.current) return;
-    if (!pickup || !destination) return;
-    swapComparePending.current = false;
-    void compare(false);
-  }, [pickup, destination, compare]);
-
-  useEffect(() => {
-    if (!recentComparePending.current) return;
-    if (!pickup || !destination) return;
-    recentComparePending.current = false;
-    void compare(false);
-  }, [pickup, destination, compare]);
 
   // Persist mode/filter in URL without re-fetch
   useEffect(() => {
@@ -639,9 +607,9 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     const title = "RideLens comparison";
     const routeLine = `${pickup.label.split(",")[0]} → ${destination.label.split(",")[0]}`;
     let text = routeLine;
-    if (session?.quotes?.length) {
+    if (activeSession?.quotes?.length) {
       const best = rankQuotes(
-        session.quotes,
+        activeSession.quotes,
         mode,
         filter === "standard" || filter === "ALL" ? filter : [filter as "XL" | "PREMIUM" | "TAXI"],
       )[0];
@@ -676,7 +644,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     }
   };
 
-  const showMobileCompare = canSubmit && !loading && !(session && comparedKey === routeKey);
+  const showMobileCompare = canSubmit && !loading && !(activeSession && comparedKey === routeKey);
   const compareReadyPulse = showMobileCompare;
 
   const timeEyebrow = useMemo(() => {
@@ -801,7 +769,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             <button type="button" className="ghost" onClick={useCurrentLocation}>
               {locating ? "Cancel locating" : "Use current location"}
             </button>
-            {pickup || destination || session ? (
+            {pickup || destination || activeSession ? (
               <button
                 type="button"
                 className="ghost"
@@ -877,9 +845,12 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
                   <button
                     type="button"
                     onClick={() => {
-                      recentComparePending.current = true;
                       setPickup(r.pickup);
                       setDestination(r.destination);
+                      void compare(false, {
+                        pickup: r.pickup,
+                        destination: r.destination,
+                      });
                     }}
                   >
                     <span>{r.pickup.label.split(",")[0]}</span>
@@ -928,10 +899,10 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         ) : null}
       </section>
 
-      {session || loading || (pickup && destination && !error) ? (
+      {activeSession || loading || (pickup && destination && !error) ? (
         <QuoteResults
-          session={session}
-          loading={loading || Boolean(pickup && destination && !session && !error)}
+          session={activeSession}
+          loading={loading || Boolean(pickup && destination && !activeSession && !error)}
           mode={mode}
           filter={filter}
           onModeChange={setMode}
