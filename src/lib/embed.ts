@@ -24,12 +24,33 @@ export const EMBED_PARENTS = [
   "https://labs.johnjayasankar.com",
 ] as const;
 
+/**
+ * In development the loopback origins join the list, so the embed can be driven
+ * against a portfolio running on this machine. Without it the browser refuses
+ * the frame and there is no way to see the thing working before it ships.
+ * `process.env.NODE_ENV` is "production" in every deployed build.
+ */
+const DEV_PARENTS =
+  process.env.NODE_ENV === "production"
+    ? []
+    : ["http://localhost:*", "http://127.0.0.1:*"];
+
 /** The `frame-ancestors` value, and the whole of the enforced policy. */
-export const FRAME_ANCESTORS = ["'self'", ...EMBED_PARENTS].join(" ");
+export const FRAME_ANCESTORS = ["'self'", ...EMBED_PARENTS, ...DEV_PARENTS].join(" ");
 export const FRAMING_CSP = `frame-ancestors ${FRAME_ANCESTORS}`;
 
 /** What the embedding page listens for. Kept the same across the products. */
 export const EMBED_READY = "embed:ready";
+
+/** A loopback parent, so the embed can be driven locally while it is built. */
+function isLoopback(origin: string): boolean {
+  try {
+    const h = new URL(origin).hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Tell a parent that framed us that we rendered. Does nothing outside a frame,
@@ -44,6 +65,7 @@ export function announceEmbed(win: Window = window): void {
   } catch {
     return;
   }
-  if (!(EMBED_PARENTS as readonly string[]).includes(parentOrigin)) return;
+  if (!(EMBED_PARENTS as readonly string[]).includes(parentOrigin) && !isLoopback(parentOrigin))
+    return;
   win.parent.postMessage({ type: EMBED_READY, from: win.location.origin }, parentOrigin);
 }

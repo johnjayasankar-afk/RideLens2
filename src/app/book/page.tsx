@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProviderLogo } from "@/components/provider-logo";
+import { ReportActual } from "@/components/report-actual";
 import { isAllowedBookingUrl } from "@/lib/booking/allowed-hosts";
 import type { ProviderId } from "@/lib/domain/types";
 
@@ -185,6 +186,8 @@ function BookInner() {
           {copied ? "Addresses copied" : "Copy addresses"}
         </button>
       ) : null}
+
+      {trip ? <ReportActual sessionId={sessionId} quoteId={quoteId} predicted={price} /> : null}
 
       <button type="button" className="ghost book-back" onClick={goBack}>
         Back to comparison

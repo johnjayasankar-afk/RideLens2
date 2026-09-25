@@ -2510,3 +2510,57 @@ h1.admin-title {
   background: var(--rose-bg);
   color: var(--rose-t);
 }
+
+/* ── Reported actuals ─────────────────────────────────────────────────────
+   The question that makes the model measurable. Quiet by design: a rider who
+   skips it loses nothing. */
+.actual-form {
+  margin: 22px 0 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #e6e1d6);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--mint-bg) 35%, transparent);
+}
+.actual-form label {
+  display: block;
+  font-size: 13.5px;
+}
+.actual-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.actual-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.actual-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #e6e1d6);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font: 500 15px/1 var(--font-body);
+}
+.actual-row button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+.actual-error {
+  margin: 8px 0 0;
+  color: var(--rose-t);
+  font-size: 12.5px;
+}
+.actual-done {
+  margin: 22px 0 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--mint-bg);
+  color: var(--mint-t);
+  font-size: 13.5px;
+}

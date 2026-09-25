@@ -7,6 +7,7 @@
  */
 import { writeFile } from "node:fs/promises";
 
+import { loadReportedActuals } from "@/lib/eval/actuals";
 import { loadCorpus, scorable } from "@/lib/eval/corpus";
 import { coverageAdjustedSharpness, evaluate, MIN_SAMPLES } from "@/lib/eval/metrics";
 import { renderReport } from "@/lib/eval/report";
@@ -16,6 +17,16 @@ const OUT = "docs/CALIBRATION.md";
 
 async function main() {
   const corpus = await loadCorpus(CORPUS);
+
+  /*
+   * Rider reports join the file-based corpus. They are the only source that
+   * scales, and the only one reflecting what people actually book; the fixture
+   * file holds manually collected rows and published aggregates.
+   */
+  const reported = await loadReportedActuals();
+  for (const r of reported) corpus.records.push(r);
+  corpus.byOrigin.reported += reported.length;
+
   const records = scorable(corpus);
   const report = evaluate(records);
 
