@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Error({
   reset,
 }: {
@@ -20,9 +22,9 @@ export default function Error({
         <button type="button" className="primary" onClick={reset}>
           Try again
         </button>
-        <a className="ghost" href="/">
+        <Link className="ghost" href="/">
           Back to comparison
-        </a>
+        </Link>
       </div>
     </div>
   );

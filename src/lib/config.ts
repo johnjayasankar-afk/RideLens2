@@ -120,3 +120,70 @@ export function assertNoSilentMocks(env: AppEnv = getEnv()): void {
     throw new Error("RIDELENS_ALLOW_FIXTURES must never be enabled in production.");
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Deployment origin                                                          */
+/* -------------------------------------------------------------------------- */
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
+
+/** Add a scheme if the value is a bare host, drop any path, drop trailing "/". */
+function normalizeOrigin(value: string): string {
+  const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    return "http://localhost:3000";
+  }
+}
+
+export function isLoopbackOrigin(origin: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname.toLowerCase());
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The origin this deployment is actually reachable at.
+ *
+ * `metadataBase` used to be `NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3000"`.
+ * That variable is not set in the deployment, so `og:image` and
+ * `twitter:image` resolved against the loopback address and every share card
+ * on every platform was broken. `robots.ts` carried the same fallback and
+ * `sitemap.ts` a third, different one — three files disagreeing about where
+ * the site lives.
+ *
+ * Resolution order, most explicit first. `VERCEL_URL` is per-deployment and
+ * changes on every push, so it ranks below the stable production hostname and
+ * exists only so preview builds produce working absolute URLs.
+ */
+export function appOrigin(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed) return normalizeOrigin(trimmed);
+  }
+  return "http://localhost:3000";
+}
+
+/**
+ * A production build that can only describe itself by loopback is misconfigured:
+ * its sitemap, robots and social cards would all point at the reader's own
+ * machine. Fail loudly at build time rather than shipping broken metadata.
+ */
+export function assertPublicOrigin(env: AppEnv = getEnv()): void {
+  if (env.NODE_ENV !== "production") return;
+  const origin = appOrigin();
+  if (isLoopbackOrigin(origin)) {
+    throw new Error(
+      `appOrigin() resolved to ${origin} in production. Set NEXT_PUBLIC_APP_URL ` +
+        `(or deploy where VERCEL_PROJECT_PRODUCTION_URL is set) so absolute URLs are reachable.`,
+    );
+  }
+}

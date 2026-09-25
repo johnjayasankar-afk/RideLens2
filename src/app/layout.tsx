@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
+import { appOrigin } from "@/lib/config";
 import "./globals.css";
 import "./labs-glass.css";
 import { LabsUI } from "@/components/labs-ui";
@@ -23,7 +24,7 @@ const mono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3000"),
+  metadataBase: new URL(appOrigin()),
   title: "RideLens · Every ride. One comparison.",
   description:
     "Compare Uber, Lyft, Empower, and Curb with live routing, marketplace-aware fare estimates, and pickup waits — before you book.",
@@ -58,7 +59,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
-        <a className="skip-link" href="/#main">
+        <a className="skip-link" href="#main">
           Skip to comparison
         </a>
         <header className="topbar">

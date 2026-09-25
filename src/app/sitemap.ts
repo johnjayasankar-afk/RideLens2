@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
 
+import { appOrigin } from "@/lib/config";
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = (process.env.NEXT_PUBLIC_APP_URL || "https://ridelens.app").replace(/\/$/, "");
+  const base = appOrigin();
   return [
     {
       url: base,

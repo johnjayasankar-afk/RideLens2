@@ -1,5 +1,5 @@
 import type { CanonicalLocation } from "@/lib/domain/types";
-import { getEnv } from "@/lib/config";
+import { appOrigin, getEnv } from "@/lib/config";
 
 export interface PlaceSuggestion {
   placeId: string;
@@ -21,7 +21,10 @@ function nominatimHeaders(): HeadersInit {
   const env = getEnv();
   return {
     Accept: "application/json",
-    "User-Agent": `RideLens/1.0 (${env.NEXT_PUBLIC_APP_URL})`,
+    // Nominatim's usage policy requires a contactable identifier; a loopback
+    // address identifies nobody, so this follows the same resolution as the
+    // rest of the app rather than the raw env var.
+    "User-Agent": `RideLens/1.0 (+${appOrigin()})`,
   };
 }
 
