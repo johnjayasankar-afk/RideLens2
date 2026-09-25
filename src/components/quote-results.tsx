@@ -19,6 +19,8 @@ import { categoryLabel } from "@/lib/domain/taxonomy";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
+import { ProvenanceChip } from "@/components/provenance-chip";
+import { provenanceOf } from "@/lib/domain/provenance";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
 
@@ -315,6 +317,7 @@ function QuoteCard({
         <div className="quote-identity">
           <p className="provider">{providerLabel(quote)}</p>
           <p className="product">{quote.providerProductName}</p>
+          <ProvenanceChip quote={quote} />
         </div>
         <div className="price-block">
           <p className="price" aria-label={`Price ${formatQuotePrice(quote)}`}>
@@ -454,6 +457,15 @@ export function QuoteResults({
   }, [session?.quotes, mode, filter]);
 
   const hero = ranked[0];
+
+  /*
+   * True when nothing on screen came from a provider.
+   *
+   * Asked of the quotes themselves rather than of configuration: a source can
+   * be enabled and still return nothing, and the sentence has to describe what
+   * the reader is actually looking at.
+   */
+  const everythingModeled = ranked.length > 0 && ranked.every((q) => provenanceOf(q).modeled);
   const rest = ranked.slice(1);
 
   const returnTo = useMemo(() => {
@@ -660,6 +672,16 @@ export function QuoteResults({
             loading={mapLoading && !mapRoute}
           />
         </div>
+      ) : null}
+
+      {everythingModeled ? (
+        <p className="modeled-notice" data-testid="modeled-notice">
+          <span aria-hidden>◆</span>
+          <span>
+            <strong>Modeled from published rates and live traffic</strong> — not a live provider
+            quote. Every figure below is computed here; confirm in the app before you ride.
+          </span>
+        </p>
       ) : null}
 
       <div className="results-toolbar sticky-bar">

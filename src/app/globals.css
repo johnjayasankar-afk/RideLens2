@@ -2114,3 +2114,233 @@ h1.admin-title {
     animation: none !important;
   }
 }
+
+/* ── Provenance ───────────────────────────────────────────────────────────
+   Where a number came from: three words on the card, the arithmetic behind
+   it one tap away. Uses the house palette — amber for "this is a model",
+   sky for a licensed feed, mint for a fare somebody has actually promised. */
+
+.prov-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--mint-bg);
+  color: var(--mint-t);
+  font: 600 11.5px/1 var(--font-body);
+  letter-spacing: 0.012em;
+  cursor: pointer;
+  transition:
+    background 160ms var(--ease),
+    border-color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+.prov-chip:hover {
+  border-color: currentColor;
+}
+.prov-chip:active {
+  transform: scale(0.97);
+}
+.prov-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+/* A modeled number is the one a reader is most likely to mistake for a quote,
+   so it gets the colour that means "check this". */
+.prov-modeled_estimate,
+.prov-fixture {
+  background: var(--amber-bg);
+  color: var(--amber-t);
+}
+.prov-market_range {
+  background: var(--sky-bg);
+  color: var(--sky-t);
+}
+.prov-partner_upfront,
+.prov-partner_estimate {
+  background: var(--mint-bg);
+  color: var(--mint-t);
+}
+
+.prov-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: end center;
+  padding: 0;
+  background: rgb(15 23 18 / 0.34);
+  animation: prov-fade 180ms var(--ease) both;
+}
+@media (min-width: 640px) {
+  .prov-scrim {
+    place-items: center;
+    padding: 24px;
+  }
+}
+
+.prov-sheet {
+  width: min(560px, 100%);
+  max-height: min(86vh, 760px);
+  overflow-y: auto;
+  padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
+  background: var(--porcelain, #f8f6f1);
+  border: 1px solid var(--line, #e6e1d6);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 -12px 44px rgb(15 23 18 / 0.18);
+  animation: prov-rise 260ms var(--ease) both;
+}
+@media (min-width: 640px) {
+  .prov-sheet {
+    border-radius: var(--radius);
+    box-shadow: 0 18px 52px rgb(15 23 18 / 0.22);
+  }
+}
+
+.prov-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.prov-sheet-head h2 {
+  margin: 2px 0 0;
+  font-size: 19px;
+  letter-spacing: -0.018em;
+}
+.prov-summary {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.prov-market {
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--sky-bg);
+  color: var(--sky-t);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.prov-rows {
+  margin: 4px 0 14px;
+  border-top: 1px solid var(--line, #e6e1d6);
+}
+.prov-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line, #e6e1d6);
+}
+.prov-row dt {
+  font-size: 13px;
+  color: var(--ink);
+}
+.prov-row dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.prov-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+/* A multiplier is not money and should not read like it. */
+.prov-row-factor dd,
+.prov-row-note dd {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.prov-band {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.prov-warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-bg);
+  color: var(--amber-t);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@keyframes prov-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes prov-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prov-scrim,
+  .prov-sheet {
+    animation: none;
+  }
+}
+
+/* ── Modeled-source notice (1.2) ──────────────────────────────────────────
+   Persistent and undismissable while the only live source is the model. Not
+   a warning banner — a caption, in the sky tone the rest of the app uses for
+   context rather than alarm. */
+.modeled-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border: 1px solid var(--sky-bg);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--sky-bg) 62%, transparent);
+  color: var(--sky-t);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.modeled-notice strong {
+  font-weight: 650;
+}
+
+/* The reconciliation line: what the card actually shows. */
+.prov-row-total {
+  border-bottom: none;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 2px solid var(--forest);
+}
+.prov-row-total dt {
+  font-weight: 650;
+}
+.prov-row-total dd {
+  font-size: 15px;
+  font-weight: 700;
+}
