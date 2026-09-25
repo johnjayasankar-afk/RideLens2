@@ -1,0 +1,29 @@
+{
+  "_note": "Hypothetical partner shape. Empower publishes no public API; fare_is_guaranteed is deliberately absent so the adapter must emit ESTIMATE.",
+  "quotes": [
+    {
+      "tier_id": "everyday",
+      "tier_name": "Everyday",
+      "currency": "USD",
+      "estimated_fare": 23.84,
+      "eta_seconds": 240,
+      "available": true
+    },
+    {
+      "tier_id": "everyday-xl",
+      "tier_name": "Everyday XL",
+      "currency": "USD",
+      "estimated_fare": 33.5,
+      "eta_seconds": 420,
+      "available": true
+    },
+    {
+      "tier_id": "premium",
+      "tier_name": "Premium",
+      "currency": "USD",
+      "estimated_fare": 41.2,
+      "eta_seconds": 600,
+      "available": false
+    }
+  ]
+}

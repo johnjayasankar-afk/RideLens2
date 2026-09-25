@@ -1,0 +1,17 @@
+{
+  "eta_estimates": [
+    { "ride_type": "lyft", "display_name": "Lyft", "eta_seconds": 300, "is_valid_estimate": true },
+    {
+      "ride_type": "lyft_xl",
+      "display_name": "Lyft XL",
+      "eta_seconds": 480,
+      "is_valid_estimate": true
+    },
+    {
+      "ride_type": "lyft_luxsuv",
+      "display_name": "Black SUV",
+      "eta_seconds": 720,
+      "is_valid_estimate": true
+    }
+  ]
+}

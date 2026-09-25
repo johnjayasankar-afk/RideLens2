@@ -1,0 +1,66 @@
+{
+  "_note": "Expected-shape Obi Intelligent Pricing response. UNVERIFIED against vendor docs — see src/sources/obi/schema.ts. Exercises point prices, ranges, an explicit upfront flag, an unavailable product and an unmapped provider.",
+  "request_id": "req_synthetic_0001",
+  "timestamp": "2026-09-03T18:22:40.000Z",
+  "results": [
+    {
+      "provider": "uber",
+      "product_id": "a1111c8c-c720-46c3-8534-2fcdd730040d",
+      "product_name": "UberX",
+      "price": { "low": 27.0, "high": 34.0, "currency": "USD" },
+      "pickup_eta_seconds": 120,
+      "trip_duration_seconds": 1980,
+      "distance_meters": 26570,
+      "available": true,
+      "surge_multiplier": 1.0
+    },
+    {
+      "provider": "lyft",
+      "product_id": "lyft",
+      "product_name": "Lyft",
+      "price": { "low": 27.84, "high": 31.99, "currency": "USD" },
+      "pickup_eta_seconds": 300,
+      "available": true
+    },
+    {
+      "provider": "empower",
+      "product_id": "everyday",
+      "product_name": "Everyday",
+      "price": { "amount": 23.84, "currency": "USD", "type": "ESTIMATE" },
+      "pickup_eta_seconds": 240,
+      "available": true
+    },
+    {
+      "provider": "curb",
+      "product_id": "taxi-upfront",
+      "product_name": "Curb Taxi",
+      "price": { "amount": "28.40", "currency": "USD", "is_upfront": true },
+      "pickup_eta_seconds": 180,
+      "available": true,
+      "expires_at": "2026-09-03T18:27:40.000Z"
+    },
+    {
+      "provider": "waymo",
+      "product_id": "waymo-one",
+      "product_name": "Waymo One",
+      "price": { "amount": 31.5, "currency": "USD", "is_upfront": true },
+      "pickup_eta_seconds": 420,
+      "available": true
+    },
+    {
+      "provider": "uber",
+      "product_id": "5f41547d-805d-4207-a297-51c571cf2a8c",
+      "product_name": "Uber Green",
+      "price": { "low": 27.0, "high": 33.0, "currency": "USD" },
+      "pickup_eta_seconds": 900,
+      "available": false
+    },
+    {
+      "provider": "someunmappedbrand",
+      "product_id": "x1",
+      "product_name": "Mystery Ride",
+      "price": { "amount": 19.0, "currency": "USD" },
+      "available": true
+    }
+  ]
+}

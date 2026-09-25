@@ -1,0 +1,38 @@
+{
+  "_note": "Hypothetical Curb Flow partner shape. Mixes an upfront market and a metered market on purpose.",
+  "generated_at": "2026-09-03T18:22:41.000Z",
+  "quotes": [
+    {
+      "service_id": "taxi-upfront",
+      "service_name": "Curb Taxi",
+      "currency": "USD",
+      "upfront_fare": "28.40",
+      "fare_type": "UPFRONT",
+      "pickup_eta_seconds": 180,
+      "trip_duration_seconds": 1860,
+      "distance_meters": 26400,
+      "available": true,
+      "expires_at": "2026-09-03T18:27:41.000Z"
+    },
+    {
+      "service_id": "taxi-metered",
+      "service_name": "Curb Metered Taxi",
+      "currency": "USD",
+      "estimated_fare_min": 26.0,
+      "estimated_fare_max": 33.5,
+      "fare_type": "METERED",
+      "pickup_eta_seconds": 240,
+      "available": true
+    },
+    {
+      "service_id": "taxi-wav",
+      "service_name": "Curb Accessible Taxi",
+      "currency": "USD",
+      "upfront_fare": 28.4,
+      "fare_type": "UPFRONT",
+      "pickup_eta_seconds": 600,
+      "available": true,
+      "wheelchair_accessible": true
+    }
+  ]
+}

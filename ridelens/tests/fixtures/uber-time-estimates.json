@@ -1,0 +1,24 @@
+{
+  "times": [
+    {
+      "product_id": "a1111c8c-c720-46c3-8534-2fcdd730040d",
+      "display_name": "UberX",
+      "estimate": 120
+    },
+    {
+      "product_id": "821415d8-3bd5-4e27-9604-194e4359a449",
+      "display_name": "UberXL",
+      "estimate": 360
+    },
+    {
+      "product_id": "d4abaae7-f4d6-4152-91cc-77523e8165a4",
+      "display_name": "Black",
+      "estimate": 540
+    },
+    {
+      "product_id": "5f41547d-805d-4207-a297-51c571cf2a8c",
+      "display_name": "Green",
+      "estimate": 900
+    }
+  ]
+}

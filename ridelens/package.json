@@ -1,0 +1,54 @@
+{
+  "name": "ridelens",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write \"**/*.{ts,tsx,css,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project=unit --project=integration",
+    "test:unit": "vitest run --project=unit",
+    "test:integration": "vitest run --project=integration",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test && playwright test -c playwright.live.config.ts",
+    "test:e2e:fixtures": "playwright test",
+    "test:e2e:live": "playwright test -c playwright.live.config.ts",
+    "verify:live": "tsx scripts/live-verify.ts",
+    "verify:all": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.58.0",
+    "@upstash/redis": "1.35.0",
+    "maplibre-gl": "5.6.0",
+    "next": "^16.3.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "4.1.12",
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "@vitejs/plugin-react": "5.0.2",
+    "axe-core": "4.13.0",
+    "eslint": "9.34.0",
+    "eslint-config-next": "^16.3.4",
+    "jsdom": "26.1.0",
+    "prettier": "3.6.2",
+    "tailwindcss": "4.1.12",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.7"
+  },
+  "description": "RideLens — Every ride. One live comparison."
+}

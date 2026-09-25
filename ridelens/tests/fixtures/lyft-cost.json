@@ -1,0 +1,48 @@
+{
+  "_note": "Sanitized, production-shaped GET /v1/cost response. Money is already in MINOR units.",
+  "cost_estimates": [
+    {
+      "ride_type": "lyft",
+      "display_name": "Lyft",
+      "currency": "USD",
+      "estimated_cost_cents_min": 2784,
+      "estimated_cost_cents_max": 3199,
+      "estimated_duration_seconds": 1902,
+      "estimated_distance_miles": 16.42,
+      "primetime_percentage": "0%",
+      "is_valid_estimate": true
+    },
+    {
+      "ride_type": "lyft_xl",
+      "display_name": "Lyft XL",
+      "currency": "USD",
+      "estimated_cost_cents_min": 3890,
+      "estimated_cost_cents_max": 4470,
+      "estimated_duration_seconds": 1902,
+      "estimated_distance_miles": 16.42,
+      "primetime_percentage": "0%",
+      "is_valid_estimate": true
+    },
+    {
+      "ride_type": "lyft_luxsuv",
+      "display_name": "Black SUV",
+      "currency": "USD",
+      "estimated_cost_cents_min": 9120,
+      "estimated_cost_cents_max": 10480,
+      "estimated_duration_seconds": 1902,
+      "estimated_distance_miles": 16.42,
+      "primetime_percentage": "25%",
+      "is_valid_estimate": true
+    },
+    {
+      "ride_type": "lyft_plus",
+      "display_name": "Extra Comfort",
+      "currency": "USD",
+      "estimated_cost_cents_min": 3410,
+      "estimated_cost_cents_max": 3910,
+      "estimated_duration_seconds": 1902,
+      "estimated_distance_miles": 16.42,
+      "is_valid_estimate": false
+    }
+  ]
+}
