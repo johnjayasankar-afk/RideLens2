@@ -10,6 +10,12 @@ import type {
 } from "@/lib/domain/types";
 import { formatQuotePrice, formatMoneyMinor, quoteTypeLabel } from "@/lib/domain/money";
 import {
+  CONFIDENCE_STEPS,
+  confidenceLabel,
+  confidenceStep,
+  decayedConfidence,
+} from "@/lib/domain/confidence";
+import {
   freshnessLabel,
   freshnessStatus,
   computeFreshness,
@@ -139,15 +145,44 @@ function marketTone(mult: number | undefined): {
   return { label: "Market steady", className: "market-chip is-calm" };
 }
 
-function confidenceFromBand(band: number | undefined): {
-  label: string;
-  pct: number;
-} | null {
-  if (band == null) return null;
-  // tighter band → higher confidence (2% → ~90, 3.5% → ~70)
-  const pct = Math.max(55, Math.min(94, Math.round(100 - band * 900)));
-  const label = pct >= 85 ? "High confidence" : pct >= 72 ? "Solid estimate" : "Wider band";
-  return { label, pct };
+/*
+ * This used to publish a percentage — `100 - band * 900`, clamped to 55–94 —
+ * beside a filling bar. It was a rescaled band width wearing the costume of a
+ * calibrated probability, and docs/CALIBRATION.md says plainly that the model
+ * has never been scored against a real fare. There is nothing to put a number
+ * on yet, so it shows the class, what the class rests on, and what age has
+ * already cost it.
+ */
+function ConfidenceMeter({ quote, now }: { quote: NormalizedQuote; now: Date }) {
+  const decayed = decayedConfidence(quote, now);
+  const band = quote.metadata?.band as number | undefined;
+  const on = confidenceStep(decayed.class);
+
+  return (
+    <div
+      className="confidence"
+      data-decayed={decayed.steps > 0 ? "true" : "false"}
+      aria-label={`${confidenceLabel(decayed.class)}${decayed.reason ? `. ${decayed.reason}` : ""}`}
+    >
+      <div className="confidence-meta">
+        <span>{confidenceLabel(decayed.class)}</span>
+        {decayed.steps > 0 ? (
+          <span className="muted">was {confidenceLabel(decayed.base).toLowerCase()}</span>
+        ) : null}
+      </div>
+      <div className="confidence-steps" aria-hidden>
+        {Array.from({ length: CONFIDENCE_STEPS }, (_, i) => (
+          <span key={i} className="confidence-step" data-on={i < on ? "true" : "false"} />
+        ))}
+      </div>
+      {band != null ? (
+        <p className="confidence-basis">
+          Based on a ±{(band * 100).toFixed(1)}% band, not on measured accuracy.
+        </p>
+      ) : null}
+      {decayed.reason ? <p className="confidence-reason">{decayed.reason}</p> : null}
+    </div>
+  );
 }
 
 function humanizeFeeKey(key: string): string {
@@ -172,7 +207,7 @@ function humanizeFeeKey(key: string): string {
   return map[key] || key.replace(/_/g, " ");
 }
 
-function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
+function FeeBreakdown({ quote, now }: { quote: NormalizedQuote; now: Date }) {
   const fees = quote.metadata?.feeBreakdown as Record<string, number> | undefined;
   const center = quote.metadata?.centerFare as number | undefined;
   const band = quote.metadata?.band as number | undefined;
@@ -183,7 +218,6 @@ function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
   const tone = marketTone(demandMult);
   const anchor = quote.metadata?.anchorId as string | undefined;
   const methodology = quote.metadata?.methodology as string | undefined;
-  const confidence = confidenceFromBand(band);
 
   if (!fees && center == null) return null;
 
@@ -197,17 +231,7 @@ function FeeBreakdown({ quote }: { quote: NormalizedQuote }) {
             {band != null ? <span className="muted"> (±{(band * 100).toFixed(1)}%)</span> : null}
           </p>
         ) : null}
-        {confidence ? (
-          <div className="confidence" aria-label={confidence.label}>
-            <div className="confidence-meta">
-              <span>{confidence.label}</span>
-              <span className="muted">{confidence.pct}%</span>
-            </div>
-            <div className="confidence-track">
-              <span className="confidence-fill" style={{ width: `${confidence.pct}%` }} />
-            </div>
-          </div>
-        ) : null}
+        <ConfidenceMeter quote={quote} now={now} />
         {city ? <p className="muted">Market: {city}</p> : null}
         {demand ? (
           <p className="muted">
@@ -376,7 +400,7 @@ function QuoteCard({
         </p>
       ) : null}
 
-      <FeeBreakdown quote={quote} />
+      <FeeBreakdown quote={quote} now={now} />
 
       <a className="book book-with-logo" href={bookHref}>
         <ProviderLogo provider={quote.provider} size={24} />

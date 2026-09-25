@@ -12,3 +12,8 @@ node_modules/
 # imports resolved to nothing and the Vercel typecheck failed with ~770 errors.
 ridelens/
 RideLens.zip
+
+# Playwright output
+test-results/
+playwright-report/
+blob-report/

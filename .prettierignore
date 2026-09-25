@@ -8,3 +8,7 @@ coverage/
 node_modules/
 ridelens/
 *.zip
+
+test-results/
+playwright-report/
+blob-report/

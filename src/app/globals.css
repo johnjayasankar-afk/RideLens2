@@ -1584,17 +1584,36 @@ h1.brand {
   justify-content: space-between;
   font-size: 12px;
 }
-.confidence-track {
+/*
+ * Four segments, not a bar. A continuous fill invites reading a percentage
+ * off it, and confidence here is a four-valued class rather than a measured
+ * probability — see src/lib/domain/confidence.ts.
+ */
+.confidence-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+.confidence-step {
   height: 6px;
-  overflow: hidden;
   border-radius: 999px;
   background: var(--ground-2);
 }
-.confidence-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+.confidence-step[data-on="true"] {
   background: linear-gradient(90deg, var(--mint-3), var(--forest-2));
+}
+.confidence[data-decayed="true"] .confidence-step[data-on="true"] {
+  background: var(--amber);
+}
+.confidence-reason {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--amber-t);
+}
+.confidence-basis {
+  font-size: 12px;
+  color: var(--ink-3);
 }
 
 .book {
