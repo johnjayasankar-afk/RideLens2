@@ -75,6 +75,14 @@ html {
   background: var(--ground);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /*
+   * WCAG 2.2 SC 2.4.11, Focus Not Obscured. The topbar is sticky, and
+   * scrolling a focused control into view would otherwise tuck it underneath
+   * — the element has focus, the ring is drawn, and the keyboard user cannot
+   * see any of it. `.results` carried a scroll-margin for the jump after a
+   * comparison; this covers every other scroll-into-view, focus included.
+   */
+  scroll-padding-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 8px);
 }
 body {
   min-height: 100%;
@@ -817,6 +825,13 @@ h1.brand {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  /*
+   * WCAG 2.2 SC 2.5.8 wants 24x24. The box is drawn at 16 and the label is
+   * the actual target, so the row carries the hit area and the control still
+   * looks the size it did. The user-agent exception does not apply here
+   * because the size below is authored rather than inherited.
+   */
+  min-height: 24px;
   font-size: 13px;
   color: var(--ink-2);
   cursor: pointer;

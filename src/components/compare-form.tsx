@@ -665,9 +665,11 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   return (
     <div className="compare-root">
-      <section className="hero-panel">
+      <section className="hero-panel" aria-labelledby="brand-heading">
         <p className="eyebrow">{timeEyebrow}</p>
-        <h1 className="brand">RideLens</h1>
+        <h1 className="brand" id="brand-heading">
+          RideLens
+        </h1>
         <p className="lede muted">
           Live roads. Real rate cards. A marketplace that moves with the clock — before you open
           Uber, Lyft, Empower, or Curb.
@@ -682,7 +684,10 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
           ))}
         </div>
 
-        <div className="route-form">
+        <h2 id="route-heading" className="sr-only">
+          Your route
+        </h2>
+        <div className="route-form" aria-labelledby="route-heading">
           <div className="route-stack">
             <div className="route-rail" aria-hidden>
               <span className="route-dot from" />

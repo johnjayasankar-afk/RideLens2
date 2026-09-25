@@ -682,7 +682,14 @@ export function QuoteResults({
       : "";
 
   return (
-    <section className={`results${loading ? " is-loading" : ""}`} ref={resultsTopRef}>
+    <section
+      className={`results${loading ? " is-loading" : ""}`}
+      ref={resultsTopRef}
+      aria-labelledby="results-heading"
+    >
+      <h2 id="results-heading" className="sr-only">
+        Ride options
+      </h2>
       <p className="sr-only" aria-live="polite">
         {resultsAnnounce}
       </p>
@@ -748,7 +755,15 @@ export function QuoteResults({
       ) : null}
 
       {hero ? (
-        <div className="market-pulse" role="status" aria-live="polite">
+        /*
+         * Not a live region, deliberately. This contains a countdown driven
+         * by `now`, which re-renders every second, so role="status" made a
+         * screen reader announce the whole strip — tone, multiplier, weather
+         * and all — once per second for as long as the page was open. The
+         * information here is ambient and repeated on the cards; the
+         * meaningful summary is announced by the sr-only region below.
+         */
+        <div className="market-pulse">
           <span className={marketTone(hero.metadata?.demandCenter as number | undefined).className}>
             {marketTone(hero.metadata?.demandCenter as number | undefined).label}
           </span>
