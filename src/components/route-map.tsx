@@ -64,6 +64,31 @@ const STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const CSS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
 const JS_HREF = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 
+/**
+ * Subresource integrity for the two files above.
+ *
+ * This injects 800 KB of third-party JavaScript from a public CDN and runs it
+ * on this origin. Without an integrity hash, anything unpkg serves for that
+ * path executes with full access to the page, and the CSP that permits it is
+ * report-only — so nothing was checking anything.
+ *
+ * Derived from the npm registry's own published tarball for
+ * maplibre-gl@4.7.1, whose dist.integrity
+ * (sha512-lgL7XpIwsgICiL82ITplfS7IGwrB1OJIw/pCvprDp2dhmSSEBgmPzYRvwYYYvJGJD7fxUv1Tvpih4nZ6VrLuaA==)
+ * was verified against the downloaded bytes, which are in turn byte-identical
+ * to what unpkg serves. The hashes are therefore pinned to what npm published
+ * rather than to whatever a CDN happened to return on the day.
+ *
+ * Bumping the version means regenerating both, the same way:
+ *   npm view maplibre-gl@<v> dist.integrity   # verify the tarball first
+ *   openssl dgst -sha384 -binary <file> | openssl base64 -A
+ *
+ * A mismatch makes the browser refuse the file and the map degrades to its
+ * fallback, which is the correct outcome.
+ */
+const CSS_SRI = "sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V";
+const JS_SRI = "sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj";
+
 let loader: Promise<MapLibreGlobal> | null = null;
 
 function loadMapLibre(): Promise<MapLibreGlobal> {
@@ -78,6 +103,9 @@ function loadMapLibre(): Promise<MapLibreGlobal> {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = CSS_HREF;
+      link.integrity = CSS_SRI;
+      // Required for the browser to check integrity on a cross-origin file.
+      link.crossOrigin = "anonymous";
       document.head.appendChild(link);
     }
     const existing = document.querySelector(`script[src="${JS_HREF}"]`) as HTMLScriptElement | null;
@@ -92,6 +120,8 @@ function loadMapLibre(): Promise<MapLibreGlobal> {
     }
     const script = document.createElement("script");
     script.src = JS_HREF;
+    script.integrity = JS_SRI;
+    script.crossOrigin = "anonymous";
     script.async = true;
     script.onload = done;
     script.onerror = () => reject(new Error("MapLibre script error"));
