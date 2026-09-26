@@ -31,39 +31,51 @@ import type { QuoteSession } from "@/lib/domain/types";
 const KEY = "ridelens.trips";
 
 /*
- * A serialised snapshot, kept so getSnapshot can return a stable reference.
- * Returning a fresh array each call makes useSyncExternalStore re-render
- * forever, which is the classic way to hang a page with this hook.
+ * The log, held in memory.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The first version re-read localStorage inside getSnapshot. React calls   │
+ * │ that on every render to decide whether the store moved, the results      │
+ * │ panel re-renders once a second off the freshness clock, and              │
+ * │ localStorage.getItem is synchronous main-thread work. Scrolling fell     │
+ * │ from ~120 fps to ~60, with a sixth of all frames over 33ms. The perf     │
+ * │ budget caught it; nothing on screen looked wrong.                        │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * So the store is read from disk exactly twice: once lazily on first use, and
+ * again whenever another tab writes. Our own writes update the cache
+ * directly. getSnapshot is then a field read, which is what
+ * useSyncExternalStore expects it to be — and it returns a stable reference,
+ * without which the hook re-renders forever.
  */
-let cachedRaw: string | null = null;
-let cachedValue: TripRecord[] = [];
 
 const EMPTY: TripRecord[] = [];
 
-function readRaw(): string | null {
+let cache: TripRecord[] | null = null;
+
+function readFromStorage(): TripRecord[] {
+  let raw: string | null = null;
   try {
-    return window.localStorage.getItem(KEY);
+    raw = window.localStorage.getItem(KEY);
   } catch {
-    return null;
+    /* Private window with site data blocked. No history, not an error. */
+    return EMPTY;
+  }
+  if (!raw) return EMPTY;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return EMPTY;
+    const pruned = pruneRecords(parsed as TripRecord[]);
+    return pruned.length > 0 ? pruned : EMPTY;
+  } catch {
+    /* Corrupt or hand-edited. Treat it as no history rather than throwing. */
+    return EMPTY;
   }
 }
 
 function getSnapshot(): TripRecord[] {
-  const raw = readRaw();
-  if (raw === cachedRaw) return cachedValue;
-  cachedRaw = raw;
-  if (!raw) {
-    cachedValue = EMPTY;
-    return cachedValue;
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    cachedValue = Array.isArray(parsed) ? pruneRecords(parsed as TripRecord[]) : EMPTY;
-  } catch {
-    /* Corrupt or hand-edited. Treat it as no history rather than throwing. */
-    cachedValue = EMPTY;
-  }
-  return cachedValue;
+  if (cache === null) cache = readFromStorage();
+  return cache;
 }
 
 /** The log does not exist on the server, and an empty one renders as nothing. */
@@ -73,26 +85,36 @@ function getServerSnapshot(): TripRecord[] {
 
 const listeners = new Set<() => void>();
 
+function notify(): void {
+  for (const l of listeners) l();
+}
+
+/* `storage` fires in *other* tabs only, so same-tab writes notify by hand. */
+function onStorage(e: StorageEvent): void {
+  if (e.key !== null && e.key !== KEY) return;
+  cache = readFromStorage();
+  notify();
+}
+
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
-  /* `storage` fires in *other* tabs, so same-tab writes notify by hand. */
-  window.addEventListener("storage", onChange);
+  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
+    if (listeners.size === 0) window.removeEventListener("storage", onStorage);
   };
 }
 
 function write(records: TripRecord[]): void {
+  /* The cache moves first, so the session stays coherent even when nothing
+     can be persisted — a full quota should not lose the current comparison. */
+  cache = records;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(records));
   } catch {
-    /* Quota, or a blocked store. The in-memory snapshot below still updates,
-       so the session stays coherent even when nothing can be persisted. */
+    /* Quota, or a blocked store. */
   }
-  cachedRaw = readRaw();
-  cachedValue = records;
-  for (const l of listeners) l();
+  notify();
 }
 
 export interface TripLog {
@@ -123,14 +145,13 @@ export function useTripLog(): TripLog {
   }, []);
 
   const clear = useCallback(() => {
+    cache = EMPTY;
     try {
       window.localStorage.removeItem(KEY);
     } catch {
       /* Nothing to remove, or nothing that can be. */
     }
-    cachedRaw = null;
-    cachedValue = EMPTY;
-    for (const l of listeners) l();
+    notify();
   }, []);
 
   return { records, record, forgetRoute, clear };

@@ -24,6 +24,28 @@ When enabled later: PKCE, state verification, encrypted token storage, refresh, 
 - Minimize logging; prefer coarse diagnostics
 - Authenticated recent searches deletable via profile controls (schema ready)
 
+### The trip log
+
+`src/lib/history/trip-log.ts` keeps a record of comparisons the rider has
+run — the two endpoints, the date, and the price bands each provider showed.
+It is the only place RideLens stores anything about a person's movements, so
+the constraints are worth stating plainly:
+
+- **It never leaves the device.** There is no endpoint that accepts it, no
+  identifier attached to it, and nothing in the client that sends it. It lives
+  in `localStorage` under `ridelens.trips`.
+- **It is not needed.** Every read is wrapped; a blocked or cleared store
+  renders as no history rather than as an error. Nothing on the page depends
+  on it existing.
+- **It expires.** Records older than `MAX_AGE_DAYS` are dropped on every read,
+  not merely hidden, and the log is capped at `MAX_RECORDS`.
+- **It is deletable without a menu.** Each route carries a forget control in
+  the list itself, and `useTripLog().clear()` removes the key outright.
+
+A list of somebody's regular movements is exactly the kind of thing people
+assume has been uploaded. The UI says "On this device only" next to it rather
+than waiting to be asked.
+
 ## Rate limiting
 
 Server-side sliding window on compare / places / book. Client timers are not trusted.

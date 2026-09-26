@@ -8,11 +8,52 @@
  * run — they are white on a dark-green gradient — and a report with four
  * standing false positives is a report nobody reads.
  */
+import { readFileSync } from "node:fs";
+
 import { chromium } from "@playwright/test";
 
 const URL =
   process.argv[2] ??
   "http://localhost:3000/?from=40.7549,-73.9840,A&to=40.6413,-73.7781,B&filter=ALL";
+
+/*
+ * A seeded trip log, so the surfaces that only exist once somebody has a
+ * history get audited too. Without this, `.route-standing` and
+ * `.recent-trip` are invisible to every run and could drift to unreadable
+ * without anything noticing.
+ *
+ * The model version is read from the source rather than copied, so a bump
+ * cannot silently stop the seed from pooling.
+ */
+const MODEL_VERSION = (readFileSync("src/lib/sources/ratecard/model-params.ts", "utf8").match(
+  /MODEL_VERSION\s*=\s*"([^"]+)"/,
+) ?? [])[1];
+
+const SEED_TRIPS = Array.from({ length: 4 }, (_, i) => ({
+  v: 1,
+  id: `audit-${i}`,
+  at: new Date(Date.now() - (i + 1) * 3_600_000).toISOString(),
+  from: { lat: 40.7549, lng: -73.984, label: "Midtown" },
+  to: { lat: 40.6413, lng: -73.7781, label: "JFK Airport" },
+  routeKey: "40.755,-73.984>40.641,-73.778",
+  miles: 17.4,
+  minutes: 38,
+  quotes: [
+    {
+      provider: "uber",
+      product: "UberX",
+      lowMinor: 4200 + i * 600,
+      highMinor: 4800 + i * 600,
+      type: "ESTIMATE_RANGE",
+      confidence: "MEDIUM",
+    },
+  ],
+  modelVersion: MODEL_VERSION,
+}));
+
+/* Which surfaces actually rendered. An audit that silently measured an
+   empty page reports zero failures and means nothing. */
+const seen = new Set();
 
 const AUDIT = () => {
   const lum = (c) => {
@@ -93,10 +134,33 @@ for (const os of ["light", "dark"]) {
     });
     const page = await ctx.newPage();
     if (choice) await page.addInitScript((c) => localStorage.setItem("ridelens.theme", c), choice);
-    await page.goto(URL, { waitUntil: "load" });
-    await page.waitForSelector(".quote-card", { timeout: 30000 }).catch(() => {});
-    await page.waitForTimeout(3500);
-    const fails = await page.evaluate(AUDIT);
+    await page.addInitScript((trips) => {
+      try {
+        localStorage.setItem("ridelens.trips", JSON.stringify(trips));
+      } catch {
+        /* A blocked store just means the history surfaces stay hidden. */
+      }
+    }, SEED_TRIPS);
+
+    let fails = [];
+    for (const [url, wait] of [
+      [URL, ".quote-card"],
+      /* `URL` above shadows the global constructor, so the origin is sliced. */
+      [URL.slice(0, URL.indexOf("/", URL.indexOf("//") + 2)) + "/", ".recent-trip"],
+    ]) {
+      await page.goto(url, { waitUntil: "load" });
+      const appeared = await page
+        .waitForSelector(wait, { timeout: 30000 })
+        .then(() => true)
+        .catch(() => false);
+      if (appeared) seen.add(wait);
+      /* The standing only exists once the log has enough of this route, so it
+         is noted where it is found rather than waited for. */
+      if (await page.$(".route-standing")) seen.add(".route-standing");
+      await page.waitForTimeout(url === URL ? 3500 : 900);
+      fails = fails.concat(await page.evaluate(AUDIT));
+    }
+
     total += fails.length;
     const label = `OS ${os.padEnd(5)} choice ${String(choice ?? "system").padEnd(6)}`;
     console.log(`${label} ${fails.length === 0 ? "ok" : `${fails.length} FAIL`}`);
@@ -108,6 +172,18 @@ for (const os of ["light", "dark"]) {
 }
 
 await browser.close();
+
+const EXPECTED = [".quote-card", ".recent-trip", ".route-standing"];
+const missing = EXPECTED.filter((sel) => !seen.has(sel));
+if (missing.length > 0) {
+  console.error(
+    `\nNothing matched ${missing.join(", ")} in any run. The audit measured a page that` +
+      ` never rendered the surface it exists to check — fix the seed or the selector` +
+      ` rather than trusting the zero above.`,
+  );
+  process.exit(1);
+}
+
 if (total > 0) {
   console.error(`\n${total} contrast failures. Pick the token for the job — see docs/A11Y.md.`);
   process.exit(1);
