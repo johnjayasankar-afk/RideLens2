@@ -61,7 +61,127 @@
     sans-serif;
   --font-display: var(--font-body);
   --font-mono: var(--font-mono-loaded), "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Tokens that exist so dark mode has somewhere to change them. Each one
+     was a hardcoded literal that would have stayed light. */
+  --on-accent: #fff;
+  --hairline: var(--hairline);
+  --btn-1: var(--btn-1);
+  --btn-2: var(--btn-2);
+  --dot: rgba(28, 51, 38, 0.06);
+  --dot-size: 22px;
+  --map-style: "positron";
   color-scheme: light;
+}
+
+/* ══ Dark ═══════════════════════════════════════════════════════════════════
+   A rideshare app is used at night, so this is not a nicety.
+
+   Written twice on purpose: once for the system preference, once for an
+   explicit choice. The system rule is scoped so that picking light *keeps*
+   light on a machine set to dark — an override that the OS can overrule is
+   not an override.
+
+   Values are re-derived rather than inverted. Mint and amber at their light
+   values are unreadable on a dark ground; the surfaces go deep forest rather
+   than grey, and the accents lift until they carry their own weight. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ground: #0d1511;
+    --ground-2: #121c16;
+    --paper: #17231c;
+    --ink: #e9f1ec;
+    --ink-2: #a8b6ad;
+    --ink-3: #8b9a91;
+    --line: rgba(190, 226, 205, 0.11);
+    --line-2: rgba(190, 226, 205, 0.2);
+    --soft: rgba(190, 226, 205, 0.06);
+
+    --forest: #0a120d;
+    /* The accent has to climb a long way: #1f6b4a on #0d1511 is unreadable. */
+    --forest-2: #4cc492;
+    --forest-3: #06100a;
+
+    --mint: #1b4c39;
+    --mint-2: #2f8f68;
+    --mint-3: #45dba6;
+    --mint-bg: #10352a;
+    --mint-t: #88f0c6;
+
+    --amber: #e8a24a;
+    --amber-bg: #3a2a12;
+    --amber-t: #f6cf95;
+
+    --sky: #6aa6e0;
+    --sky-bg: #142639;
+    --sky-t: #abd0f4;
+
+    --rose: #e07a66;
+    --rose-bg: #3a1c17;
+    --rose-t: #f6b3a5;
+
+    --on-accent: #08130d;
+    --hairline: #24312a;
+    --btn-1: #50caa0;
+    --btn-2: #2f9d76;
+    --dot: rgba(190, 226, 205, 0.05);
+    --map-style: "dark-matter";
+
+    /* Shadow does almost nothing on a dark ground; depth comes from the
+       lighter card surface instead, so these only deepen the separation. */
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --sh-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
+    --sh-3: 0 1px 2px rgba(0, 0, 0, 0.5), 0 30px 64px -28px rgba(0, 0, 0, 0.8);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ground: #0d1511;
+  --ground-2: #121c16;
+  --paper: #17231c;
+  --ink: #e9f1ec;
+  --ink-2: #a8b6ad;
+  --ink-3: #8b9a91;
+  --line: rgba(190, 226, 205, 0.11);
+  --line-2: rgba(190, 226, 205, 0.2);
+  --soft: rgba(190, 226, 205, 0.06);
+
+  --forest: #0a120d;
+  --forest-2: #4cc492;
+  --forest-3: #06100a;
+
+  --mint: #1b4c39;
+  --mint-2: #2f8f68;
+  --mint-3: #45dba6;
+  --mint-bg: #10352a;
+  --mint-t: #88f0c6;
+
+  --amber: #e8a24a;
+  --amber-bg: #3a2a12;
+  --amber-t: #f6cf95;
+
+  --sky: #6aa6e0;
+  --sky-bg: #142639;
+  --sky-t: #abd0f4;
+
+  --rose: #e07a66;
+  --rose-bg: #3a1c17;
+  --rose-t: #f6b3a5;
+
+  --on-accent: #08130d;
+  --hairline: #24312a;
+  --btn-1: #50caa0;
+  --btn-2: #2f9d76;
+  --dot: rgba(190, 226, 205, 0.05);
+  --map-style: "dark-matter";
+
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sh-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
+  --sh-3: 0 1px 2px rgba(0, 0, 0, 0.5), 0 30px 64px -28px rgba(0, 0, 0, 0.8);
 }
 
 /* ---- base ------------------------------------------------------------------ */
@@ -182,7 +302,7 @@ code {
   background:
     linear-gradient(rgba(240, 247, 243, 0.7), rgba(240, 247, 243, 0.7)) 50% 50% / 7px 1.6px
       no-repeat,
-    linear-gradient(180deg, #2c5a42 0%, #1a3a2a 100%);
+    linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 3px 8px -3px rgba(15, 42, 29, 0.55);
@@ -332,7 +452,7 @@ code {
   font: 500 16px/1 var(--font-body);
   letter-spacing: -0.012em;
   color: #fff;
-  background: linear-gradient(180deg, #2c5a42 0%, #1a3a2a 100%);
+  background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 1px 2px rgba(15, 23, 18, 0.25),
@@ -364,7 +484,7 @@ code {
   font: 500 13.5px/1 var(--font-body);
   letter-spacing: -0.01em;
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line-2),
     0 1px 2px rgba(28, 51, 38, 0.06);
@@ -393,7 +513,7 @@ code {
   letter-spacing: -0.01em;
   white-space: nowrap;
   color: var(--ink-2);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
   cursor: pointer;
   transition:
@@ -423,7 +543,7 @@ code {
   font: 500 11.5px/1 var(--font-mono);
   letter-spacing: 0;
   color: var(--ink-2);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     inset 0 0 0 1px var(--line),
     0 1px 0 var(--line);
@@ -519,7 +639,7 @@ h1.brand {
   border-radius: 999px;
   font: 500 13.5px/1 var(--font-body);
   color: var(--ink-2);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .provider-strip-item .provider-mark-img {
@@ -537,7 +657,7 @@ h1.brand {
   column-gap: 12px;
   padding: 14px 14px 14px 12px;
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-2);
@@ -564,7 +684,7 @@ h1.brand {
   height: 10px;
   border: 2px solid var(--forest-2);
   border-radius: 50%;
-  background: #fff;
+  background: var(--paper);
 }
 .route-dot.to {
   border-color: var(--sky-t);
@@ -634,7 +754,7 @@ h1.brand {
 .place-field input:focus,
 .place-field.is-open input {
   outline: none;
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     inset 0 0 0 1px var(--forest-2),
     0 0 0 4px rgba(52, 211, 153, 0.18);
@@ -703,7 +823,7 @@ h1.brand {
   overflow: auto;
   list-style: none;
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-3);
@@ -778,7 +898,7 @@ h1.brand {
 }
 .quick-target .chip.active {
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 1px 2px rgba(28, 51, 38, 0.1),
     0 6px 14px -8px rgba(28, 51, 38, 0.35);
@@ -927,7 +1047,7 @@ h1.brand {
   font-size: 13.5px;
   text-align: left;
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
   cursor: pointer;
   transition:
@@ -952,7 +1072,7 @@ h1.brand {
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink-2);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .banner p {
@@ -1007,7 +1127,7 @@ h1.brand {
   padding: var(--space-4);
   overflow: hidden;
   border-radius: 24px;
-  background-color: #fff;
+  background-color: var(--paper);
   background-image:
     radial-gradient(circle at 1px 1px, rgba(28, 51, 38, 0.08) 1px, transparent 1.3px),
     radial-gradient(560px 280px at 18% 0%, rgba(167, 243, 208, 0.42), transparent 70%);
@@ -1195,7 +1315,7 @@ h1.brand {
   overflow: hidden;
   border: 0 !important;
   border-radius: 12px !important;
-  background: #fff !important;
+  background: var(--paper) !important;
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-1) !important;
@@ -1253,7 +1373,7 @@ h1.brand {
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--ink-2);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .market-pulse .mono {
@@ -1337,7 +1457,7 @@ h1.brand {
   min-width: 0;
   padding: 13px 14px 12px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .stat-value {
@@ -1379,7 +1499,7 @@ h1.brand {
   gap: 12px;
   padding: 16px;
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .sk-head {
@@ -1422,7 +1542,7 @@ h1.brand {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .pending-logos {
@@ -1463,7 +1583,7 @@ h1.brand {
   gap: 14px;
   padding: 16px 18px;
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-1);
@@ -1728,7 +1848,7 @@ h1.brand {
 }
 .book.book-secondary {
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line-2),
     0 1px 2px rgba(28, 51, 38, 0.06);
@@ -1741,7 +1861,7 @@ h1.brand {
   padding: 14px 16px;
   border-radius: var(--radius-sm);
   font-size: 14px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .failures ul {
@@ -1848,7 +1968,7 @@ h1.admin-title {
   margin: 0;
   padding: 18px;
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-1);
@@ -1904,7 +2024,7 @@ h1.admin-title {
 .admin-stat {
   padding: 14px 14px 13px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .admin-stat-label {
@@ -1924,7 +2044,7 @@ h1.admin-title {
   border-radius: var(--radius-sm);
   font-size: 13px;
   line-height: 1.45;
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .admin-sessions {
@@ -1946,7 +2066,7 @@ h1.admin-title {
   gap: 6px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .admin-source-head,
@@ -2290,7 +2410,7 @@ h1.admin-title {
   overflow-y: auto;
   padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
   background: var(--porcelain, #f8f6f1);
-  border: 1px solid var(--line, #e6e1d6);
+  border: 1px solid var(--line, var(--hairline));
   border-radius: var(--radius) var(--radius) 0 0;
   box-shadow: 0 -12px 44px rgb(15 23 18 / 0.18);
   animation: prov-rise 260ms var(--ease) both;
@@ -2332,7 +2452,7 @@ h1.admin-title {
 
 .prov-rows {
   margin: 4px 0 14px;
-  border-top: 1px solid var(--line, #e6e1d6);
+  border-top: 1px solid var(--line, var(--hairline));
 }
 .prov-row {
   display: flex;
@@ -2340,7 +2460,7 @@ h1.admin-title {
   justify-content: space-between;
   gap: 18px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--line, #e6e1d6);
+  border-bottom: 1px solid var(--line, var(--hairline));
 }
 .prov-row dt {
   font-size: 13px;
@@ -2502,7 +2622,7 @@ h1.admin-title {
 }
 .source-row {
   padding: 16px 0;
-  border-top: 1px solid var(--line, #e6e1d6);
+  border-top: 1px solid var(--line, var(--hairline));
 }
 .source-head {
   display: flex;
@@ -2565,7 +2685,7 @@ h1.admin-title {
   justify-content: space-between;
   gap: 16px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--line, #e6e1d6);
+  border-bottom: 1px solid var(--line, var(--hairline));
   font-size: 13.5px;
 }
 .coverage-list strong {
@@ -2615,7 +2735,7 @@ h1.admin-title {
 .actual-form {
   margin: 22px 0 8px;
   padding: 14px 16px;
-  border: 1px solid var(--line, #e6e1d6);
+  border: 1px solid var(--line, var(--hairline));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--mint-bg) 35%, transparent);
 }
@@ -2640,9 +2760,9 @@ h1.admin-title {
   min-width: 0;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--line, #e6e1d6);
+  border: 1px solid var(--line, var(--hairline));
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
   font: 500 15px/1 var(--font-body);
 }
 .actual-row button {
@@ -3060,5 +3180,30 @@ h1.admin-title {
   }
   .axis-scale {
     padding-left: 83px;
+  }
+}
+
+/* The scheme switch. Compact in the topbar; the word only appears where
+   there is room for it. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+}
+.theme-glyph {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-2);
+}
+.theme-label {
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .theme-label {
+    /* Not display:none — the accessible name lives on the button's
+       aria-label, and the glyph alone is enough once space is tight. */
+    display: none;
   }
 }

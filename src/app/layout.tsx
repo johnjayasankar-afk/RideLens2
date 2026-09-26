@@ -4,7 +4,10 @@ import localFont from "next/font/local";
 import { appOrigin } from "@/lib/config";
 import "./globals.css";
 import "./labs-glass.css";
+import { headers } from "next/headers";
+
 import { LabsUI } from "@/components/labs-ui";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { EmbedAnnounce } from "@/components/embed-announce";
 
 // The Labs family type, self-hosted: Inter for reading, IBM Plex Mono for keys and figures.
@@ -50,15 +53,54 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#f8f6f1",
+  /*
+   * One per scheme, so the browser chrome matches the page instead of
+   * sitting as a bright band above a dark app.
+   */
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f6f1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1511" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  /* Set per request by src/proxy.ts, and named in the enforcing policy. */
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    /*
+     * data-labs-glass="auto" lets the glass material follow the scheme; it
+     * has had a dark variant all along and nothing was switching it on.
+     *
+     * suppressHydrationWarning because the script below writes data-theme
+     * onto this element before React sees it — which is the point.
+     */
+    <html
+      lang="en"
+      className={`${sans.variable} ${mono.variable}`}
+      data-labs-glass="auto"
+      suppressHydrationWarning
+    >
+      <head>
+        {/*
+          Replays the stored scheme before first paint.
+          ─────────────────────────────────────────────
+          Without it a reader who chose dark gets a white flash on every
+          navigation, which is the one thing dark mode exists to prevent.
+          It has to be inline and synchronous — anything deferred paints
+          first. Carries the nonce from src/proxy.ts, so the enforcing CSP
+          does not have to make an exception for it.
+        */}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("ridelens.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
         <a className="skip-link" href="#main">
           Skip to comparison
@@ -72,6 +114,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <nav className="topnav" aria-label="Primary">
               <Link href="/#main">Compare</Link>
               <Link href="/sources">Sources</Link>
+              <ThemeToggle />
             </nav>
           </div>
         </header>
