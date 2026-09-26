@@ -17,6 +17,7 @@ import {
   midpoint,
   position,
   summarise,
+  summariseWait,
   type ActualRecord,
 } from "@/lib/eval/metrics";
 
@@ -212,5 +213,63 @@ describe("slices", () => {
       ...many(10, () => ({ modelVersion: "b" })),
     ]);
     expect(report.modelVersions).toEqual(["a", "b"]);
+  });
+});
+
+describe("the wait model, scored on its own", () => {
+  const withWait = (n: number, f: (i: number) => Partial<ActualRecord>) =>
+    many(n, (i) => ({
+      predictedWaitLowSeconds: 120,
+      predictedWaitHighSeconds: 240,
+      actualWaitSeconds: 180,
+      ...f(i),
+    }));
+
+  it("withholds until there are enough rides carrying a wait", () => {
+    const s = summariseWait(withWait(MIN_SAMPLES - 1, () => ({})));
+    expect(s.n).toBe(MIN_SAMPLES - 1);
+    expect(s.coverage).toBeNull();
+  });
+
+  /*
+   * Most reports will be a fare and nothing else. A row without a wait must
+   * not count toward the wait sample, or the threshold is met by rides that
+   * said nothing about waiting.
+   */
+  it("ignores rides that reported no wait", () => {
+    const records = [...withWait(25, () => ({})), ...many(40, () => ({}))];
+    expect(summariseWait(records).n).toBe(25);
+  });
+
+  it("needs both the prediction and the outcome to score a ride", () => {
+    const halfRecorded = withWait(25, () => ({ predictedWaitHighSeconds: undefined }));
+    expect(summariseWait(halfRecorded).coverage).toBeNull();
+  });
+
+  it("counts how often the car arrived inside the band", () => {
+    const s = summariseWait(withWait(40, (i) => ({ actualWaitSeconds: i % 2 === 0 ? 180 : 900 })));
+    expect(s.coverage).toBe(0.5);
+  });
+
+  it("is positive when riders waited longer than we said", () => {
+    const s = summariseWait(withWait(25, () => ({ actualWaitSeconds: 300 })));
+    // Midpoint 180s, actual 300s.
+    expect(s.biasSeconds).toBe(120);
+    expect(s.meanAbsErrorSeconds).toBe(120);
+  });
+
+  it("reports absolute error separately, because bias cancels", () => {
+    const s = summariseWait(withWait(30, (i) => ({ actualWaitSeconds: i % 2 === 0 ? 60 : 300 })));
+    expect(s.biasSeconds).toBe(0);
+    expect(s.meanAbsErrorSeconds).toBe(120);
+  });
+
+  it("reports the band width, so a hedged wait is visible", () => {
+    expect(summariseWait(withWait(25, () => ({}))).meanWidthSeconds).toBe(120);
+  });
+
+  it("appears in the report whether or not it can be scored", () => {
+    expect(evaluate(many(25, () => ({}))).wait.n).toBe(0);
+    expect(evaluate(withWait(25, () => ({}))).wait.coverage).toBe(1);
   });
 });

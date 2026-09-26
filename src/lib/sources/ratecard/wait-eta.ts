@@ -1,18 +1,26 @@
 /**
- * Pickup wait (ETA) model calibrated to public NYC / major-metro wait studies
- * and App-reported typical ranges — not a live provider ETA API.
+ * How long until a car arrives — modeled, never measured.
  *
- * Anchors (standard vehicles, dense urban):
- * - Uber NYC: ~2–4 min typical (AMNY / TLC WAV contrast studies cite ~2.3 min Uber std)
- * - Lyft NYC: ~3–5 min typical (~4.1 min std in same study)
- * - Curb taxi NYC: ~3–4 min midtown; longer outer (~3.2 min inaccessible taxi avg)
- * - Empower: smaller NYC fleet → systematically longer than UberX (~+40–70%)
- * - Manhattan late-night weeknight: ~4–7 min (RideWise 2026)
- * - Outer boroughs late-night: ~8–15 min
- * - Platform avg wait vs volume: high-volume zones cluster under ~5.5 min
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This file used to open with a list of anchors attributed to named        │
+ * │ studies: "AMNY / TLC WAV contrast studies cite ~2.3 min Uber std",       │
+ * │ "Manhattan late-night weeknight: ~4–7 min (RideWise 2026)". Nothing in   │
+ * │ this repository evidences any of them, and a citation nobody can follow  │
+ * │ is worse than none — it lends a guess the authority of a measurement,    │
+ * │ in a product whose entire argument is that it does not do that.          │
+ * │                                                                          │
+ * │ The numbers are kept, because they are the right order of magnitude and  │
+ * │ something has to be shown. They have moved to MODEL_PARAMS.wait, behind  │
+ * │ MODEL_VERSION, labelled as priors fitted to nothing. `npm run eval`      │
+ * │ scores them now, so they can stop being priors.                          │
+ * └──────────────────────────────────────────────────────────────────────────┘
  *
- * Live Lyft/Curb partner ETA fields always override this model when present.
+ * Every wait this produces is a band, not a time, and the provenance sheet
+ * says which of the two it is. A live partner ETA, when one exists, always
+ * overrides this.
  */
+
+import { MODEL_PARAMS } from "./model-params";
 
 export type WaitProvider = "uber" | "lyft" | "empower" | "curb" | "other";
 export type WaitCategory =
@@ -39,8 +47,10 @@ export type WaitEstimate = {
   density: "core" | "inner" | "outer" | "suburb" | "airport" | "sparse";
   /** Human label for methodology tooltip. */
   label: string;
-  /** Confidence that this is near live-app ETA. */
+  /** Confidence that this is near live-app ETA. Never "high" — it is a model. */
   confidence: "medium" | "low";
+  /** Which parameter set produced this, so an eval record can be attributed. */
+  modelVersion: string;
 };
 
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -109,38 +119,11 @@ export function pickupDensity(lat: number, lng: number): WaitEstimate["density"]
   return "sparse";
 }
 
-/** Base minutes by density for UberX-class (largest fleet). */
-const UBER_BASE_MIN: Record<WaitEstimate["density"], number> = {
-  core: 2.4,
-  inner: 3.6,
-  outer: 5.8,
-  suburb: 8.5,
-  airport: 7.5,
-  sparse: 12,
-};
-
-/** Relative fleet / matching multipliers vs UberX-class. */
-const PROVIDER_MULT: Record<WaitProvider, number> = {
-  uber: 1.0,
-  lyft: 1.18, // typically a bit longer than Uber in NYC studies
-  curb: 1.05, // dense yellow cab supply in core; worse outer
-  empower: 1.55, // smaller TLC fleet
-  other: 1.25,
-};
-
-const CATEGORY_MULT: Partial<Record<WaitCategory, number>> = {
-  STANDARD: 1,
-  ECONOMY: 1.05,
-  TAXI: 1,
-  XL: 1.35,
-  PREMIUM: 1.22,
-  LUXURY: 1.55,
-  WAV: 1.9,
-  ACCESSIBLE: 1.9,
-  SHARED: 1.15,
-  EV: 1.08,
-  OTHER: 1.2,
-};
+/* All three tables live in MODEL_PARAMS so a change bumps MODEL_VERSION and
+   the eval corpus can be split at the boundary. */
+const UBER_BASE_MIN = MODEL_PARAMS.wait.baseMinutes;
+const PROVIDER_MULT = MODEL_PARAMS.wait.provider;
+const CATEGORY_MULT = MODEL_PARAMS.wait.category;
 
 function todFactor(now: Date, density: WaitEstimate["density"]): number {
   const hour = now.getHours();
@@ -234,9 +217,9 @@ export function estimatePickupWait(input: {
   }
 
   // Soft cap / floor so we don't claim absurd live ETAs
-  if (density === "core") minutes = Math.min(minutes, 14);
-  if (density === "sparse") minutes = Math.min(minutes, 28);
-  minutes = Math.max(1.5, minutes);
+  if (density === "core") minutes = Math.min(minutes, MODEL_PARAMS.wait.capMinutes.core);
+  if (density === "sparse") minutes = Math.min(minutes, MODEL_PARAMS.wait.capMinutes.sparse);
+  minutes = Math.max(MODEL_PARAMS.wait.floorMinutes, minutes);
 
   const mid = roundWaitMinutes(minutes);
   // Live apps usually show a single minute or tight band (±1)
@@ -253,6 +236,7 @@ export function estimatePickupWait(input: {
       input.marketplaceWaitBoost && input.marketplaceWaitBoost > 1.05 ? ", elevated demand" : ""
     })`,
     confidence: density === "sparse" || density === "suburb" ? "low" : "medium",
+    modelVersion: MODEL_PARAMS.version,
   };
 }
 

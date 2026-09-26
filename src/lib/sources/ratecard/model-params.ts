@@ -61,6 +61,21 @@ export interface DemandParams {
   nightlifeHeat: number;
 }
 
+export type WaitDensity = "core" | "inner" | "outer" | "suburb" | "airport" | "sparse";
+
+export interface WaitParams {
+  /** Base pickup wait in minutes for an UberX-class car, by supply density. */
+  baseMinutes: Record<WaitDensity, number>;
+  /** Fleet and matching multipliers relative to UberX-class. */
+  provider: Record<string, number>;
+  /** Vehicle-class multipliers — a WAV waits far longer than a sedan. */
+  category: Record<string, number>;
+  /** Ceiling by density, so the model never claims an absurd live ETA. */
+  capMinutes: { core: number; sparse: number };
+  /** Floor, for the same reason in the other direction. */
+  floorMinutes: number;
+}
+
 export interface WeatherParams {
   /** Surge lift at the top of the modeled precipitation scale. */
   maxLift: number;
@@ -72,6 +87,7 @@ export interface ModelParams {
   band: BandParams;
   demand: DemandParams;
   weather: WeatherParams;
+  wait: WaitParams;
 }
 
 /**
@@ -106,5 +122,51 @@ export const MODEL_PARAMS: ModelParams = {
   },
   weather: {
     maxLift: 0.18,
+  },
+  /*
+   * ── On where these came from ──────────────────────────────────────────
+   *
+   * wait-eta.ts opened with a list of anchors attributed to named studies —
+   * "AMNY / TLC WAV contrast studies", "RideWise 2026". Nothing in this
+   * repository evidences any of them, and a citation nobody can follow is
+   * worse than no citation: it lends a guess the authority of a measurement.
+   *
+   * They are recorded here as what they are. Plausible priors, of the right
+   * order of magnitude, fitted to nothing. `npm run eval` can now score the
+   * wait model, and when it has 20 samples these should move to whatever the
+   * data says. Until then the product calls this a modeled wait everywhere
+   * it appears, which is the only honest thing available.
+   */
+  wait: {
+    baseMinutes: {
+      core: 2.4,
+      inner: 3.6,
+      outer: 5.8,
+      suburb: 8.5,
+      airport: 7.5,
+      sparse: 12,
+    },
+    provider: {
+      uber: 1.0,
+      lyft: 1.18,
+      curb: 1.05,
+      empower: 1.55,
+      other: 1.25,
+    },
+    category: {
+      STANDARD: 1,
+      ECONOMY: 1.05,
+      TAXI: 1,
+      XL: 1.35,
+      PREMIUM: 1.22,
+      LUXURY: 1.55,
+      WAV: 1.9,
+      ACCESSIBLE: 1.9,
+      SHARED: 1.15,
+      EV: 1.08,
+      OTHER: 1.2,
+    },
+    capMinutes: { core: 14, sparse: 28 },
+    floorMinutes: 1.5,
   },
 };

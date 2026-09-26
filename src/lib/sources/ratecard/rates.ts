@@ -69,7 +69,15 @@ export const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
   "colorado-springs": { lat: 38.8339, lng: -104.8214 },
 };
 
-/** 2026 calibrated overrides — RideWise / published rate cards (Sep 2026). */
+/*
+ * 2026 calibrated overrides.
+ *
+ * Attributed to "RideWise / published rate cards (Sep 2026)". The published
+ * cards are checkable; RideWise is cited throughout this directory and
+ * nothing in the repository says what it is — no URL, no document, no date
+ * beyond the year. Treat these as unverified until someone can produce the
+ * source, and see docs/DATA_SOURCE_MATRIX.md.
+ */
 const RATE_OVERRIDES: Record<string, Partial<CityRate>> = {
   "new-york": {
     name: "New York, NY",

@@ -38,8 +38,9 @@ available without a partner feed.
    `modelVersion` and `predictedAt` from the provenance sheet — it shows all
    four.
 3. Within **five minutes**, open each provider app for the same two points and
-   record the fare it offers. Five minutes matters: the marketplace model ticks
-   on ~55 seconds, and an hour-old comparison is a different question.
+   record the fare it offers **and the pickup ETA it shows**. Five minutes
+   matters: the marketplace model ticks on ~55 seconds, and an hour-old
+   comparison is a different question.
 4. Record the fare _before_ any promotion, credit or subscription discount. Those
    are account-specific and RideLens has never claimed to model them.
 5. If a provider will not quote — no cars, outside the service area — record
@@ -94,6 +95,39 @@ for context and `scorable()` excludes them from coverage and bias.
 
 `collectedVia` is free text and exists so a strange row can be traced back to
 how it was taken.
+
+## The wait is worth recording too
+
+Every card shows a pickup wait, and until recently nothing could say whether
+any of them was right. The parameters behind it were attributed to studies
+nobody could locate; they are now recorded in `MODEL_PARAMS.wait` as what they
+actually are — priors fitted to nothing.
+
+Three optional fields turn a row into a wait observation as well as a fare
+one:
+
+```json
+{
+  "predictedWaitLowSeconds": 120,
+  "predictedWaitHighSeconds": 240,
+  "actualWaitSeconds": 300
+}
+```
+
+`actualWaitSeconds` can be either of two things, and which one matters:
+
+- **The ETA the provider's own app showed** at the same moment. Easy, and it
+  scores the model against what a rider would have seen when deciding.
+- **The wait that actually happened**, from request to the car arriving.
+  Harder, and the only one that scores the model against reality.
+
+Record which in `collectedVia`. Do not mix them in one round without saying
+so — the first is systematically optimistic, because a provider's ETA is
+itself a prediction.
+
+Rows without these fields are fine and will be the majority. They score the
+fare and are simply skipped by the wait summary, which keeps its own sample
+count and withholds below 20 like everything else.
 
 ## Running it
 

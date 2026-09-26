@@ -29,6 +29,45 @@ function summaryRow(label: string, s: Summary): string {
 const HEAD =
   "| Slice | n | Coverage | Mean width | Bias | MAE |\n| --- | ---: | ---: | ---: | ---: | ---: |";
 
+/**
+ * The wait model, scored on its own.
+ *
+ * Kept apart from price rather than averaged in. A model can be good at one
+ * and useless at the other, and a blended number would hide exactly that —
+ * which matters here because the wait model is the less examined of the two:
+ * its parameters were attributed to studies nobody could locate, and nothing
+ * had ever checked a predicted wait against a real one.
+ */
+function waitSection(report: EvalReport): string[] {
+  const w = report.wait;
+  const lines = ["## Pickup wait", ""];
+
+  if (w.coverage === null) {
+    lines.push(
+      `Withheld — **${w.n}** of ${MIN_SAMPLES} rides carried both a predicted wait band ` +
+        "and the wait that actually happened.",
+      "",
+      "Every card shows a wait. None of them has ever been checked. " +
+        "`docs/COLLECTION_PROTOCOL.md` says how to start.",
+      "",
+    );
+    return lines;
+  }
+
+  const mins = (sec: number) => (sec / 60).toFixed(1);
+  lines.push(
+    "| Rides | Inside the band | Bias | Mean error | Mean band width |",
+    "| ---: | ---: | ---: | ---: | ---: |",
+    `| ${w.n} | ${(w.coverage * 100).toFixed(1)}% | ${w.biasSeconds! > 0 ? "+" : ""}` +
+      `${mins(w.biasSeconds!)} min | ${mins(w.meanAbsErrorSeconds!)} min | ` +
+      `${mins(w.meanWidthSeconds!)} min |`,
+    "",
+    "Positive bias means riders waited longer than we said.",
+    "",
+  );
+  return lines;
+}
+
 export function renderReport(report: EvalReport, corpus: Corpus): string {
   const { overall } = report;
   const enough = overall.n >= MIN_SAMPLES;
@@ -99,6 +138,8 @@ export function renderReport(report: EvalReport, corpus: Corpus): string {
   }
 
   lines.push("## Overall", "", HEAD, summaryRow("All", overall), "");
+
+  lines.push(...waitSection(report));
 
   if (report.curve.length > 0) {
     lines.push(

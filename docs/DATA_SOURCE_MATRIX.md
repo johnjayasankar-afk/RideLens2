@@ -31,3 +31,33 @@ Verified: **2026-09-03**. Do not treat memory as authority — re-verify before 
 | Mapbox                  | Preferred when `LOCATION_PROVIDER=mapbox` + token                        |
 | Google Places/Geocoding | When `LOCATION_PROVIDER=google` + key                                    |
 | Nominatim (OSM)         | Default fallback with RideLens User-Agent; rate-limited; honest labeling |
+
+## An unverified citation: "RideWise"
+
+`src/lib/sources/ratecard/` cites **RideWise** fourteen times as the authority
+behind fare anchors, a NYC surge table, airport corridor midpoints and the
+late-night wait trough. Nothing in this repository says what it is — no URL,
+no document, no date beyond a year. It was also named in the methodology
+string shown to riders, alongside TLC, which _is_ a real and checkable
+publisher.
+
+The numbers have not been changed. They are the right order of magnitude and
+something has to be shown. What changed is the claim made about them:
+
+- The rider-facing string no longer names it. Telling someone a number came
+  from a source they cannot look up is the same failure as showing a modeled
+  price as a quote, and this product does not get to do one while refusing
+  the other.
+- The wait parameters moved to `MODEL_PARAMS.wait`, recorded as priors fitted
+  to nothing, and `npm run eval` can now score them.
+- The remaining in-code citations are marked unverified rather than deleted,
+  because deleting them would erase the record of where someone believed the
+  figures came from.
+
+**If RideWise is a real source**, add it here with a link and a date and the
+citations can stand. **If it is not**, the anchors need re-deriving from the
+published cards, and `docs/CALIBRATION.md` is the thing that would catch how
+wrong they are.
+
+The Empower "~30% under Uber/Lyft" figure, attributed to "Obi Q1 2026", has
+the same problem and is now described to riders as an unverified estimate.

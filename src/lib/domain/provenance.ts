@@ -310,6 +310,10 @@ export function provenanceRows(quote: NormalizedQuote): ProvenanceRow[] {
    * way to tell whether they arrived at the right place.
    */
   if (rows.length > 0) {
+    /* Before the total, which must stay last — the sheet's whole claim is
+       that the lines above it reconcile to the figure on the card. */
+    rows.push(...waitRows(quote));
+
     const lo = quote.priceMinMinor / 100;
     const hi = quote.priceMaxMinor / 100;
     rows.push({
@@ -322,6 +326,85 @@ export function provenanceRows(quote: NormalizedQuote): ProvenanceRow[] {
 
   return rows;
 }
+
+/**
+ * How the pickup wait was arrived at.
+ *
+ * The sheet decomposed the fare to the last cent and said nothing at all
+ * about the wait, so "2 to 3 min" sat on the card looking exactly like a
+ * number fetched from a provider. It is a model — of supply density at the
+ * pickup, the provider's fleet, the vehicle class and the hour — and the one
+ * place a rider goes to ask where a number came from should say so.
+ *
+ * Nothing here claims a source it does not have. `MODEL_PARAMS.wait` records
+ * that these are priors fitted to nothing, and this says the same in a
+ * sentence a rider can read.
+ */
+export function waitRows(quote: NormalizedQuote): ProvenanceRow[] {
+  const m = quote.metadata ?? {};
+  const density = typeof m.waitDensity === "string" ? m.waitDensity : null;
+  /*
+   * Only our own model writes waitDensity. A partner quote carries a real
+   * ETA from the provider, and telling a rider that one is "modeled" would
+   * be a fresh lie in the opposite direction.
+   */
+  if (!density) return [];
+
+  const low = num(m.waitLowSeconds);
+  const high = num(m.waitHighSeconds);
+  const mid = quote.pickupEtaSeconds;
+  if (low === null && high === null && mid == null) return [];
+  const confidence = typeof m.waitConfidence === "string" ? m.waitConfidence : null;
+
+  const asMin = (sec: number) => Math.max(1, Math.round(sec / 60));
+  const band =
+    low !== null && high !== null
+      ? asMin(low) === asMin(high)
+        ? `${asMin(low)} min`
+        : `${asMin(low)} to ${asMin(high)} min`
+      : mid != null
+        ? `${asMin(mid)} min`
+        : "—";
+
+  const rows: ProvenanceRow[] = [
+    {
+      label: "Pickup wait",
+      value: band,
+      kind: "note",
+      detail: DENSITY_DETAIL[density] ?? "Modeled from supply near the pickup.",
+    },
+  ];
+
+  if (confidence === "low") {
+    rows.push({
+      label: "Wait confidence",
+      value: "Low",
+      kind: "note",
+      detail: "Few cars are modeled around this pickup, so the wait could be well out.",
+    });
+  }
+
+  rows.push({
+    label: "Not a live ETA",
+    value: "Modeled",
+    kind: "note",
+    detail:
+      "No provider was asked how far away a car is. This is a model of typical waits, " +
+      "and it has never been checked against a real one — see docs/CALIBRATION.md.",
+  });
+
+  return rows;
+}
+
+/** What the density band actually means, rather than its internal name. */
+const DENSITY_DETAIL: Record<string, string> = {
+  core: "Dense city centre, where cars are usually close by.",
+  inner: "Inner city, a little thinner than the centre.",
+  outer: "Outer metro, where cars are spread further apart.",
+  suburb: "Suburban, with far fewer cars circulating.",
+  airport: "Airport, where cars queue rather than circulate.",
+  sparse: "Little modeled supply here at all.",
+};
 
 /**
  * What the band means, said plainly.

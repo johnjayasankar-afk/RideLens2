@@ -258,3 +258,70 @@ describe("the band note", () => {
     expect(note).toMatch(/not a locked fare/);
   });
 });
+
+describe("how long until a car arrives", () => {
+  const modeled = (over: Record<string, unknown> = {}) =>
+    quote({
+      metadata: {
+        rateCardDollars: 40,
+        waitLowSeconds: 120,
+        waitHighSeconds: 240,
+        waitDensity: "core",
+        waitConfidence: "medium",
+        ...over,
+      },
+      pickupEtaSeconds: 180,
+    });
+
+  it("says where the wait came from, because the fare sheet said nothing about it", () => {
+    const rows = provenanceRows(modeled());
+    const wait = rows.find((r) => r.label === "Pickup wait");
+    expect(wait).toBeDefined();
+    expect(wait!.value).toBe("2 to 4 min");
+    expect(wait!.detail).toMatch(/dense city centre/i);
+  });
+
+  /*
+   * The one that matters. A rider looking at "2 to 4 min" has no way to tell
+   * it from a number a provider supplied, and this is the page they open to
+   * ask.
+   */
+  it("states plainly that nobody was asked how far away a car is", () => {
+    const rows = provenanceRows(modeled());
+    const note = rows.find((r) => r.label === "Not a live ETA");
+    expect(note).toBeDefined();
+    expect(note!.detail).toMatch(/never been checked/i);
+  });
+
+  it("warns when there is barely any supply to model", () => {
+    const rows = provenanceRows(modeled({ waitDensity: "sparse", waitConfidence: "low" }));
+    expect(rows.find((r) => r.label === "Wait confidence")?.value).toBe("Low");
+  });
+
+  it("is quiet when the model is confident enough", () => {
+    expect(provenanceRows(modeled()).find((r) => r.label === "Wait confidence")).toBeUndefined();
+  });
+
+  /*
+   * A partner ETA is a real answer from a provider. Calling it modeled would
+   * be a fresh lie pointing the other way.
+   */
+  it("never calls a partner's real ETA a model", () => {
+    const partner = quote({
+      source: "obi",
+      metadata: { rateCardDollars: 40 },
+      pickupEtaSeconds: 180,
+    });
+    expect(provenanceRows(partner).some((r) => r.label === "Not a live ETA")).toBe(false);
+  });
+
+  /* The sheet's claim is that its lines reconcile to the figure on the card. */
+  it("leaves the total last", () => {
+    const rows = provenanceRows(modeled());
+    expect(rows.at(-1)!.kind).toBe("total");
+  });
+
+  it("adds nothing to a quote that had nothing to decompose", () => {
+    expect(provenanceRows(quote({ metadata: {}, pickupEtaSeconds: 180 }))).toEqual([]);
+  });
+});

@@ -42,6 +42,19 @@ export interface ActualRecord {
   predictedAt: string;
   modelVersion?: string;
   distanceMeters?: number;
+  /**
+   * The pickup wait band RideLens predicted, in seconds, and what actually
+   * happened. Optional: a fare can be reported without one, and most are.
+   *
+   * The wait model was the least examined thing in the product — parameters
+   * attributed to studies nobody could find, a band shown on every card, and
+   * no mechanism that could ever say whether it was right. It is scored
+   * separately from price because a model can be good at one and useless at
+   * the other, and an average across both would hide exactly that.
+   */
+  predictedWaitLowSeconds?: number;
+  predictedWaitHighSeconds?: number;
+  actualWaitSeconds?: number;
 }
 
 export interface Interval {
@@ -242,12 +255,73 @@ export function groupBy(
   return out;
 }
 
+/**
+ * How the wait model did, on the rows that carried a wait.
+ *
+ * Same withholding rule as everything else: below MIN_SAMPLES it reports the
+ * count and nothing else. Sharpness is in seconds rather than relative,
+ * because a minute is a minute whether the wait is two or twenty — the thing
+ * a rider notices is the absolute miss.
+ */
+export interface WaitSummary {
+  n: number;
+  coverage: number | null;
+  /** Mean signed error in seconds. Positive = we said the car was closer. */
+  biasSeconds: number | null;
+  meanAbsErrorSeconds: number | null;
+  meanWidthSeconds: number | null;
+}
+
+const waitWithheld = (n: number): WaitSummary => ({
+  n,
+  coverage: null,
+  biasSeconds: null,
+  meanAbsErrorSeconds: null,
+  meanWidthSeconds: null,
+});
+
+export function summariseWait(records: readonly ActualRecord[]): WaitSummary {
+  const scorable = records.filter(
+    (r) =>
+      r.actualWaitSeconds != null &&
+      r.predictedWaitLowSeconds != null &&
+      r.predictedWaitHighSeconds != null,
+  );
+  const n = scorable.length;
+  if (n < MIN_SAMPLES) return waitWithheld(n);
+
+  let inside = 0;
+  let bias = 0;
+  let abs = 0;
+  let width = 0;
+
+  for (const r of scorable) {
+    const band: Interval = { min: r.predictedWaitLowSeconds!, max: r.predictedWaitHighSeconds! };
+    const actual = r.actualWaitSeconds!;
+    if (contains(band, actual)) inside += 1;
+    const err = actual - midpoint(band);
+    bias += err;
+    abs += Math.abs(err);
+    width += band.max - band.min;
+  }
+
+  return {
+    n,
+    coverage: inside / n,
+    biasSeconds: bias / n,
+    meanAbsErrorSeconds: abs / n,
+    meanWidthSeconds: width / n,
+  };
+}
+
 export interface EvalReport {
   generatedAt: string;
   overall: Summary;
   score: number | null;
   curve: CalibrationPoint[];
   slices: Record<GroupKey, Array<{ group: string; summary: Summary }>>;
+  /** Scored separately — a model can be good at price and useless at wait. */
+  wait: WaitSummary;
   /** Model versions present in the corpus, so a mixed one is visible. */
   modelVersions: string[];
 }
@@ -270,6 +344,7 @@ export function evaluate(records: readonly ActualRecord[]): EvalReport {
     score: coverageAdjustedSharpness(overall),
     curve: calibrationCurve(records),
     slices,
+    wait: summariseWait(records),
     modelVersions: [...new Set(records.map((r) => r.modelVersion ?? "unknown"))].sort(),
   };
 }

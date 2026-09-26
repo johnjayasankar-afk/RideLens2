@@ -231,7 +231,25 @@ export class PublicRateCardQuoteSource implements QuoteSource {
       confidenceClass: confidenceForQuoteType(priceType, minMinor, maxMinor),
       metadata: {
         methodology:
-          "Live OSRM + RideWise/TLC rate cards + NY fee stack + corridor anchors + simulated marketplace (TOD, hotspots, weather via Open-Meteo, provider personality, ~55s ticks). Empower calibrated ~30% under Uber/Lyft (Obi Q1 2026). Not a live partner API quote — confirm in-app.",
+          /*
+           * Names only what can be checked.
+           *
+           * This used to say "RideWise/TLC rate cards" and cite "Obi Q1 2026"
+           * for the Empower figure. TLC is a real, verifiable publisher.
+           * "RideWise" appears fourteen times across this directory as the
+           * authority behind fare anchors, surge tables and wait times, and
+           * nothing in the repository says what it is — no URL, no date, no
+           * document. Telling a rider a number came from a source they cannot
+           * look up is the same failure as showing a modeled price as a
+           * quote, and this product does not get to do one while refusing
+           * the other.
+           *
+           * The numbers are unchanged; only the claim about where they came
+           * from is. If RideWise is a real source, cite it properly in
+           * docs/DATA_SOURCE_MATRIX.md with a date and a link, and it can
+           * come back.
+           */
+          "Live OSRM routing + published TLC and operator rate cards + the NY fee stack + corridor anchors + a simulated marketplace (time of day, hotspots, weather via Open-Meteo, provider personality, ~55s ticks). The Empower discount is an unverified estimate. Not a live partner API quote — confirm in-app.",
         city: fare.marketName,
         marketId: input.market.id,
         marketBasis: input.market.basis,
