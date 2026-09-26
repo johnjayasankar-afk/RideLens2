@@ -10,6 +10,9 @@ import {
   useRecentRoutes,
 } from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
+import { RecentTrips } from "@/components/recent-trips";
+import { useTripLog } from "@/components/use-trip-log";
+import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { describeFailure } from "@/lib/domain/failure-message";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { ProviderId, QuoteSession } from "@/lib/domain/types";
@@ -108,6 +111,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [destination, setDestination] = useState<PlaceValue | null>(() => deepLink.destination);
   const [locating, setLocating] = useState(false);
   const [session, setSession] = useState<QuoteSession | null>(null);
+  const tripLog = useTripLog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
@@ -434,6 +438,15 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
                   if (event.session.status === "SUCCESS" || event.session.status === "PARTIAL") {
                     refreshFailCount.current = 0;
                   }
+                  /*
+                   * Only a complete comparison is an observation. A PARTIAL
+                   * one is missing whichever source failed, so its cheapest
+                   * option may simply be the survivor — logging it would put
+                   * a fabricated high-water mark into the reader's own record.
+                   */
+                  if (event.session.status === "SUCCESS") {
+                    tripLog.record(event.session, MODEL_VERSION);
+                  }
                   if (event.session.status === "SUCCESS" && !autoRefreshArmed.current) {
                     autoRefreshArmed.current = true;
                     setAutoRefresh(true);
@@ -453,6 +466,9 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             setSession(data.session);
             if (data.session.status === "SUCCESS" || data.session.status === "PARTIAL") {
               refreshFailCount.current = 0;
+            }
+            if (data.session.status === "SUCCESS") {
+              tripLog.record(data.session, MODEL_VERSION);
             }
             if (data.session.status === "SUCCESS" && !autoRefreshArmed.current) {
               autoRefreshArmed.current = true;
@@ -484,7 +500,17 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         if (gen === requestGen.current) setLoading(false);
       }
     },
-    [pickup, destination, canSubmit, filter, mode, fetchRoute, autoRefresh, setLastCompared],
+    [
+      pickup,
+      destination,
+      canSubmit,
+      filter,
+      mode,
+      fetchRoute,
+      autoRefresh,
+      setLastCompared,
+      tripLog,
+    ],
   );
 
   /*
@@ -745,6 +771,24 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
               />
             </div>
           </div>
+
+          {/* Your own trips before a generic list of airports. Hidden once
+              both endpoints are set — at that point the form is about the
+              trip in hand, not the ones before it. */}
+          {!(pickup && destination) ? (
+            <RecentTrips
+              records={tripLog.records}
+              onForget={tripLog.forgetRoute}
+              onRun={(from, to) => {
+                setPickup(from);
+                setDestination(to);
+                setQuickTarget("to");
+                /* Handed straight to compare rather than read back from
+                   state, which React has not committed yet. */
+                void compare(false, { pickup: from, destination: to });
+              }}
+            />
+          ) : null}
 
           <div
             className={`quick-picks${pickup && destination ? " is-compact" : ""}`}

@@ -3508,3 +3508,136 @@ details[open] > summary::before {
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* ── Your own trips ───────────────────────────────────────────────────────
+   The log is private and local, so the surface is quiet: no accent, no
+   badge, nothing that reads as a recommendation. It is a list of things you
+   did, offered back. */
+.recent-trips {
+  display: grid;
+  gap: 8px;
+}
+.recent-trips-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recent-trips-head > .muted:first-child {
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.recent-trips-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recent-trip {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.recent-trip-run {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 12px;
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--ease),
+    transform 0.16s var(--ease);
+}
+.recent-trip-run:hover {
+  background: var(--mint-bg);
+}
+.recent-trip-run:active {
+  transform: scale(0.995);
+}
+.recent-trip-route {
+  font-size: 14px;
+  font-weight: 500;
+  /* A long address pair must not push the forget button off the row. */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.recent-trip-meta {
+  font-size: 12px;
+}
+.recent-trip-forget {
+  flex-shrink: 0;
+  width: 32px;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s var(--ease);
+}
+/* Revealed on hover for a mouse, always present for everyone else —
+   :focus-within covers the keyboard, and a coarse pointer has no hover. */
+.recent-trip:hover .recent-trip-forget,
+.recent-trip:focus-within .recent-trip-forget {
+  opacity: 1;
+}
+@media (hover: none) {
+  .recent-trip-forget {
+    opacity: 1;
+  }
+}
+.recent-trip-forget:hover {
+  color: var(--ink);
+  background: var(--soft);
+}
+
+/* ── Where today sits against your own record ─────────────────────────────
+   Deliberately not a badge. The verdict is a sentence, and the sentence
+   under it carries the n and the disclaimer, because a coloured pill saying
+   "CHEAP" would be a claim this data cannot support. */
+.route-standing {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.route-standing-line {
+  margin: 0 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.route-standing-verdict {
+  font-size: 13px;
+  font-weight: 600;
+}
+.route-standing .fine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+/* The two ends of the range earn a tint; the middle stays neutral, because
+   "about the middle" is not news. */
+.route-standing.standing-cheapest_seen,
+.route-standing.standing-below_usual {
+  background: var(--mint-bg);
+  box-shadow: none;
+}
+.route-standing.standing-cheapest_seen .route-standing-verdict,
+.route-standing.standing-below_usual .route-standing-verdict {
+  color: var(--mint-t);
+}

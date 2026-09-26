@@ -25,6 +25,9 @@ import { categoryLabel } from "@/lib/domain/taxonomy";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
+import { RouteStanding } from "@/components/route-standing";
+import { useTripLog } from "@/components/use-trip-log";
+import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
@@ -479,6 +482,9 @@ export function QuoteResults({
 }) {
   const [copied, setCopied] = useState<"best" | "all" | "fail" | null>(null);
   const [now, setNow] = useState(() => new Date());
+  /* Read, not written, here — the form records; this only reports. The store
+     is shared, so both see the same log without passing it down. */
+  const { records: tripRecords } = useTripLog();
   /** Which session has already played its entrance. */
   const [playedEntranceId, setPlayedEntranceId] = useState<string | null>(null);
   const resultsTopRef = useRef<HTMLElement | null>(null);
@@ -1106,6 +1112,9 @@ export function QuoteResults({
             now={now}
             animate={animateEntrance}
           />
+          {session ? (
+            <RouteStanding session={session} records={tripRecords} modelVersion={MODEL_VERSION} />
+          ) : null}
         </div>
       ) : null}
 

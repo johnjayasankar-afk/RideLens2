@@ -67,3 +67,28 @@ export function expiryCountdown(expiresAt: string | null, now: Date = new Date()
   const s = totalSec % 60;
   return `Quote expires in ${m}:${s.toString().padStart(2, "0")}`;
 }
+
+/**
+ * How long ago, at the scale a person remembers things.
+ *
+ * `freshnessLabel` stops at minutes because a quote that is an hour old is
+ * simply expired. A trip you compared last Tuesday is a different scale of
+ * question, and the snapshot page had grown its own copy of this to answer
+ * it. One helper, used by both.
+ *
+ * Deliberately coarse. "3 days ago" is what a reader wants; "2 days and 17
+ * hours ago" is precision that means nothing to them.
+ */
+export function coarseAgeLabel(iso: string, now: Date = new Date()): string {
+  const ms = now.getTime() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const mins = Math.round(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const months = Math.round(days / 30);
+  return `${months} month${months === 1 ? "" : "s"} ago`;
+}
