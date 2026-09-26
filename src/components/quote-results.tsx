@@ -30,6 +30,7 @@ import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
 import { AlternativesRow } from "./alternatives-row";
 import { PriceAxis } from "./price-axis";
+import { WalkSuggestionCard } from "./walk-suggestion";
 import { PartyPanel } from "./party-panel";
 import { DepartureStrip } from "./departure-strip";
 import { useCountUpRange } from "./use-count-up";
@@ -1024,6 +1025,10 @@ export function QuoteResults({
           </div>
         </div>
       ) : null}
+
+      {/* Actionable before choosing a provider, so it goes above the board —
+          it is worthless once somebody has tapped through to an app. */}
+      {hero ? <WalkSuggestionCard sessionId={session?.id ?? null} /> : null}
 
       <div className="filters" role="toolbar" aria-label="Ranking and category">
         {(

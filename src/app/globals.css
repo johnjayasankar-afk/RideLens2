@@ -3333,3 +3333,53 @@ summary {
    * Caught by looking at a screenshot. The measurement said it passed.
    */
 }
+
+/* ── Walk two blocks ──────────────────────────────────────────────────────
+   Sits near the top because it is the one thing on the page a rider can act
+   on before choosing a provider, and it is worthless once they have tapped
+   through to an app. */
+.walk-tip {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: var(--space-2, 14px);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--mint-bg);
+  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.18);
+}
+.walk-tip-glyph {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--mint-3);
+  color: var(--forest-3);
+  font-size: 15px;
+  line-height: 1;
+}
+.walk-tip-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.walk-tip-lead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.014em;
+  color: var(--mint-t);
+}
+.walk-tip-detail {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.walk-tip-note {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
