@@ -2858,3 +2858,104 @@ h1.admin-title {
 .alternative-sources a {
   color: inherit;
 }
+
+/* ── Split it ──────────────────────────────────────────────────────────────
+   Beside the comparison rather than replacing it: the total is what leaves
+   an account, per-head is what the group argues about, and both are worth
+   having on screen. */
+.party {
+  display: grid;
+  gap: 10px;
+  margin-top: var(--space-3, 20px);
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--ground-2);
+}
+.party-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.party-head .section-label {
+  margin: 0;
+}
+.party-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.party-stepper .ghost {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 17px;
+  line-height: 1;
+}
+.party-count {
+  min-width: 84px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.party-hint,
+.party-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.party-note {
+  color: var(--amber-t);
+}
+.party-crossover {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--mint-bg);
+  color: var(--mint-t);
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.party-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.party-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.party-row:last-child {
+  border-bottom: 0;
+}
+.party-row[data-refused] {
+  opacity: 0.72;
+}
+.party-name {
+  color: var(--ink);
+}
+.party-cars {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.party-price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.party-refusal {
+  font-size: 12px;
+  text-align: right;
+  max-width: 62%;
+}

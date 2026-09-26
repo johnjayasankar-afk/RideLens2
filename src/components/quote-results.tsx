@@ -29,6 +29,7 @@ import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
 import { AlternativesRow } from "./alternatives-row";
+import { PartyPanel } from "./party-panel";
 import { DepartureStrip } from "./departure-strip";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
@@ -1178,6 +1179,8 @@ export function QuoteResults({
       */}
       {/* Before the forecast: whether to take a car at all comes before when. */}
       {hero ? <AlternativesRow sessionId={session?.id ?? null} /> : null}
+
+      {hero ? <PartyPanel quotes={ranked} /> : null}
 
       {hero ? (
         <DepartureStrip
