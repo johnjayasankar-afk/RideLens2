@@ -22,7 +22,8 @@
     "budget": "tsx scripts/bundle-budget.ts",
     "vendor:map": "tsx scripts/vendor-map-worker.ts",
     "prebuild": "npm run vendor:map",
-    "predev": "npm run vendor:map"
+    "predev": "npm run vendor:map",
+    "perf": "node scripts/perf.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

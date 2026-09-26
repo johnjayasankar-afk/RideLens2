@@ -112,6 +112,104 @@ Its ceiling is generous because it is one upstream package whose size we do
 not control; it exists to catch the chunk being pulled into the initial
 bundle by accident, or doubling again.
 
+## How it feels
+
+Measured on a production build at 1440x900, scrolling a full comparison.
+
+|                               |    Before |        After |
+| ----------------------------- | --------: | -----------: |
+| Median frame                  |   25.0 ms |   **8.3 ms** |
+| 95th percentile frame         |   50.0 ms |   **9.3 ms** |
+| Frames missing a 60 Hz budget |       87% |      **~0%** |
+| Frames over 33 ms             | 51 of 119 |        **0** |
+| Scroll rate                   |   ~40 fps | **~120 fps** |
+| Layout shift                  |    0.0223 |   **0.0053** |
+| Long tasks while scrolling    |         — |        **0** |
+
+`npm run perf` measures all of it and fails on a regression. Reverting the
+one-line fix below trips it immediately.
+
+### One CSS property cost two thirds of the frame rate
+
+`labs-ui` dresses surfaces in glass, and on Chromium it can bend the backdrop
+through an SVG lens — `backdrop-filter: url(#lgl-1)` — instead of a plain
+blur. The topbar had one.
+
+A `backdrop-filter` that resolves to a `url()` takes the SVG filter path,
+which has none of the fast paths a native `blur()` gets, and a **sticky**
+element is re-composited on every scroll frame. So the browser was running an
+SVG filter pipeline sixty times a second over the full width of the page.
+
+Isolated by elimination, three runs each:
+
+|                                   |     fps | frames over 33 ms |
+| --------------------------------- | ------: | ----------------: |
+| As shipped                        |      40 |                45 |
+| Topbar lens → native `blur(16px)` | **120** |             **0** |
+| Topbar blur removed entirely      |     120 |                 0 |
+| Only the topbar lens kept         |      40 |                44 |
+| Box-shadows removed               |      40 |                42 |
+| One-second clock stopped          |      40 |                39 |
+| Map removed                       |      40 |                43 |
+
+Nothing else mattered. Not the shadows, not the React re-render every second,
+not the WebGL map.
+
+`labs-ui` already refused a lens on a pane above 420,000 px², reasoning that
+it "cannot carry a lens every frame". The topbar is 86,000 px² — a fifth of
+that — and was waved through. **Area is what a lens costs once; being pinned
+is what makes it cost sixty times a second.** The rule is now explicit:
+sticky or fixed, no lens. It falls back through `--gl-fx` to the frosted
+glass the material already defines, so the tint, the rim of light and the
+pointer highlight are untouched. On a 60px strip the refraction was not
+visible anyway.
+
+### The map now waits for a quiet moment
+
+Building a WebGL map, compiling the style's layers and decoding the first
+tiles costs ~650 ms of the ~820 ms of long tasks a page load produces. None
+of it delays first paint, because the module is lazy — which is exactly the
+problem. It landed _after_ the comparison appeared, which is when somebody
+starts scrolling it. Measured scrolling from the moment the cards showed, the
+worst frame was **1.6 seconds**. The median was a healthy 119 fps and it did
+not matter at all: one frozen second is the thing a person remembers.
+
+`requestIdleCallback` alone does not fix it, because its timeout fires
+regardless — straight into the scroll it was meant to avoid. The map now
+refuses to build while the page has scrolled in the last 220 ms, and waits
+until it is near the viewport at all. A deadline guarantees it always
+arrives.
+
+Worst frame during early scrolling went from 1.6 s to 130–650 ms, and in the
+ordinary case — land, read for a moment, then scroll — the map is already up
+and scrolling produces **no long tasks at all**.
+
+### Nothing moves while it loads
+
+Layout shift was 0.0223, all of it in one place: the comparison jumping down
+as content arrived above it. Three causes, each found by watching element
+heights rather than guessing.
+
+- **The modeled-estimate banner** appears only once every quote is known to be
+  modeled, so ~76 px arrived late. It has a reserved slot now, held open only
+  while loading — if a partner source is ever enabled the banner will not
+  apply, and a permanent gap would be worse than the shift.
+- **The market strip and takeaway** added ~246 px on desktop and ~410 px on a
+  phone. They have a skeleton built from their own classes rather than a
+  pixel height, because the stats row rewraps below ~560 px and any number
+  would be wrong on one side of it.
+- **The trip stats** grew from two cells to five, because miles and drive time
+  come from the route while wait and price come from the quotes. Every cell
+  now renders from the start and fills in place.
+
+Two of those had a sting in the tail. The first reserve was a round 76 px
+against a banner measuring 75.5 — half a pixel, enough to move every row
+below it. Reserve and banner are pinned to one CSS variable now so they
+cannot drift. And the shimmer standing in for a stat was 12 px where the
+number is 24, so the _labels_ moved while the row's own height never changed
+— which is why it stayed hidden until a shift report named `span.stat-label`
+as the thing that moved.
+
 ## Where the time goes
 
 The comparison is not bounded by the bundle. Per request:

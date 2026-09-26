@@ -704,15 +704,30 @@ export function QuoteResults({
         </div>
       ) : null}
 
-      {everythingModeled ? (
-        <p className="modeled-notice" data-testid="modeled-notice">
-          <span aria-hidden>◆</span>
-          <span>
-            <strong>Modeled from published rates and live traffic</strong> — not a live provider
-            quote. Every figure below is computed here; confirm in the app before you ride.
-          </span>
-        </p>
-      ) : null}
+      {/*
+        A slot that holds this banner's height while the quotes are still in
+        flight. The notice only renders once every quote is known to be
+        modeled, so it used to appear late and shove the toolbar, the filters
+        and the whole comparison down — the only layout shift on the page,
+        and the one a reader feels, because it lands just as they start
+        reading. Reserving the space during loading means it fades in without
+        moving anything.
+
+        Reserved only while loading, deliberately: if a partner source is
+        ever enabled the banner will not apply, and a permanent empty gap
+        would be a worse bug than the one this fixes.
+      */}
+      <div className="notice-slot" data-reserved={loading ? "true" : "false"}>
+        {everythingModeled ? (
+          <p className="modeled-notice" data-testid="modeled-notice">
+            <span aria-hidden>◆</span>
+            <span>
+              <strong>Modeled from published rates and live traffic</strong> — not a live provider
+              quote. Every figure below is computed here; confirm in the app before you ride.
+            </span>
+          </p>
+        ) : null}
+      </div>
 
       <div className="results-toolbar sticky-bar">
         <div className="route-summary muted">
@@ -839,43 +854,113 @@ export function QuoteResults({
         </div>
       ) : null}
 
-      {tripStats &&
-      (tripStats.miles != null || tripStats.minWait != null || tripStats.bestMid != null) ? (
+      {/*
+        Every cell, every time, once there is a row at all.
+        ───────────────────────────────────────────────────
+        Miles and drive time come from the route; wait, best estimate and
+        the saving come from the quotes, which land later. Rendering only
+        the cells that had data meant the row appeared with two and grew to
+        five, moving the comparison under it. A cell with nothing in it yet
+        holds its own place.
+      */}
+      {(tripStats &&
+        (tripStats.miles != null || tripStats.minWait != null || tripStats.bestMid != null)) ||
+      loading ? (
         <div className="trip-stats">
-          {tripStats.miles != null ? (
+          {tripStats?.miles != null || loading ? (
             <div>
-              <span className="stat-value">{tripStats.miles.toFixed(1)}</span>
+              <span className="stat-value">
+                {tripStats?.miles != null ? (
+                  tripStats.miles.toFixed(1)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
               <span className="stat-label">Miles</span>
             </div>
           ) : null}
-          {tripStats.minWait != null ? (
+          {tripStats?.minWait != null || loading ? (
             <div>
               <span className="stat-value">
-                {formatTripMins(tripStats.minWait).replace("~", "")}
+                {tripStats?.minWait != null ? (
+                  formatTripMins(tripStats.minWait).replace("~", "")
+                ) : (
+                  <span className="sk-line w60" />
+                )}
               </span>
               <span className="stat-label">Min wait</span>
             </div>
           ) : null}
-          {tripStats.minDrive != null ? (
+          {tripStats?.minDrive != null || loading ? (
             <div className="trip-stat-desktop">
               <span className="stat-value">
-                {formatTripMins(tripStats.minDrive).replace("~", "")}
+                {tripStats?.minDrive != null ? (
+                  formatTripMins(tripStats.minDrive).replace("~", "")
+                ) : (
+                  <span className="sk-line w60" />
+                )}
               </span>
               <span className="stat-label">Min drive</span>
             </div>
           ) : null}
-          {tripStats.bestMid != null ? (
+          {tripStats?.bestMid != null || loading ? (
             <div>
-              <span className="stat-value">{formatMoneyMinor(tripStats.bestMid)}</span>
+              <span className="stat-value">
+                {tripStats?.bestMid != null ? (
+                  formatMoneyMinor(tripStats.bestMid)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
               <span className="stat-label">Best estimate</span>
             </div>
           ) : null}
-          {tripStats.versusNext != null ? (
+          {tripStats?.versusNext != null || loading ? (
             <div className="trip-stat-desktop">
-              <span className="stat-value">{formatMoneyMinor(tripStats.versusNext)}</span>
+              <span className="stat-value">
+                {tripStats?.versusNext != null ? (
+                  formatMoneyMinor(tripStats.versusNext)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
               <span className="stat-label">Saves vs next</span>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {/*
+        The summary that is not there yet.
+        ──────────────────────────────────
+        The market strip, the takeaway and the trip stats all render only
+        once quotes exist, so ~246px on desktop and ~410px on a phone
+        appeared at once and shoved the filters and the whole comparison
+        down. It was the largest thing moving on the page.
+
+        Built from the same classes as the real blocks rather than a
+        reserved pixel height: these rewrap at narrow widths, and any number
+        hard-coded here would be wrong on one side of that. Sharing the
+        classes makes the placeholder the right size at every width by
+        construction, and keeps it right when the layout changes.
+
+        The trip stats are not here. That row appears during loading anyway,
+        because miles and drive time come from the route rather than the
+        quotes, so it fills its own empty cells instead — a duplicate
+        skeleton sat underneath the real row and showed both at once.
+      */}
+      {loading && !hero ? (
+        <div className="summary-skeleton" aria-hidden>
+          <div className="market-pulse">
+            <span className="sk-line w30" />
+            <span className="sk-line w20" />
+          </div>
+          <div className="insight-banner">
+            <p className="insight-kicker">Takeaway</p>
+            <p className="insight-text">
+              <span className="sk-line w60" />
+            </p>
+          </div>
         </div>
       ) : null}
 

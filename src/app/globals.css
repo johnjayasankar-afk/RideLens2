@@ -806,12 +806,74 @@ h1.brand {
   animation: 0.45s ease swap-pulse;
 }
 .route-tools,
+/*
+ * Holds the modeled-estimate banner's height while quotes are in flight, so
+ * it fades in instead of shoving the comparison down.
+ *
+ * The reserve and the banner are pinned to one variable on purpose. The first
+ * attempt reserved a round 76px against a banner that measures 61.5 + 14 of
+ * margin, and that half-pixel was enough to move every row beneath it — a
+ * visible shift from a rounding error nobody would ever think to look for.
+ * Tied together, the two cannot drift, and longer copy grows both at once.
+ */
+:root {
+  --notice-h: 61.5px;
+  --notice-gap: 14px;
+}
+@media (max-width: 560px) {
+  :root {
+    --notice-h: 80.3px;
+  }
+}
+.modeled-notice {
+  min-height: var(--notice-h);
+}
+.notice-slot[data-reserved="true"] {
+  min-height: calc(var(--notice-h) + var(--notice-gap));
+}
+
+/*
+ * Shimmers standing in for text that has not arrived.
+ *
+ * A placeholder has to occupy the line box its value will, not the 12px the
+ * base .sk-line is. It did not, so the stat labels sat 12px high while the
+ * numbers were loading and dropped when they landed — the row's own height
+ * never changed, which is why this hid until the shift report named
+ * span.stat-label as the thing that moved.
+ */
+.summary-skeleton .sk-line,
+.trip-stats .stat-value .sk-line {
+  display: inline-block;
+  vertical-align: middle;
+}
+.trip-stats .stat-value .sk-line,
+.summary-skeleton .stat-value .sk-line {
+  width: 100%;
+  height: 1em;
+}
+.summary-skeleton .insight-text .sk-line {
+  height: 1em;
+}
+
 .toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  /*
+   * Hold the row open before the buttons exist.
+   *
+   * Copy best / Copy all / Refresh prices render only once there is a hero
+   * and a ranked list, so the toolbar was short until the quotes landed and
+   * then grew — the whole comparison below it jumped. It was the only layout
+   * shift on the page, 0.0124 at 701 ms, and it is the one people feel
+   * because it happens exactly as they start reading.
+   *
+   * Reserving the height is better than rendering disabled buttons, which
+   * would put controls that do nothing into the tab order.
+   */
+  min-height: 38px;
 }
 .route-tools {
   justify-content: space-between;
@@ -1297,6 +1359,8 @@ h1.brand {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  /* Category chips appear with the results; same reason as above. */
+  min-height: 36px;
 }
 .sep {
   width: 1px;

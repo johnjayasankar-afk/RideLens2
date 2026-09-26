@@ -231,10 +231,37 @@ function dressGlass(parts) {
           w = Math.round(b.width / 4) * 4,
           h = Math.round(b.height / 2) * 2;
         if (w < 24 || h < 16) return;
-        const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2);
+        const cs = getComputedStyle(el);
+        const r = Math.min(parseFloat(cs.borderTopLeftRadius) || 0, w / 2, h / 2);
         const key = w + "x" + h + "x" + Math.round(r);
         if (key === last) return;
         last = key;
+        /*
+         * ── A lens never goes on a pinned surface ──────────────────────────
+         *
+         * This was the single most expensive thing in the product. A sticky
+         * topbar is re-composited on every scroll frame, and a backdrop
+         * filter that resolves to url(#…) takes the SVG filter path, which
+         * has none of the fast paths a native blur() gets. Measured on a
+         * 1440x900 comparison: 40 fps with the lens, 120 fps with the same
+         * element on blur(16px) saturate(1.8), and 87% of frames missing
+         * their budget. Nothing else on the page — box-shadows, the map, the
+         * one-second clock — moved the number at all.
+         *
+         * The size guard below could not catch it: the topbar is 86k px²,
+         * a fifth of that ceiling. Area is what a lens costs *once*; being
+         * pinned is what makes it cost sixty times a second.
+         *
+         * Dropping gl-on falls back through --gl-fx to the frosted glass in
+         * labs-glass.css. The tint, the rim of light and the pointer
+         * highlight are untouched; only the refraction goes, and it is not
+         * visible on a surface that is 60px tall.
+         */
+        const pinned = cs.position === "sticky" || cs.position === "fixed";
+        if (pinned && !part.overlay) {
+          el.classList.remove("gl-on");
+          return;
+        }
         /* frosted glass instead: a pane this big cannot carry a lens every frame */
         if (w * h > 420000 && !part.overlay) {
           el.classList.remove("gl-on");
