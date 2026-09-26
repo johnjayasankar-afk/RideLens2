@@ -2959,3 +2959,106 @@ h1.admin-title {
   text-align: right;
   max-width: 62%;
 }
+
+/* ── Side by side ──────────────────────────────────────────────────────────
+   One shared ruler. Bars drawn to their own widths would make a tight quote
+   look like a vague one; on a common scale a wide band looks wide, and two
+   bars that share ground are visibly the same price. */
+.axis {
+  display: grid;
+  gap: 10px;
+  margin-top: var(--space-3, 20px);
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--ground-2);
+}
+.axis-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.axis-head .section-label {
+  margin: 0;
+}
+.axis-verdict {
+  font-size: 12.5px;
+  color: var(--amber-t);
+}
+.axis-verdict.is-clear {
+  color: var(--mint-t);
+}
+.axis-bars {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.axis-row {
+  display: grid;
+  grid-template-columns: 104px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.axis-name {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axis-track {
+  position: relative;
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.axis-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--forest-2);
+}
+/* Sharing ground with the leader is the thing worth seeing, so it is the
+   thing that gets the colour. */
+.axis-bar[data-overlaps="true"] {
+  background: linear-gradient(90deg, var(--mint-3), var(--forest-2));
+}
+.axis-bar[data-overlaps="false"] {
+  background: var(--line-2);
+}
+.axis-value {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.axis-scale {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 114px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.axis-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+@media (max-width: 560px) {
+  .axis-row {
+    grid-template-columns: 76px 1fr auto;
+    gap: 7px;
+  }
+  .axis-scale {
+    padding-left: 83px;
+  }
+}
