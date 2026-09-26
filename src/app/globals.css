@@ -2782,3 +2782,18 @@ h1.admin-title {
     grid-column: 1;
   }
 }
+
+/* Why the top row is on top, when that needs saying. Quiet by design: it
+   sits under the takeaway rather than competing with it, and it is absent
+   far more often than present. */
+.winner-note {
+  margin: -4px 0 0;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.winner-note[data-reason="too_close_to_call"],
+.winner-note[data-reason="wide_band"] {
+  color: var(--amber-t);
+}

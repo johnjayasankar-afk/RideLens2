@@ -27,6 +27,7 @@ import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
+import { explainWinner } from "@/lib/domain/why-this-one";
 import { DepartureStrip } from "./departure-strip";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
@@ -495,6 +496,10 @@ export function QuoteResults({
    * be enabled and still return nothing, and the sentence has to describe what
    * the reader is actually looking at.
    */
+  /* Built from comparePrices, so it can never claim a saving the board
+     itself would refuse to assert. */
+  const winnerNote = useMemo(() => explainWinner(ranked, mode), [ranked, mode]);
+
   const everythingModeled = ranked.length > 0 && ranked.every((q) => provenanceOf(q).modeled);
   const rest = ranked.slice(1);
 
@@ -853,6 +858,20 @@ export function QuoteResults({
           <p className="insight-kicker">Takeaway</p>
           <p className="insight-text">{insight.text}</p>
         </div>
+      ) : null}
+
+      {/*
+        Why the top row is on top, when that is not obvious.
+        ────────────────────────────────────────────────────
+        A sorted list asserts an ordering and explains nothing, which is fine
+        while the leader is plainly cheapest and misleading the moment it is
+        not. Silent whenever the ordering speaks for itself — a note on every
+        card is a note nobody reads.
+      */}
+      {winnerNote ? (
+        <p className="winner-note" data-reason={winnerNote.reason}>
+          {winnerNote.sentence}
+        </p>
       ) : null}
 
       {/*
