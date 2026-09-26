@@ -440,3 +440,19 @@ test.describe("your trips", () => {
     expect(header).toContain("model_version");
   });
 });
+
+/*
+ * The palette has to be openable without a keyboard.
+ *
+ * It shipped reachable only by ⌘K, which is to say only by people with a
+ * keyboard — a command surface a phone cannot open is a command surface for
+ * some of the readers.
+ */
+test("the command palette can be opened by pointer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.waitForSelector('[data-commands="ready"]');
+
+  await page.getByRole("button", { name: /^Commands/ }).click();
+  await expect(page.getByRole("dialog", { name: "Commands" })).toBeVisible();
+});

@@ -27,7 +27,6 @@ import { useMemo, useSyncExternalStore } from "react";
 
 import { useSearchParams } from "next/navigation";
 
-import type { PlaceValue } from "@/components/place-field";
 import type { RankingMode } from "@/lib/domain/types";
 
 export type FilterId = "ALL" | "XL" | "PREMIUM" | "TAXI" | "standard";
@@ -140,85 +139,21 @@ export function useOnline(): boolean {
  * routes.
  */
 const RECENT_KEY = "ridelens.recentRoutes";
-/** `storage` only fires in *other* tabs, so this one needs telling. */
-const RECENT_EVENT = "ridelens:recent-routes-changed";
 
-export type RecentRoute = {
-  id: string;
-  pickup: PlaceValue;
-  destination: PlaceValue;
-  savedAt: number;
-};
-
-/** Stable empty array: a fresh one each call would spin useSyncExternalStore. */
-const NO_ROUTES: RecentRoute[] = [];
-
-let recentCache: { raw: string | null; parsed: RecentRoute[] } = {
-  raw: null,
-  parsed: NO_ROUTES,
-};
-
-export function loadRecent(): RecentRoute[] {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(RECENT_KEY);
-  } catch {
-    return NO_ROUTES;
-  }
-  /*
-   * getSnapshot has to return the same reference while nothing has changed, or
-   * React re-renders forever. Parsing on every call would return a new array
-   * each time and do exactly that, so the last parse is cached against the raw
-   * string it came from.
-   */
-  if (raw === recentCache.raw) return recentCache.parsed;
-  let parsed: RecentRoute[] = NO_ROUTES;
-  try {
-    const value = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(value)) parsed = value as RecentRoute[];
-  } catch {
-    parsed = NO_ROUTES;
-  }
-  recentCache = { raw, parsed };
-  return parsed;
-}
-
-export function saveRecent(pickup: PlaceValue, destination: PlaceValue): void {
-  try {
-    const next: RecentRoute = {
-      id: `${pickup.lat},${pickup.lng}->${destination.lat},${destination.lng}`,
-      pickup,
-      destination,
-      savedAt: Date.now(),
-    };
-    const prev = loadRecent().filter((r) => r.id !== next.id);
-    localStorage.setItem(RECENT_KEY, JSON.stringify([next, ...prev].slice(0, 6)));
-    window.dispatchEvent(new Event(RECENT_EVENT));
-  } catch {
-    /* private mode / quota — not a reason to fail a comparison */
-  }
-}
-
-export function clearRecentRoutes(): void {
+/**
+ * Sweep the list the form used to keep.
+ *
+ * It held endpoints only — no prices — and sat beside what is now the trip
+ * log, which knows what each route cost and can say so. Nothing reads this
+ * key any more, and a record of somebody's movements without a purpose is a
+ * record that should not still be on their device.
+ */
+export function forgetLegacyRecentRoutes(): void {
   try {
     localStorage.removeItem(RECENT_KEY);
-    window.dispatchEvent(new Event(RECENT_EVENT));
   } catch {
-    /* ignored */
+    /* Private mode, or nothing to remove. */
   }
-}
-
-function subscribeRecent(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(RECENT_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(RECENT_EVENT, onChange);
-  };
-}
-
-export function useRecentRoutes(): RecentRoute[] {
-  return useSyncExternalStore(subscribeRecent, loadRecent, () => NO_ROUTES);
 }
 
 /* -------------------------------------------------------------------------- */

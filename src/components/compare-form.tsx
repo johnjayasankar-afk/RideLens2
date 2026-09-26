@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlaceField, type PlaceFieldHandle, type PlaceValue } from "@/components/place-field";
 import {
-  saveRecent,
+  forgetLegacyRecentRoutes,
   useDeepLinkState,
   useDesktopAutofocus,
   useOnline,
-  useRecentRoutes,
 } from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
 import { RecentTrips } from "@/components/recent-trips";
@@ -116,6 +115,22 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [locating, setLocating] = useState(false);
   const [session, setSession] = useState<QuoteSession | null>(null);
   const tripLog = useTripLog();
+
+  /*
+   * The form used to keep its own list of recent routes — endpoints only, no
+   * prices — beside what is now the trip log. Two lists of the same trips in
+   * one form is one too many, and the log is the better of them: it knows
+   * what each route cost and can say so.
+   *
+   * The old key is swept rather than left behind. Nothing reads it, and a
+   * record of somebody's movements that no longer has a purpose is a record
+   * that should not still be on their device. Its routes are not migrated:
+   * they carry no prices, and inventing some is the one thing this codebase
+   * will not do. They come back after one comparison each.
+   */
+  useEffect(() => {
+    forgetLegacyRecentRoutes();
+  }, []);
   const priceWatches = usePriceWatches();
 
   const [loading, setLoading] = useState(false);
@@ -130,7 +145,6 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [quickTarget, setQuickTarget] = useState<"from" | "to">("to");
   const [swapping, setSwapping] = useState(false);
   /* localStorage and navigator.onLine, both read during render. */
-  const recent = useRecentRoutes();
   const offline = !useOnline();
   /*
    * The URL is parsed during render, so hydration is complete on the first
@@ -363,9 +377,6 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
       setError(null);
       setRetryAfter(null);
       void fetchRoute(from, to);
-      // saveRecent dispatches its own change event; useRecentRoutes is
-      // subscribed, so there is nothing to re-read by hand.
-      saveRecent(from, to);
 
       const url = new URL(window.location.href);
       url.searchParams.set("from", encodePlace(from));
@@ -1021,6 +1032,24 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             <button type="button" className="ghost" onClick={useCurrentLocation}>
               {locating ? "Cancel locating" : "Use current location"}
             </button>
+            {/*
+              The palette was reachable only by ⌘K, which is to say only by
+              people with a keyboard. A command surface that a phone cannot
+              open is a command surface for some of the readers.
+            */}
+            {palette.ready ? (
+              <button
+                type="button"
+                className="ghost"
+                onClick={palette.openWith}
+                aria-haspopup="dialog"
+              >
+                Commands
+                <span className="cmd-hint" aria-hidden>
+                  {isApplePlatform ? "⌘K" : "Ctrl K"}
+                </span>
+              </button>
+            ) : null}
             {pickup || destination || activeSession ? (
               <button
                 type="button"
@@ -1094,33 +1123,6 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             </div>
           )}
         </div>
-
-        {recent.length > 0 ? (
-          <div className="recent-routes">
-            <p className="section-label">Recent</p>
-            <ul>
-              {recent.slice(0, 4).map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPickup(r.pickup);
-                      setDestination(r.destination);
-                      void compare(false, {
-                        pickup: r.pickup,
-                        destination: r.destination,
-                      });
-                    }}
-                  >
-                    <span>{r.pickup.label.split(",")[0]}</span>
-                    <span aria-hidden>→</span>
-                    <span>{r.destination.label.split(",")[0]}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
         {offline ? (
           <div className="banner warn" role="status">

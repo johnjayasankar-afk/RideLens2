@@ -1067,43 +1067,6 @@ h1.brand {
   font-size: 13px;
 }
 
-.recent-routes {
-  margin-top: var(--space-3);
-}
-.recent-routes ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.recent-routes button {
-  display: block;
-  width: 100%;
-  padding: 11px 14px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  font-size: 13.5px;
-  text-align: left;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
-  cursor: pointer;
-  transition:
-    box-shadow 0.25s,
-    transform 0.35s var(--ease);
-}
-.recent-routes button:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 0 0 1px var(--line-2),
-    var(--sh-2);
-}
-.recent-routes button span[aria-hidden] {
-  margin: 0 8px;
-  color: var(--ink-3);
-}
-
 .banner {
   margin: var(--space-2) 0 0;
   padding: 12px 14px;
@@ -3339,10 +3302,6 @@ details[open] > summary::before {
   summary {
     min-height: 44px;
   }
-  /* The saved-route buttons carry no class of their own. */
-  .recent-routes button {
-    min-height: 44px;
-  }
   /*
    * MapLibre ships 29px controls. They are in our DOM and on our map, so
    * they are ours to size — a vendor default is not an exemption.
@@ -3982,5 +3941,21 @@ details[open] > summary::before {
   }
   .topbar-brand {
     gap: 0;
+  }
+}
+
+/* The shortcut, shown beside the button that does the same thing. Hidden
+   where there is no keyboard to press it with. */
+.cmd-hint {
+  margin-left: 7px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--soft);
+  font: 500 11px/1 var(--font-mono);
+  color: var(--ink-3);
+}
+@media (pointer: coarse) {
+  .cmd-hint {
+    display: none;
   }
 }
