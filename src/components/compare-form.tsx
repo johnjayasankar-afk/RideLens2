@@ -150,7 +150,6 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
    * The URL is parsed during render, so hydration is complete on the first
    * one. Kept as a named constant because several effects below read it.
    */
-  const hydrated = true;
   const desktopAutofocus = useDesktopAutofocus();
   const autoRefreshArmed = useRef(false);
   const refreshFailCount = useRef(0);
@@ -565,13 +564,13 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   // Auto-compare when both places newly selected (not already compared)
   useEffect(() => {
-    if (!hydrated || !canSubmit || !routeKey || loading) return;
+    if (!canSubmit || !routeKey || loading) return;
     if (lastComparedKey.current === routeKey) return;
     const t = window.setTimeout(() => {
       void compare(false);
     }, 280);
     return () => window.clearTimeout(t);
-  }, [hydrated, canSubmit, routeKey, loading, compare]);
+  }, [canSubmit, routeKey, loading, compare]);
 
   useEffect(() => {
     if (!autoRefresh || !canSubmit) return;
@@ -620,12 +619,11 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   // Persist mode/filter in URL without re-fetch
   useEffect(() => {
-    if (!hydrated) return;
     const url = new URL(window.location.href);
     url.searchParams.set("mode", mode);
     url.searchParams.set("filter", filter);
     window.history.replaceState({}, "", url.toString());
-  }, [mode, filter, hydrated]);
+  }, [mode, filter]);
 
   // ⌘/Ctrl + Enter to compare; "/" focuses From when not typing in an input
   useEffect(() => {

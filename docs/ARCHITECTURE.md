@@ -36,6 +36,39 @@
 Sources are discovered, not hard-coded. Adding one means implementing
 `QuoteSource` and registering it; nothing else changes.
 
+## What the browser keeps
+
+Nothing above survives a reload. Three things do, all of them in
+`localStorage`, none of them ever sent anywhere:
+
+```
+  ridelens.theme     the scheme choice            theme-toggle.tsx
+  ridelens.trips     the trip log                 lib/history/trip-log.ts
+  ridelens.watches   price watches                lib/history/price-watch.ts
+```
+
+Both of the last two go through `components/local-store.ts`, which reads
+disk exactly twice — lazily on first use, and when another tab writes — and
+serves everything else from memory. An earlier version read inside
+`getSnapshot`, which React calls on every render; the results panel
+re-renders once a second off the freshness clock, and scrolling fell from
+~120 fps to ~60. The lesson lives in that one file so each store does not
+learn it again.
+
+The split is deliberate everywhere: the rules and shapes live under
+`lib/history/`, which knows nothing about browsers and is tested without
+one, and the `use*` hooks are only the wiring.
+
+### Why the log exists at all
+
+The model cannot answer "is $46 a lot, for this?" — asked what a fare should
+be it returns the number already on screen, which is the model grading its
+own homework. But the reader has seen this route before, and what they saw
+is a real observation. `historyForRoute` refuses to summarise below three of
+them, never pools two `MODEL_VERSION`s, and every sentence built from it
+carries its own n. See `docs/SECURITY.md` for what is stored and how it is
+deleted.
+
 ## The keyless live path
 
 `PublicRateCardQuoteSource` is what runs in production today.

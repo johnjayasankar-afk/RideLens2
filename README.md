@@ -20,6 +20,29 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 Default location search uses **Photon** (no API key). Routing uses public **OSRM**. Fare math uses published rate cards when `RATE_CARD_SOURCE_ENABLED=true`, plus a marketplace model (~55s ticks). Auto-refresh arms after your first successful compare.
 
+## Your own record
+
+Every completed comparison is kept on your device, and nowhere else — the
+route, the date, and the bands each provider showed. After three looks at the
+same trip, RideLens can tell you where today sits against what _you_ have
+seen, which is the one form of context a model cannot invent for itself.
+
+- **⌘K** opens the command palette: your trips first, then places, ranking,
+  filters, theme and actions. There is a **Commands** button for anyone
+  without a keyboard.
+- **/trips** is the record — what each route has cost, what you are watching,
+  and CSV or JSON export.
+- **"Tell me when it drops"** sets a threshold that is checked when you next
+  open RideLens. Nothing runs in the background and nothing is sent to you;
+  a test refuses the disclosure if it ever implies otherwise.
+
+None of it is transmitted, all of it expires, and every route has a Forget
+control beside it. See `docs/SECURITY.md`.
+
+Ranges are refused below three observations, and comparisons made by
+different `MODEL_VERSION`s are counted apart rather than pooled — a figure
+spanning two estimators is a figure no estimator ever produced.
+
 ## Environment
 
 See `.env.example` and `SETUP_REQUIRED.md`.
@@ -30,5 +53,20 @@ See `.env.example` and `SETUP_REQUIRED.md`.
 npm run dev
 npm run build && npm run start
 npm run test
-npm run verify
+npm run verify        # format, lint, types, tokens, unit, build, budget
 ```
+
+Four standing guards, each written after the thing it catches shipped:
+
+```bash
+npm run tokens        # dark blocks agree; no undefined or self-referential var()
+npm run budget        # gzipped client JS, CSS, fonts, lazy map
+npm run contrast      # six OS x choice combinations at WCAG 2.2 AA
+npm run perf          # frame times and CLS while scrolling
+```
+
+`contrast` and `perf` need a running build (`npm run build && npm run start`).
+`contrast` seeds a trip log and opens the palette so the surfaces that only
+exist under some condition are measured too — and fails if one of them never
+rendered, because an audit of an empty page reports zero failures and means
+nothing.
