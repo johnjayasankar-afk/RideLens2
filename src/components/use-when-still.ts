@@ -37,7 +37,14 @@ export interface WhenStillOptions {
 }
 
 export function useWhenStill(
-  hostRef: RefObject<Element | null>,
+  /**
+   * The element to wait for, or null to skip the visibility gate entirely.
+   *
+   * Null is right for work that is cheap and whose placeholder has no height
+   * — an empty div never intersects anything, so gating on it means the work
+   * never runs at all.
+   */
+  hostRef: RefObject<Element | null> | null,
   enabled: boolean,
   run: () => void,
   options: WhenStillOptions = {},
@@ -46,7 +53,7 @@ export function useWhenStill(
 
   useEffect(() => {
     if (!enabled) return;
-    const host = hostRef.current;
+    const host = hostRef?.current ?? null;
 
     let cancelled = false;
     let done = false;

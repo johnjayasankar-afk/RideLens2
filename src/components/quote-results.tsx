@@ -28,6 +28,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
+import { AlternativesRow } from "./alternatives-row";
 import { DepartureStrip } from "./departure-strip";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
@@ -1175,6 +1176,9 @@ export function QuoteResults({
         projecting every provider across the hour is a few hundred runs of
         the fare engine.
       */}
+      {/* Before the forecast: whether to take a car at all comes before when. */}
+      {hero ? <AlternativesRow sessionId={session?.id ?? null} /> : null}
+
       {hero ? (
         <DepartureStrip
           sessionId={session?.id ?? null}

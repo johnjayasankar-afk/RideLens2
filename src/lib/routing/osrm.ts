@@ -142,3 +142,34 @@ export async function fetchDrivingRoute(
     bbox: bboxOf(coordinates),
   };
 }
+
+/**
+ * How long it takes to walk it, or null.
+ *
+ * The public OSRM demo server only carries the car profile, so this goes to
+ * the FOSSGIS foot router — already in the content policy's connect-src for
+ * the driving fallback.
+ *
+ * Returns null rather than a guess. A walking time is only worth showing
+ * when something actually computed one; the alternatives row renders the
+ * absence rather than filling it in.
+ */
+export async function fetchWalkingSeconds(
+  pickup: { lat: number; lng: number },
+  destination: { lat: number; lng: number },
+  signal?: AbortSignal,
+): Promise<number | null> {
+  const url =
+    `https://routing.openstreetmap.de/routed-foot/route/v1/foot/` +
+    `${pickup.lng},${pickup.lat};${destination.lng},${destination.lat}?overview=false`;
+  try {
+    const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { routes?: Array<{ duration?: number }> };
+    const seconds = data.routes?.[0]?.duration;
+    return typeof seconds === "number" && Number.isFinite(seconds) ? seconds : null;
+  } catch {
+    // A walk nobody could compute is simply not offered.
+    return null;
+  }
+}

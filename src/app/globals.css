@@ -2797,3 +2797,64 @@ h1.admin-title {
 .winner-note[data-reason="wide_band"] {
   color: var(--amber-t);
 }
+
+/* ── Without a car ─────────────────────────────────────────────────────────
+   Presented plainly rather than as an upsell in reverse. The fares here are
+   published and cited; the saving is quoted against the cheapest car's low
+   end, which is the most favourable number the car has. */
+.alternatives {
+  display: grid;
+  gap: 10px;
+  margin-top: var(--space-3, 20px);
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--sky-bg);
+}
+.alternatives .section-label {
+  margin: 0;
+  color: var(--sky-t);
+}
+.alternatives-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.alternative-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--ink);
+}
+.alternative-head strong {
+  font-weight: 500;
+}
+.alternative-fare {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--sky-t);
+}
+.alternative-meta {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+}
+.alternative-saving {
+  color: var(--mint-t);
+}
+.alternative-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--amber-t);
+}
+.alternative-sources {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.alternative-sources a {
+  color: inherit;
+}
