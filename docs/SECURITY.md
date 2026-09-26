@@ -46,6 +46,26 @@ A list of somebody's regular movements is exactly the kind of thing people
 assume has been uploaded. The UI says "On this device only" next to it rather
 than waiting to be asked.
 
+### Price watches
+
+`src/lib/history/price-watch.ts` stores a route and a threshold under
+`ridelens.watches`, with the same constraints as the trip log — local, capped,
+expiring, deletable.
+
+The distinction worth writing down is what a watch _is_. The obvious shape of
+the feature is a push notification, and that is the one thing it must not read
+as: delivering one would mean a server polling a route on somebody's behalf,
+which also means generating fares nobody asked for. A watch here is a standing
+question answered when the reader next looks, and the only sentence allowed to
+describe it is `WATCH_DISCLOSURE`:
+
+> Checked when you open RideLens — nothing runs in the background and nothing
+> is sent to you.
+
+A unit test refuses that sentence if it ever contains "notify", "alert",
+"push", "email" or "remind", and a Playwright test asserts it is on screen
+beside the control rather than behind a disclosure triangle.
+
 ## Rate limiting
 
 Server-side sliding window on compare / places / book. Client timers are not trusted.

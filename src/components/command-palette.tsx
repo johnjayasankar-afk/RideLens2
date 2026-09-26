@@ -26,7 +26,18 @@
  * user notices first.
  */
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+
+/* Nothing ever changes, so the subscription is a no-op teardown. */
+const NO_SUBSCRIPTION = () => () => {};
 
 import { usePrefersReducedMotion } from "@/components/use-count-up";
 
@@ -84,11 +95,29 @@ function score(command: Command, query: string): number | null {
  */
 export function useCommandPalette(getCommands: () => Command[]): {
   open: boolean;
+  /**
+   * Whether the shortcut is actually live.
+   *
+   * The listener is registered on mount, so the server-rendered page
+   * advertised ⌘K before anything could answer it — and on a slow machine
+   * that window is long enough to press it in and get nothing. The hint is
+   * rendered from this rather than unconditionally.
+   *
+   * Read through useSyncExternalStore rather than an effect that sets state:
+   * the server snapshot is false, the client's is true, and nothing has to
+   * write during a render or in an effect body to say so.
+   */
+  ready: boolean;
   commands: Command[];
   close: () => void;
   openWith: () => void;
 } {
   const [open, setOpen] = useState(false);
+  const ready = useSyncExternalStore(
+    NO_SUBSCRIPTION,
+    () => true,
+    () => false,
+  );
   const [commands, setCommands] = useState<Command[]>([]);
   const latest = useRef(getCommands);
 
@@ -118,7 +147,7 @@ export function useCommandPalette(getCommands: () => Command[]): {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  return { open, commands, close, openWith };
+  return { open, ready, commands, close, openWith };
 }
 
 export function CommandPalette({

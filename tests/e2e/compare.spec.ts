@@ -213,8 +213,19 @@ test.describe("RideLens anonymous flow", () => {
  * click-based test and fail a real one.
  */
 test.describe("command palette", () => {
+  /*
+   * The listener is registered on mount, so the shortcut is not answerable
+   * the instant the HTML lands. `data-commands="ready"` is the page saying
+   * it is — the same signal it uses to decide whether to advertise ⌘K at
+   * all. Pressing before it appears is how this suite went flaky on a
+   * loaded machine.
+   */
+  const ready = (page: import("@playwright/test").Page) =>
+    page.waitForSelector('[data-commands="ready"]');
+
   test("opens on the shortcut, filters, runs, and closes", async ({ page }) => {
     await page.goto("/");
+    await ready(page);
     await page.keyboard.press("ControlOrMeta+k");
 
     const palette = page.getByRole("dialog", { name: "Commands" });
@@ -238,6 +249,7 @@ test.describe("command palette", () => {
 
   test("escape closes it and returns focus where it was", async ({ page }) => {
     await page.goto("/");
+    await ready(page);
     /* Not Swap: it is disabled until both endpoints are set, and a disabled
        button cannot hold the focus this test is about. */
     const anchor = page.getByRole("button", { name: "Use current location" });
@@ -253,6 +265,7 @@ test.describe("command palette", () => {
 
   test("arrow keys move the highlight without moving focus", async ({ page }) => {
     await page.goto("/");
+    await ready(page);
     await page.keyboard.press("ControlOrMeta+k");
     const input = page.getByRole("combobox", { name: "Type a command" });
 
@@ -262,5 +275,52 @@ test.describe("command palette", () => {
 
     expect(second).not.toBe(first);
     await expect(input).toBeFocused();
+  });
+});
+
+/*
+ * Price watches.
+ *
+ * The thing under test is as much the wording as the mechanism. A control
+ * that says "watch" beside a price reads as a promise to come and find you,
+ * and there is no server polling a route and no channel to send on — so the
+ * disclosure has to be present, and it has to say when the check actually
+ * happens.
+ */
+test.describe("price watch", () => {
+  const LINK = "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204";
+
+  test("sets a threshold, reports when it is met, and survives a reload", async ({ page }) => {
+    await page.goto(LINK);
+    await page.waitForSelector(".hero-quote");
+
+    await page.getByRole("button", { name: "Tell me when it drops" }).click();
+
+    /* A suggestion, not a saved default — and one the watch has not met. */
+    const field = page.getByLabel("Tell me when this trip is at or below");
+    await expect(field).toBeFocused();
+
+    await field.fill("999");
+    await page.getByRole("button", { name: "Watch", exact: true }).click();
+
+    await expect(page.locator(".watch.met")).toContainText("Under your $999.00 watch");
+
+    await page.reload();
+    await page.waitForSelector(".hero-quote");
+    await expect(page.locator(".watch.met")).toBeVisible();
+
+    await page.getByRole("button", { name: "Stop watching" }).click();
+    await expect(page.getByRole("button", { name: "Tell me when it drops" })).toBeVisible();
+  });
+
+  test("never claims it will reach you", async ({ page }) => {
+    await page.goto(LINK);
+    await page.waitForSelector(".hero-quote");
+    await page.getByRole("button", { name: "Tell me when it drops" }).click();
+
+    const disclosure = page.locator(".watch .fine");
+    await expect(disclosure).toContainText("when you open RideLens");
+    await expect(disclosure).toContainText("background");
+    await expect(disclosure).not.toContainText(/notif|alert|push|email/i);
   });
 });

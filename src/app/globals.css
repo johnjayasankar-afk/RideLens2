@@ -3765,3 +3765,88 @@ details[open] > summary::before {
   border-top: 1px solid var(--line);
   font-size: 11px;
 }
+
+/* ── A standing question about a trip ─────────────────────────────────────
+   Quiet when armed, mint when answered. The disclosure sits directly under
+   the control rather than behind a disclosure triangle, because a control
+   that says "watch" reads as a promise to come and find you. */
+.watch {
+  margin-top: 8px;
+}
+.watch-line {
+  margin: 0 0 2px;
+}
+.watch-verdict {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mint-t);
+}
+.watch-status {
+  font-size: 13px;
+}
+.watch .fine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.watch.met {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--mint-bg);
+}
+.watch-start {
+  font-size: 13px;
+}
+.watch-form {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.watch-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.watch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.watch-currency {
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.watch-input {
+  width: 92px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 15px;
+}
+@media (pointer: coarse) {
+  .watch-input {
+    min-height: 44px;
+  }
+}
+
+/* A button that reads as a link, for a secondary action inside a sentence. */
+.linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linkish:hover {
+  color: var(--ink);
+}

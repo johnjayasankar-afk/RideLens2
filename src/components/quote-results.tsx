@@ -26,6 +26,10 @@ import { rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RouteStanding } from "@/components/route-standing";
+import { PriceWatchControl } from "@/components/price-watch-control";
+import { usePriceWatches } from "@/components/use-price-watch";
+import { evaluateWatch } from "@/lib/history/price-watch";
+import { cheapestLowMinor, routeKeyFor } from "@/lib/history/trip-log";
 import { useTripLog } from "@/components/use-trip-log";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { ProvenanceChip } from "@/components/provenance-chip";
@@ -485,6 +489,7 @@ export function QuoteResults({
   /* Read, not written, here — the form records; this only reports. The store
      is shared, so both see the same log without passing it down. */
   const { records: tripRecords } = useTripLog();
+  const priceWatches = usePriceWatches();
   /** Which session has already played its entrance. */
   const [playedEntranceId, setPlayedEntranceId] = useState<string | null>(null);
   const resultsTopRef = useRef<HTMLElement | null>(null);
@@ -532,6 +537,40 @@ export function QuoteResults({
   }, [session?.quotes, mode, filter]);
 
   const hero = ranked[0];
+
+  /*
+   * Everything the watch control needs, derived rather than fetched. The
+   * evaluation is a pure read — see price-watch.ts — so it belongs in render
+   * beside the price it is about, not in an effect that would have to write.
+   */
+  const watchContext = useMemo(() => {
+    if (!session) return null;
+    const from = {
+      lat: session.pickup.lat,
+      lng: session.pickup.lng,
+      label: session.pickup.name || session.pickup.formattedAddress.split(",")[0] || "From",
+    };
+    const to = {
+      lat: session.destination.lat,
+      lng: session.destination.lng,
+      label: session.destination.name || session.destination.formattedAddress.split(",")[0] || "To",
+    };
+    const priced = session.quotes
+      .filter((q) => q.availability !== "UNAVAILABLE")
+      .map((q) => ({ lowMinor: q.priceMinMinor }));
+    const low = cheapestLowMinor(priced);
+    if (low === null) return null;
+
+    const routeKey = routeKeyFor(from, to);
+    const watch = priceWatches.watches.find((w) => w.routeKey === routeKey) ?? null;
+    return {
+      from,
+      to,
+      low,
+      watch,
+      result: watch ? evaluateWatch(watch, priced) : null,
+    };
+  }, [session, priceWatches.watches]);
 
   /*
    * True when nothing on screen came from a provider.
@@ -1114,6 +1153,17 @@ export function QuoteResults({
           />
           {session ? (
             <RouteStanding session={session} records={tripRecords} modelVersion={MODEL_VERSION} />
+          ) : null}
+          {watchContext ? (
+            <PriceWatchControl
+              from={watchContext.from}
+              to={watchContext.to}
+              cheapestLowMinor={watchContext.low}
+              watch={watchContext.watch}
+              result={watchContext.result}
+              onSet={priceWatches.set}
+              onRemove={priceWatches.remove}
+            />
           ) : null}
         </div>
       ) : null}

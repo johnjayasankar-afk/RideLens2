@@ -14,6 +14,7 @@ import { RecentTrips } from "@/components/recent-trips";
 import { CommandPalette, useCommandPalette, type Command } from "@/components/command-palette";
 import { applyTheme } from "@/components/theme-toggle";
 import { useTripLog } from "@/components/use-trip-log";
+import { usePriceWatches } from "@/components/use-price-watch";
 import { recentTrips } from "@/lib/history/trip-log";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { describeFailure } from "@/lib/domain/failure-message";
@@ -115,6 +116,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [locating, setLocating] = useState(false);
   const [session, setSession] = useState<QuoteSession | null>(null);
   const tripLog = useTripLog();
+  const priceWatches = usePriceWatches();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -873,6 +875,15 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         keywords: "clear history delete privacy",
         run: () => tripLog.clear(),
       },
+      {
+        id: "act-unwatch",
+        group: "Actions",
+        label: "Clear every price watch",
+        disabled: priceWatches.watches.length === 0,
+        hint: priceWatches.watches.length > 0 ? `${priceWatches.watches.length} set` : undefined,
+        keywords: "watch threshold stop clear privacy",
+        run: () => priceWatches.clear(),
+      },
     );
 
     return commands;
@@ -881,7 +892,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const palette = useCommandPalette(buildCommands);
 
   return (
-    <div className="compare-root">
+    <div className="compare-root" data-commands={palette.ready ? "ready" : undefined}>
       <CommandPalette open={palette.open} onClose={palette.close} commands={palette.commands} />
       <section className="hero-panel" aria-labelledby="brand-heading">
         <p className="eyebrow">{timeEyebrow}</p>
@@ -1055,9 +1066,14 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             <p className="route-help muted">
               Pick From and To, or Quick fill. Press{" "}
               <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
-              <kbd className="kbd">Enter</kbd> to compare,{" "}
-              <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
-              <kbd className="kbd">K</kbd> for everything else.
+              <kbd className="kbd">Enter</kbd> to compare
+              {palette.ready ? (
+                <>
+                  , <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
+                  <kbd className="kbd">K</kbd> for everything else
+                </>
+              ) : null}
+              .
             </p>
           ) : (
             <div className="route-tools">
