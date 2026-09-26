@@ -17,13 +17,15 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "playwright:install": "npx playwright install chromium",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run budget",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run tokens && npm run test && npm run build && npm run budget",
     "eval": "tsx scripts/eval.ts",
     "budget": "tsx scripts/bundle-budget.ts",
     "vendor:map": "tsx scripts/vendor-map-worker.ts",
     "prebuild": "npm run vendor:map",
     "predev": "npm run vendor:map",
-    "perf": "node scripts/perf.mjs"
+    "perf": "node scripts/perf.mjs",
+    "contrast": "node scripts/contrast-audit.mjs",
+    "tokens": "node scripts/css-tokens.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

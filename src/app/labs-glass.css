@@ -36,24 +36,30 @@ picture {
   background-color: rgba(var(--gl-rgb, 255, 255, 255), var(--gl-tint, 0.55));
   -webkit-backdrop-filter: var(--gl-fx, var(--gl-blur, blur(16px) saturate(1.8)));
   backdrop-filter: var(--gl-fx, var(--gl-blur, blur(16px) saturate(1.8)));
-  box-shadow:
+  /* The rim is scheme-dependent; the light values are the fallback. See the
+     scheme blocks at the foot of this file. */
+  box-shadow: var(
+    --gl-rim,
     inset 1.8px 1.8px 0 -0.7px rgba(255, 255, 255, 1),
     inset -1.4px -1.8px 0 -0.7px rgba(255, 255, 255, 0.62),
     inset 0 0 0 1px rgba(255, 255, 255, 0.42),
     inset 0 0 26px rgba(255, 255, 255, 0.14),
     0 0 0 0.5px rgba(28, 51, 38, 0.07),
-    var(--gl-drop, 0 14px 34px -16px rgba(15, 42, 29, 0.42));
+    var(--gl-drop, 0 14px 34px -16px rgba(15, 42, 29, 0.42))
+  );
 }
 /* flat glass: the tint and the rim without asking the compositor for a backdrop.
    It is what the small, numerous, moving pieces wear. */
 .gl--flat {
   background-color: rgba(var(--gl-rgb, 255, 255, 255), var(--gl-tint, 0.68));
-  box-shadow:
+  box-shadow: var(
+    --gl-rim-flat,
     inset 1.6px 1.6px 0 -0.7px rgba(255, 255, 255, 1),
     inset -1.2px -1.4px 0 -0.6px rgba(255, 255, 255, 0.6),
     inset 0 0 0 1px rgba(28, 51, 38, 0.1),
     inset 0 0 18px rgba(255, 255, 255, 0.16),
-    var(--gl-drop, 0 6px 16px -10px rgba(28, 51, 38, 0.3));
+    var(--gl-drop, 0 6px 16px -10px rgba(28, 51, 38, 0.3))
+  );
 }
 .gl--dark {
   background-color: rgba(11, 26, 19, var(--gl-tint, 0.44));
@@ -79,7 +85,8 @@ picture {
 }
 /* the light the glass carries: one sheen across the face, one that follows the pointer */
 .gl--spec {
-  background-image:
+  background-image: var(
+    --gl-spec,
     radial-gradient(
       240px circle at var(--gx, 50%) var(--gy, -10%),
       rgba(255, 255, 255, 0.5),
@@ -90,7 +97,8 @@ picture {
       rgba(255, 255, 255, 0.3) 0 15%,
       rgba(255, 255, 255, 0.06) 34%,
       rgba(255, 255, 255, 0) 54%
-    );
+    )
+  );
 }
 .gl--dark.gl--spec {
   background-image:
@@ -183,7 +191,7 @@ a.gl--flat:active {
 @media (prefers-reduced-transparency: reduce) {
   .gl,
   .gl--flat {
-    background-color: rgba(255, 255, 255, 0.97) !important;
+    background-color: rgba(var(--gl-rgb, 255, 255, 255), 0.97) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
     background-image: none !important;
@@ -284,26 +292,33 @@ a.gl--flat:active {
   }
 }
 
+/* ══ The glass, in the dark ═════════════════════════════════════════════════
+   Written as variables so the rules above stay written once, and declared
+   twice for the same reason the tokens in globals.css are: once for the
+   system preference, once for an explicit choice, with the system rule
+   scoped so that picking light *keeps* light on a machine set to dark.
+
+   That scoping is the bug this replaced. The old block matched on
+   `[data-labs-glass="auto"]` inside a bare `prefers-color-scheme: dark`
+   media query, so on a dark machine the glass stayed dark even when the
+   reader had chosen light — dark chips carrying dark text, unreadable, on
+   an otherwise light page. An override the OS can overrule is not an
+   override, and that rule has to hold for the material as well as the
+   tokens. */
+
 @media (prefers-color-scheme: dark) {
-  [data-labs-glass="auto"] .gl:not(.gl--mint) {
-    background-color: rgba(11, 26, 19, var(--gl-tint-dark, 0.5));
-    box-shadow:
+  :root:not([data-theme="light"]) {
+    --gl-rgb: 11, 26, 19;
+    --gl-rim:
       inset 1.8px 1.8px 0 -0.7px rgba(255, 255, 255, 0.5),
       inset -1.4px -1.8px 0 -0.7px rgba(255, 255, 255, 0.18),
-      inset 0 0 0 1px rgba(167, 243, 208, 0.22),
-      inset 0 0 26px rgba(167, 243, 208, 0.07),
+      inset 0 0 0 1px rgba(167, 243, 208, 0.22), inset 0 0 26px rgba(167, 243, 208, 0.07),
       var(--gl-drop, 0 18px 40px -18px rgba(0, 0, 0, 0.55));
-  }
-  [data-labs-glass="auto"] .gl--flat:not(.gl--mint) {
-    background-color: rgba(11, 26, 19, var(--gl-tint-dark, 0.62));
-    box-shadow:
+    --gl-rim-flat:
       inset 1.4px 1.4px 0 -0.6px rgba(255, 255, 255, 0.28),
       inset -1px -1.2px 0 -0.5px rgba(255, 255, 255, 0.1),
-      inset 0 0 0 1px rgba(167, 243, 208, 0.16),
-      var(--gl-drop, 0 6px 16px -10px rgba(0, 0, 0, 0.5));
-  }
-  [data-labs-glass="auto"] .gl--spec {
-    background-image:
+      inset 0 0 0 1px rgba(167, 243, 208, 0.16), var(--gl-drop, 0 6px 16px -10px rgba(0, 0, 0, 0.5));
+    --gl-spec:
       radial-gradient(
         260px circle at var(--gx, 50%) var(--gy, -10%),
         rgba(167, 243, 208, 0.22),
@@ -316,11 +331,39 @@ a.gl--flat:active {
         rgba(255, 255, 255, 0) 54%
       );
   }
-  @media (prefers-reduced-transparency: reduce) {
-    [data-labs-glass="auto"] .gl,
-    [data-labs-glass="auto"] .gl--flat {
-      background-color: rgba(12, 26, 19, 0.97) !important;
-    }
+}
+
+:root[data-theme="dark"] {
+  --gl-rgb: 11, 26, 19;
+  --gl-rim:
+    inset 1.8px 1.8px 0 -0.7px rgba(255, 255, 255, 0.5),
+    inset -1.4px -1.8px 0 -0.7px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(167, 243, 208, 0.22), inset 0 0 26px rgba(167, 243, 208, 0.07),
+    var(--gl-drop, 0 18px 40px -18px rgba(0, 0, 0, 0.55));
+  --gl-rim-flat:
+    inset 1.4px 1.4px 0 -0.6px rgba(255, 255, 255, 0.28),
+    inset -1px -1.2px 0 -0.5px rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(167, 243, 208, 0.16),
+    var(--gl-drop, 0 6px 16px -10px rgba(0, 0, 0, 0.5));
+  --gl-spec:
+    radial-gradient(
+      260px circle at var(--gx, 50%) var(--gy, -10%),
+      rgba(167, 243, 208, 0.22),
+      transparent 62%
+    ),
+    linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.12) 0 15%,
+      rgba(255, 255, 255, 0.02) 36%,
+      rgba(255, 255, 255, 0) 54%
+    );
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root:not([data-theme="light"]) .gl,
+  :root:not([data-theme="light"]) .gl--flat,
+  :root[data-theme="dark"] .gl,
+  :root[data-theme="dark"] .gl--flat {
+    background-color: rgba(12, 26, 19, 0.97) !important;
   }
 }
 
@@ -367,7 +410,7 @@ a.gl--flat:active {
   }
   a[href^="http"]::after {
     content: " (" attr(href) ")";
-    font: 400 0.72em/1.3 var(--mono);
+    font: 400 0.72em/1.3 var(--font-mono);
     color: #5a6b62;
     word-break: break-all;
   }

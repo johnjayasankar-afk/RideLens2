@@ -497,16 +497,12 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
    * exist for, and there is no render-time expression for "go and ask the
    * network".
    *
-   * The rule fires because `compare` eventually calls setLoading. It is aimed
-   * at derived-state cascades, and suppressing it anywhere else in this file
-   * would have been hiding a real problem; here it is describing one that is
-   * not. The proper removal is 4.4 — let the server render the result for a
-   * deep link — at which point this effect goes too.
+   * It still is not free. The real removal is to let the server render the
+   * result for a deep link, at which point this effect goes too.
    */
   useEffect(() => {
     if (!deepLink.hasRoute || deepLinkCompareDone.current) return;
     deepLinkCompareDone.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on arrival; see above
     void compare(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deepLink.hasRoute]);

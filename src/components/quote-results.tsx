@@ -309,8 +309,6 @@ function QuoteCard({
   hero,
   deltaMinor,
   waitDeltaSec,
-  pickupLabel,
-  destinationLabel,
   index = 0,
   now,
   sessionId,
@@ -320,8 +318,6 @@ function QuoteCard({
   hero?: boolean;
   deltaMinor?: number;
   waitDeltaSec?: number;
-  pickupLabel?: string;
-  destinationLabel?: string;
   sessionId?: string;
   index?: number;
   now: Date;
@@ -666,26 +662,6 @@ export function QuoteResults({
     }
     return null;
   }, [destination, session]);
-
-  const tripPickupLabel = useMemo(() => {
-    return (
-      pickup?.formattedAddress ||
-      pickup?.label ||
-      session?.pickup.formattedAddress ||
-      mapPickup?.label ||
-      ""
-    );
-  }, [pickup, session, mapPickup]);
-
-  const tripDestLabel = useMemo(() => {
-    return (
-      destination?.formattedAddress ||
-      destination?.label ||
-      session?.destination.formattedAddress ||
-      mapDest?.label ||
-      ""
-    );
-  }, [destination, session, mapDest]);
 
   const copyBest = async () => {
     if (!hero) return;
@@ -1126,8 +1102,6 @@ export function QuoteResults({
             sessionId={session?.id}
             quote={hero}
             hero
-            pickupLabel={tripPickupLabel}
-            destinationLabel={tripDestLabel}
             index={0}
             now={now}
             animate={animateEntrance}
@@ -1144,8 +1118,6 @@ export function QuoteResults({
                 sessionId={session?.id}
                 key={`${q.provider}:${q.providerProductId || q.providerProductName}`}
                 quote={q}
-                pickupLabel={tripPickupLabel}
-                destinationLabel={tripDestLabel}
                 index={i + 1}
                 now={now}
                 animate={animateEntrance}

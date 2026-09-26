@@ -18,7 +18,6 @@ export interface Geocoder {
 }
 
 function nominatimHeaders(): HeadersInit {
-  const env = getEnv();
   return {
     Accept: "application/json",
     // Nominatim's usage policy requires a contactable identifier; a loopback
