@@ -157,6 +157,16 @@ for (const os of ["light", "dark"]) {
       /* The standing only exists once the log has enough of this route, so it
          is noted where it is found rather than waited for. */
       if (await page.$(".route-standing")) seen.add(".route-standing");
+
+      /* The palette is a whole surface that only exists while it is open. */
+      if (wait === ".recent-trip") {
+        await page.keyboard.press("ControlOrMeta+k");
+        const open = await page
+          .waitForSelector(".cmdk-item", { timeout: 5000 })
+          .then(() => true)
+          .catch(() => false);
+        if (open) seen.add(".cmdk-item");
+      }
       await page.waitForTimeout(url === URL ? 3500 : 900);
       fails = fails.concat(await page.evaluate(AUDIT));
     }
@@ -173,7 +183,7 @@ for (const os of ["light", "dark"]) {
 
 await browser.close();
 
-const EXPECTED = [".quote-card", ".recent-trip", ".route-standing"];
+const EXPECTED = [".quote-card", ".recent-trip", ".route-standing", ".cmdk-item"];
 const missing = EXPECTED.filter((sel) => !seen.has(sel));
 if (missing.length > 0) {
   console.error(

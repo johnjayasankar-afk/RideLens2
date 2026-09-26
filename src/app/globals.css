@@ -3641,3 +3641,127 @@ details[open] > summary::before {
 .route-standing.standing-below_usual .route-standing-verdict {
   color: var(--mint-t);
 }
+
+/* ── Command palette ──────────────────────────────────────────────────────
+   Sits above everything, including the sticky topbar (z-index 40) and the
+   provider sheet. */
+.cmdk-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgba(var(--scrim-rgb), 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: cmdk-fade 0.14s var(--ease) both;
+}
+.cmdk {
+  width: min(560px, 100%);
+  max-height: min(62vh, 520px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--sh-3);
+  animation: cmdk-rise 0.18s var(--ease) both;
+}
+@keyframes cmdk-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cmdk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-scrim,
+  .cmdk {
+    animation: none;
+  }
+}
+.cmdk-input {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+}
+.cmdk-input:focus {
+  outline: none;
+}
+.cmdk-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  /* The palette scrolls, the page behind it must not. */
+  overscroll-behavior: contain;
+}
+.cmdk-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+}
+.cmdk-item.is-active {
+  background: var(--mint-bg);
+  color: var(--mint-t);
+}
+.cmdk-item.is-active .cmdk-hint {
+  color: inherit;
+  opacity: 0.75;
+}
+.cmdk-group {
+  padding: 12px 12px 4px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+/* The first group in the list does not need the gap above it. */
+.cmdk-group:first-child {
+  padding-top: 4px;
+}
+.cmdk-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cmdk-hint {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cmdk-empty {
+  padding: 18px 12px;
+  font-size: 14px;
+  text-align: center;
+}
+.cmdk-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}

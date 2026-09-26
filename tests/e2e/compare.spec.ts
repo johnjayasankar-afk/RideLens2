@@ -202,3 +202,65 @@ test.describe("RideLens anonymous flow", () => {
     await expect(page).toHaveURL(/\/sources$/);
   });
 });
+
+/*
+ * The command palette.
+ *
+ * Driven by keyboard throughout, because that is the only way anybody uses
+ * it and because the combobox pattern is easy to break without noticing: the
+ * highlight moves through aria-activedescendant while focus stays in the
+ * input, and a refactor that reaches for a roving tabindex would pass a
+ * click-based test and fail a real one.
+ */
+test.describe("command palette", () => {
+  test("opens on the shortcut, filters, runs, and closes", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("ControlOrMeta+k");
+
+    const palette = page.getByRole("dialog", { name: "Commands" });
+    await expect(palette).toBeVisible();
+
+    const input = page.getByRole("combobox", { name: "Type a command" });
+    await expect(input).toBeFocused();
+
+    /* The highlight is named by aria-activedescendant, not by focus. */
+    await expect(input).toHaveAttribute("aria-activedescendant", /^cmd-/);
+
+    await input.fill("dark");
+    const options = page.getByRole("option");
+    await expect(options).toHaveCount(1);
+    await expect(options.first()).toHaveText(/Dark/);
+
+    await page.keyboard.press("Enter");
+    await expect(palette).toBeHidden();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  });
+
+  test("escape closes it and returns focus where it was", async ({ page }) => {
+    await page.goto("/");
+    /* Not Swap: it is disabled until both endpoints are set, and a disabled
+       button cannot hold the focus this test is about. */
+    const anchor = page.getByRole("button", { name: "Use current location" });
+    await anchor.focus();
+
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(page.getByRole("dialog", { name: "Commands" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(page.getByRole("dialog", { name: "Commands" })).toBeHidden();
+    await expect(anchor).toBeFocused();
+  });
+
+  test("arrow keys move the highlight without moving focus", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("ControlOrMeta+k");
+    const input = page.getByRole("combobox", { name: "Type a command" });
+
+    const first = await input.getAttribute("aria-activedescendant");
+    await page.keyboard.press("ArrowDown");
+    const second = await input.getAttribute("aria-activedescendant");
+
+    expect(second).not.toBe(first);
+    await expect(input).toBeFocused();
+  });
+});

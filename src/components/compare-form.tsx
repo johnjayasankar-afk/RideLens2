@@ -11,7 +11,10 @@ import {
 } from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
 import { RecentTrips } from "@/components/recent-trips";
+import { CommandPalette, useCommandPalette, type Command } from "@/components/command-palette";
+import { applyTheme } from "@/components/theme-toggle";
 import { useTripLog } from "@/components/use-trip-log";
+import { recentTrips } from "@/lib/history/trip-log";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { describeFailure } from "@/lib/domain/failure-message";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -112,6 +115,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   const [locating, setLocating] = useState(false);
   const [session, setSession] = useState<QuoteSession | null>(null);
   const tripLog = useTripLog();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
@@ -714,8 +718,171 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   const proximity = pickup ? { lat: pickup.lat, lng: pickup.lng } : { lat: 40.7128, lng: -74.006 };
 
+  /*
+   * The command list.
+   *
+   * Trips first, deliberately: the log knows what this person actually does,
+   * and a generic action list that buries it under "Rank by cheapest" would
+   * be a menu rather than a shortcut. Everything else is the controls that
+   * already exist on the page, gathered so they can be reached without
+   * finding them.
+   *
+   * Built as plain render code rather than memoised. Each `run` is an event
+   * handler in the same shape as the onClick handlers below, and wrapping
+   * them in a useMemo makes the compiler read the refs they touch as render
+   * access — which is exactly what it should say about a memo, and exactly
+   * the wrong question to ask about a click handler.
+   */
+  const locate = useCurrentLocation;
+
+  const buildCommands = (): Command[] => {
+    const commands: Command[] = [];
+
+    for (const t of recentTrips(tripLog.records, 5)) {
+      commands.push({
+        id: `trip-${t.routeKey}`,
+        group: "Your trips",
+        label: `${t.from.label} → ${t.to.label}`,
+        hint: t.times === 1 ? "once" : `${t.times} looks`,
+        keywords: `${t.from.label} ${t.to.label} trip recent`,
+        run: () => {
+          const from = {
+            lat: t.from.lat,
+            lng: t.from.lng,
+            formattedAddress: t.from.label,
+            label: t.from.label,
+          };
+          const to = {
+            lat: t.to.lat,
+            lng: t.to.lng,
+            formattedAddress: t.to.label,
+            label: t.to.label,
+          };
+          setPickup(from);
+          setDestination(to);
+          void compare(false, { pickup: from, destination: to });
+        },
+      });
+    }
+
+    for (const q of QUICK_PICKS) {
+      commands.push({
+        id: `pick-${q.label}`,
+        group: "Go",
+        label: `Set ${quickTarget === "from" || !pickup ? "From" : "To"} to ${q.label}`,
+        keywords: `${q.label} ${q.place.formattedAddress}`,
+        run: () => applyQuickPick(q.place),
+      });
+    }
+
+    for (const [id, label] of [
+      ["cheapest", "Price"],
+      ["fastest", "Soonest"],
+      ["best_value", "Value"],
+    ] as const) {
+      commands.push({
+        id: `mode-${id}`,
+        group: "Rank by",
+        label,
+        hint: mode === id ? "current" : undefined,
+        keywords: "rank sort order mode",
+        run: () => setMode(id),
+      });
+    }
+
+    for (const [id, label] of [
+      ["standard", "Standard"],
+      ["TAXI", "Taxi"],
+      ["XL", "XL"],
+      ["PREMIUM", "Premium"],
+      ["ALL", "All"],
+    ] as const) {
+      commands.push({
+        id: `filter-${id}`,
+        group: "Show",
+        label,
+        hint: filter === id ? "current" : undefined,
+        keywords: "filter category class",
+        run: () => setFilter(id),
+      });
+    }
+
+    for (const [id, label] of [
+      ["system", "Match system"],
+      ["light", "Light"],
+      ["dark", "Dark"],
+    ] as const) {
+      commands.push({
+        id: `theme-${id}`,
+        group: "Appearance",
+        label,
+        /* Not "dark light": those are the labels, and repeating them here made
+         typing "dark" surface every theme option instead of the one. */
+        keywords: "theme appearance scheme colour color",
+        run: () => applyTheme(id),
+      });
+    }
+
+    commands.push(
+      {
+        id: "act-compare",
+        group: "Actions",
+        label: "Compare rides",
+        hint: isApplePlatform ? "⌘↵" : "Ctrl+↵",
+        disabled: !canSubmit || loading,
+        keywords: "run refresh go",
+        run: () => void compare(false),
+      },
+      {
+        id: "act-refresh",
+        group: "Actions",
+        label: "Refresh prices",
+        disabled: !activeSession,
+        keywords: "reload again update",
+        run: () => void compare(true),
+      },
+      {
+        id: "act-swap",
+        group: "Actions",
+        label: "Swap From and To",
+        disabled: !pickup && !destination,
+        keywords: "reverse return back",
+        run: () => swapAndCompare(),
+      },
+      {
+        id: "act-share",
+        group: "Actions",
+        label: "Share this comparison",
+        disabled: !activeSession,
+        keywords: "link copy send",
+        run: () => void shareComparison(),
+      },
+      {
+        id: "act-locate",
+        group: "Actions",
+        label: "Use current location",
+        keywords: "gps here nearby",
+        run: () => locate(),
+      },
+      {
+        id: "act-forget",
+        group: "Actions",
+        label: "Forget all your trips",
+        disabled: tripLog.records.length === 0,
+        hint: tripLog.records.length > 0 ? `${tripLog.records.length} kept` : undefined,
+        keywords: "clear history delete privacy",
+        run: () => tripLog.clear(),
+      },
+    );
+
+    return commands;
+  };
+
+  const palette = useCommandPalette(buildCommands);
+
   return (
     <div className="compare-root">
+      <CommandPalette open={palette.open} onClose={palette.close} commands={palette.commands} />
       <section className="hero-panel" aria-labelledby="brand-heading">
         <p className="eyebrow">{timeEyebrow}</p>
         <h1 className="brand" id="brand-heading">
@@ -888,7 +1055,9 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             <p className="route-help muted">
               Pick From and To, or Quick fill. Press{" "}
               <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
-              <kbd className="kbd">Enter</kbd> to compare.
+              <kbd className="kbd">Enter</kbd> to compare,{" "}
+              <kbd className="kbd">{isApplePlatform ? "⌘" : "Ctrl"}</kbd>
+              <kbd className="kbd">K</kbd> for everything else.
             </p>
           ) : (
             <div className="route-tools">
