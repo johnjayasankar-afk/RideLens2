@@ -53,6 +53,8 @@ const SEED_TRIPS = Array.from({ length: 4 }, (_, i) => ({
 
 /* Which surfaces actually rendered. An audit that silently measured an
    empty page reports zero failures and means nothing. */
+const ORIGIN = URL.slice(0, URL.indexOf("/", URL.indexOf("//") + 2));
+
 const seen = new Set();
 
 const AUDIT = () => {
@@ -146,7 +148,8 @@ for (const os of ["light", "dark"]) {
     for (const [url, wait] of [
       [URL, ".quote-card"],
       /* `URL` above shadows the global constructor, so the origin is sliced. */
-      [URL.slice(0, URL.indexOf("/", URL.indexOf("//") + 2)) + "/", ".recent-trip"],
+      [ORIGIN + "/", ".recent-trip"],
+      [ORIGIN + "/trips", ".trip-row"],
     ]) {
       await page.goto(url, { waitUntil: "load" });
       const appeared = await page
@@ -183,7 +186,7 @@ for (const os of ["light", "dark"]) {
 
 await browser.close();
 
-const EXPECTED = [".quote-card", ".recent-trip", ".route-standing", ".cmdk-item"];
+const EXPECTED = [".quote-card", ".recent-trip", ".route-standing", ".cmdk-item", ".trip-row"];
 const missing = EXPECTED.filter((sel) => !seen.has(sel));
 if (missing.length > 0) {
   console.error(

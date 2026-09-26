@@ -109,10 +109,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <div className="shell topbar-inner">
             <Link href="/" className="brand topbar-brand">
               <span className="brand-mark" aria-hidden />
-              RideLens
+              {/* Wrapped so the narrowest screens can drop the wordmark and
+                  keep the nav on one line. It is clipped rather than
+                  removed — the mark is aria-hidden, so this text is the
+                  link's only accessible name. */}
+              <span className="brand-word">RideLens</span>
             </Link>
             <nav className="topnav" aria-label="Primary">
               <Link href="/#main">Compare</Link>
+              <Link href="/trips">Trips</Link>
               <Link href="/sources">Sources</Link>
               <ThemeToggle />
             </nav>

@@ -129,6 +129,40 @@ test.describe("RideLens anonymous flow", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
+  /*
+   * 390 was the only width checked, and a fourth nav item fitted there while
+   * overflowing by 15px at 320 — a width plenty of phones still report. Each
+   * page is checked, because the topbar is shared and the pages below it are
+   * not.
+   */
+  for (const width of [320, 360, 390, 414]) {
+    for (const path of ["/", "/trips", "/sources"] as const) {
+      test(`nothing overflows sideways at ${width}px on ${path}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(path);
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow).toBeLessThanOrEqual(0);
+      });
+    }
+  }
+
+  /*
+   * The brand mark is aria-hidden, so the wordmark beside it is the only
+   * accessible name the home link has. The narrowest breakpoint clips that
+   * text to fit the nav on one line — clipping keeps it, display:none would
+   * not, and the difference is a link that announces as "link" to a screen
+   * reader.
+   */
+  test("the home link keeps its name at every width", async ({ page }) => {
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/");
+      await expect(page.getByRole("link", { name: "RideLens" }).first()).toBeVisible();
+    }
+  });
+
   /** The fixture route as a deep link — no geocoder round-trip to flake on. */
   const DEEP_LINK =
     `/?from=${PICKUP.lat},${PICKUP.lng},${encodeURIComponent(PICKUP.formattedAddress)}` +
@@ -322,5 +356,87 @@ test.describe("price watch", () => {
     await expect(disclosure).toContainText("when you open RideLens");
     await expect(disclosure).toContainText("background");
     await expect(disclosure).not.toContainText(/notif|alert|push|email/i);
+  });
+});
+
+/*
+ * The trips page.
+ *
+ * Its content lives in localStorage, so the server renders a shell and the
+ * browser fills it. The checks here are about the two things that would be
+ * wrong to get wrong: the minimum-sample refusal, and an export that could
+ * be mistaken for a receipt.
+ */
+test.describe("your trips", () => {
+  const A = { lat: 40.7225, lng: -73.9945, label: "14 Prince St" };
+  const B = { lat: 40.6446, lng: -73.7797, label: "JFK Terminal 4" };
+  const KEY = "40.723,-73.994>40.645,-73.780";
+
+  const seed = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      v: 1,
+      id: `seed-${i}`,
+      at: new Date(Date.now() - (i + 1) * 86_400_000).toISOString(),
+      from: A,
+      to: B,
+      routeKey: KEY,
+      miles: 17.9,
+      minutes: 33,
+      quotes: [
+        {
+          provider: "curb",
+          product: "Curb Taxi",
+          lowMinor: 6200 + i * 400,
+          highMinor: 6350 + i * 400,
+          type: "ESTIMATE_RANGE",
+          confidence: "MEDIUM",
+        },
+      ],
+      modelVersion: "2026-09-25.v1",
+    }));
+
+  test("says so plainly when there is nothing kept", async ({ page }) => {
+    await page.goto("/trips");
+    await expect(page.locator(".trips-empty")).toContainText("Nothing kept yet");
+    await expect(page.locator(".trips-empty")).toContainText("stored on this device");
+  });
+
+  test("refuses a range below the minimum, and gives one above it", async ({ page }) => {
+    await page.addInitScript((records) => {
+      localStorage.setItem("ridelens.trips", JSON.stringify(records));
+    }, seed(2));
+    await page.goto("/trips");
+    await expect(page.locator(".trip-row")).toContainText("Not enough looks");
+
+    await page.addInitScript((records) => {
+      localStorage.setItem("ridelens.trips", JSON.stringify(records));
+    }, seed(4));
+    await page.goto("/trips");
+    await expect(page.locator(".trip-row").first()).toContainText("across 4 comparisons");
+  });
+
+  test("exports a file that cannot be read as a receipt", async ({ page }) => {
+    await page.addInitScript((records) => {
+      localStorage.setItem("ridelens.trips", JSON.stringify(records));
+    }, seed(3));
+    await page.goto("/trips");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Export CSV" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toContain("modeled-estimates");
+
+    const path = await download.path();
+    const { readFileSync } = await import("node:fs");
+    const header = readFileSync(path!, "utf8").split("\n")[0];
+
+    for (const word of ["price", "paid", "fare", "total", "amount"]) {
+      expect(header).not.toContain(word);
+    }
+    expect(header).toContain("estimate_low_usd");
+    expect(header).toContain("estimate_high_usd");
+    expect(header).toContain("model_version");
   });
 });

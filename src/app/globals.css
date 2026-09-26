@@ -3850,3 +3850,137 @@ details[open] > summary::before {
 .linkish:hover {
   color: var(--ink);
 }
+
+/* ── Your trips ───────────────────────────────────────────────────────────
+   A record, not a dashboard. No charts, no accent colour on the numbers:
+   a page of routes with dollar ranges beside them already looks more like
+   market data than it should, and decoration would push it further. */
+.trips {
+  display: grid;
+  gap: 22px;
+  padding-top: 28px;
+  padding-bottom: 56px;
+  max-width: 760px;
+}
+.trips-head {
+  display: grid;
+  gap: 8px;
+}
+.trips-title {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 38px);
+  letter-spacing: -0.02em;
+}
+.trips-head .muted {
+  margin: 0;
+  max-width: 62ch;
+  line-height: 1.55;
+}
+.trips-panel {
+  display: grid;
+  gap: 28px;
+}
+.trips-empty {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  max-width: 62ch;
+  line-height: 1.55;
+}
+.trip-export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trip-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.trip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.trip-main {
+  flex: 1 1 260px;
+  display: grid;
+  gap: 3px;
+}
+.trip-route {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+.trip-main p {
+  margin: 0;
+}
+.trip-range {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+.trip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trips-note {
+  max-width: 68ch;
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+.trips-foot {
+  /* The rule sets off the destructive actions, so it spans the column
+     rather than stopping wherever the sentence happens to end. */
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* A fourth item — Trips — put the topnav 5px past the viewport at 390px.
+   Tightened rather than hidden: a page reachable only on a wide screen is
+   a page most people never find. Height still comes from the touch-target
+   block at the foot of this file, so the 44px minimum is untouched. */
+@media (max-width: 480px) {
+  .topbar-inner {
+    gap: 6px;
+  }
+  .topnav a {
+    padding: 0 8px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 380px) {
+  .topnav a {
+    padding: 0 6px;
+  }
+}
+/* Below this the wordmark and four nav items cannot share a line. The mark
+   stays as the link to home; the word is clipped rather than removed,
+   because the mark is aria-hidden and this text is the link's only
+   accessible name. */
+@media (max-width: 350px) {
+  .topbar-brand .brand-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .topbar-brand {
+    gap: 0;
+  }
+}
