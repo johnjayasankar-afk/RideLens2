@@ -908,6 +908,16 @@ h1.brand {
   background: transparent;
   box-shadow: none;
 }
+@media (pointer: coarse) {
+  /* Higher specificity than the blanket rule at the foot of this file, so
+     it has to opt in by name. */
+  .quick-target .chip {
+    min-height: 44px;
+  }
+  .quick-target {
+    padding: 2px;
+  }
+}
 .quick-target .chip.active {
   color: var(--ink);
   background: var(--paper);
@@ -933,6 +943,12 @@ h1.brand {
 .route-actions .ghost {
   flex: 1 1 9rem;
   min-height: 40px;
+}
+@media (pointer: coarse) {
+  /* Names itself for the same specificity reason as .quick-target .chip. */
+  .route-actions .ghost {
+    min-height: 44px;
+  }
 }
 .route-actions .ghost.is-swapping {
   animation: 0.45s ease swap-pulse;
@@ -2306,7 +2322,8 @@ h1.admin-title {
   }
   .ghost,
   .chip {
-    min-height: 40px;
+    /* 44, not 40: see the pointer-coarse block at the foot of this file. */
+    min-height: 44px;
   }
 }
 @media (max-width: 639px) {
@@ -3223,4 +3240,96 @@ h1.admin-title {
        aria-label, and the glyph alone is enough once space is tight. */
     display: none;
   }
+}
+
+/* The disclosure that opens a breakdown. At 20px it was under the 24px
+   WCAG 2.2 SC 2.5.8 asks for at AA even with a mouse, which makes it the
+   only control in the app that failed on desktop too. */
+summary {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Touch targets ────────────────────────────────────────────────────────
+   44px is a measurement of a fingertip, so it is gated on the pointer
+   rather than the viewport: a narrow window on a laptop does not need
+   thumb-sized chips, and a tablet in landscape does.
+
+   Raising min-height rather than expanding hit areas with a pseudo-element
+   on purpose. The chips wrap, and invisible boxes grown past their layout
+   would overlap the row beneath — whichever came later in the DOM would
+   quietly steal the tap. Making the row taller cannot do that.
+
+   On a fine pointer everything here still clears the 24px that WCAG 2.2
+   SC 2.5.8 asks for at AA. See docs/A11Y.md. */
+@media (pointer: coarse) {
+  .ghost,
+  .chip,
+  .place-clear,
+  .primary,
+  .book,
+  .topnav a,
+  .skip-link,
+  .party-stepper .ghost,
+  .theme-toggle {
+    min-height: 44px;
+  }
+  /* The label is hidden under 720px, leaving a glyph in a 34px-wide button. */
+  .theme-toggle {
+    min-width: 44px;
+  }
+  /* The brand mark is a link too, and it is the one people hit by accident
+     on the way to the nav. */
+  .topbar-brand {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* A 16px checkbox with a 24px row cleared AA but is still a poor tap. */
+  .auto-refresh {
+    min-height: 44px;
+  }
+  /* Short labels — "To", "XL", "All" — cleared 44 tall and not wide. */
+  .chip,
+  .quick-target .chip {
+    min-width: 44px;
+  }
+  /* Opens the provenance sheet, which is the most important thing on a
+     card to be able to hit. */
+  .prov-chip {
+    min-height: 44px;
+  }
+  /* No combinator: the disclosures are not all direct children. */
+  summary {
+    min-height: 44px;
+  }
+  /* The saved-route buttons carry no class of their own. */
+  .recent-routes button {
+    min-height: 44px;
+  }
+  /*
+   * MapLibre ships 29px controls. They are in our DOM and on our map, so
+   * they are ours to size — a vendor default is not an exemption.
+   *
+   * Scoped through .map-slot to outrank the library's own
+   * `.maplibregl-ctrl-group button`, which arrives in the lazy map chunk and
+   * therefore loads after this file. Specificity rather than !important, so
+   * the rule can still be overridden normally.
+   */
+  .map-slot .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+  /*
+   * The attribution toggle is deliberately left alone at 24px.
+   *
+   * Forcing it to 44 broke MapLibre's attribution widget into a row of
+   * overlapping duplicate icons spilling off the map — the library lays that
+   * control out against its own dimensions. It clears the 24px WCAG 2.2
+   * SC 2.5.8 asks for at AA, and a control that is the right size and
+   * visually broken is worse than one that is small and works.
+   *
+   * Caught by looking at a screenshot. The measurement said it passed.
+   */
 }
