@@ -329,7 +329,9 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
       const dist = haversineMeters(from, to);
       if (dist < NEAR_IDENTICAL_M) {
-        setError("Pickup and to are nearly the same place. Choose a clearer to.");
+        /* Read as broken English — "Choose a clearer to" — which is what a
+           rename of the destination field to "To" left behind. */
+        setError("Pickup and destination are nearly the same place. Pick somewhere to go.");
         setSession(null);
         setMapRoute(null);
         setLastCompared(null);
