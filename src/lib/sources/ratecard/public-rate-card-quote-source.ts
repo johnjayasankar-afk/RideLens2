@@ -266,6 +266,12 @@ export class PublicRateCardQuoteSource implements QuoteSource {
           input.market.basis === "EXTRAPOLATED"
             ? `No rate card for this area. Calibrated to ${fare.marketName}, ${Math.round(input.market.distanceKm)} km away — band widened and confidence lowered.`
             : `Calibrated to ${fare.marketName}'s published rate card.`,
+        /*
+         * Which rate-card product produced this, so the departure-window
+         * forecast can re-run the same engine forward without guessing from
+         * a display name. See src/lib/domain/departure-window.ts.
+         */
+        fareProduct: input.product,
         demand: fare.demandLabel,
         demandCenter: fare.demandCenter,
         band: fare.band,

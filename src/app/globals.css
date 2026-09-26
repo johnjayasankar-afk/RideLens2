@@ -2662,3 +2662,123 @@ h1.admin-title {
   color: var(--mint-t);
   font-size: 13.5px;
 }
+
+/* ── Departure window ──────────────────────────────────────────────────────
+   The band is the subject, so the band gets the ink. The centre line is
+   faint and unlabelled on purpose: it is there for the eye to follow a
+   shape, not for anyone to read a number off. Every figure printed in this
+   block is a range. */
+.departure {
+  display: grid;
+  gap: var(--space-2, 14px);
+  margin-top: var(--space-3, 20px);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--ground-2);
+}
+.departure-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.departure-head h2 {
+  margin: 0;
+  font: 500 16px/1.2 var(--font-body);
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.departure-tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--amber-bg);
+  color: var(--amber-t);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+.departure-advice {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.departure-advice[data-kind="wait"] {
+  color: var(--mint-t);
+  font-weight: 500;
+}
+.departure-rows {
+  display: grid;
+  gap: 12px;
+}
+.departure-row {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.departure-label {
+  display: grid;
+  gap: 1px;
+  font-size: 13px;
+  min-width: 0;
+}
+.departure-label strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+.departure-label .muted {
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.departure-chart {
+  display: block;
+  width: 100%;
+  height: 58px;
+  overflow: visible;
+}
+.departure-band {
+  fill: var(--mint-bg);
+  stroke: var(--mint-3);
+  stroke-width: 1;
+  stroke-opacity: 0.55;
+}
+.departure-centre {
+  fill: none;
+  stroke: var(--forest-2);
+  stroke-width: 1.25;
+  stroke-opacity: 0.38;
+  stroke-dasharray: 3 3;
+}
+.departure-ends {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.departure-ends .muted {
+  font-size: 11px;
+}
+.departure-arrow {
+  color: var(--ink-3);
+}
+.departure-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (max-width: 560px) {
+  .departure-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .departure-ends {
+    grid-column: 1;
+  }
+}

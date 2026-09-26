@@ -27,6 +27,7 @@ import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
+import { DepartureStrip } from "./departure-strip";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
 
@@ -1146,6 +1147,30 @@ export function QuoteResults({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {/*
+        Below the comparison, deliberately. It answers a different question —
+        whether waiting helps — and the answer is usually "no", which is not
+        a thing to lead with. It also fetches itself only when scrolled to;
+        projecting every provider across the hour is a few hundred runs of
+        the fare engine.
+      */}
+      {hero ? (
+        <DepartureStrip
+          sessionId={session?.id ?? null}
+          /* One pass: filtering first would shift the index away from the
+             quote it came from, and pair a provider with someone else's
+             product. */
+          showProducts={
+            new Set(
+              ranked.flatMap((q) => {
+                const product = q.metadata?.fareProduct;
+                return typeof product === "string" ? [`${q.provider}:${product}`] : [];
+              }),
+            )
+          }
+        />
       ) : null}
 
       <p className="fineprint muted">

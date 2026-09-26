@@ -81,6 +81,48 @@ export interface WeatherParams {
   maxLift: number;
 }
 
+export interface ForecastParams {
+  /** How far ahead a departure window is projected. */
+  horizonMinutes: number;
+  /** Spacing of the projected points. */
+  stepMinutes: number;
+  /**
+   * Marketplace ticks averaged at each point.
+   *
+   * The tick jitter is a hash of the tick index — pseudo-random noise with no
+   * predictive content whatever. Projecting one tick forward and calling the
+   * dip "cheaper" would be advice generated from a hash function. Averaging
+   * several adjacent ticks leaves the structural demand curve, which is the
+   * only part of this model that means anything about the future.
+   */
+  samplesPerPoint: number;
+  /** Seconds between those samples. One tick is 55s. */
+  sampleSpacingSeconds: number;
+  /**
+   * Extra half-width, as a fraction of the centre, at a full hour out.
+   * Scales linearly with horizon. A forecast that does not widen is a claim
+   * to know the future exactly.
+   */
+  horizonWideningPerHour: number;
+  /**
+   * Widening that applies when *comparing* two points from this same model,
+   * rather than when displaying either one.
+   *
+   * Much smaller than horizonWideningPerHour on purpose. Most of the error in
+   * an absolute projection is a property of the model, not of the hour — if
+   * the engine reads 10% high it reads 10% high at both ends, and that error
+   * cancels in a difference. What does not cancel is error in the *shape* of
+   * the demand curve between the two times, which is what this covers.
+   *
+   * Using the absolute band for both endpoints and demanding they clear made
+   * the advice fire on zero of 48 tested departure times: correct arithmetic,
+   * useless answer, and wrong about the statistics.
+   */
+  differentialWideningPerHour: number;
+  /** Below this, a difference between windows is never called a saving. */
+  minMeaningfulSavingMinor: number;
+}
+
 export interface ModelParams {
   version: string;
   traffic: TrafficParams;
@@ -88,6 +130,7 @@ export interface ModelParams {
   demand: DemandParams;
   weather: WeatherParams;
   wait: WaitParams;
+  forecast: ForecastParams;
 }
 
 /**
@@ -168,5 +211,20 @@ export const MODEL_PARAMS: ModelParams = {
     },
     capMinutes: { core: 14, sparse: 28 },
     floorMinutes: 1.5,
+  },
+  /*
+   * Like everything else here, priors. The widening rate in particular is a
+   * guess about how fast this model stops resembling the world, and the only
+   * way to replace it with a measurement is to record a projection and check
+   * it when the hour arrives — see docs/COLLECTION_PROTOCOL.md.
+   */
+  forecast: {
+    horizonMinutes: 60,
+    stepMinutes: 5,
+    samplesPerPoint: 5,
+    sampleSpacingSeconds: 55,
+    horizonWideningPerHour: 0.09,
+    differentialWideningPerHour: 0.02,
+    minMeaningfulSavingMinor: 150,
   },
 };
