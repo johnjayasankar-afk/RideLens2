@@ -1,4 +1,5 @@
 import { getEnv } from "@/lib/config";
+import { cached } from "@/lib/quotes/data-cache";
 
 export type RouteGeometry = {
   type: "LineString";
@@ -67,7 +68,31 @@ function decodePolyline(str: string, precision = 5): [number, number][] {
   return coordinates;
 }
 
+/**
+ * The same route, without asking again.
+ *
+ * Roads do not move, so this answer is good for hours — see data-cache.ts.
+ * It was being re-fetched from a public demo server on every comparison,
+ * which is both the slowest thing on the critical path and the rudest thing
+ * this app does to somebody else's infrastructure.
+ *
+ * Rounded to ~11 m so two taps on the same corner share an answer.
+ */
 export async function fetchDrivingRoute(
+  pickup: { lat: number; lng: number },
+  destination: { lat: number; lng: number },
+  signal?: AbortSignal,
+): Promise<DrivingRoute> {
+  const key = [pickup.lat, pickup.lng, destination.lat, destination.lng]
+    .map((n) => n.toFixed(4))
+    .join(",");
+  const { value } = await cached("route", key, () =>
+    fetchDrivingRouteUncached(pickup, destination, signal),
+  );
+  return value;
+}
+
+async function fetchDrivingRouteUncached(
   pickup: { lat: number; lng: number },
   destination: { lat: number; lng: number },
   signal?: AbortSignal,
@@ -155,6 +180,18 @@ export async function fetchDrivingRoute(
  * absence rather than filling it in.
  */
 export async function fetchWalkingSeconds(
+  pickup: { lat: number; lng: number },
+  destination: { lat: number; lng: number },
+  signal?: AbortSignal,
+): Promise<number | null> {
+  const key = `foot:${[pickup.lat, pickup.lng, destination.lat, destination.lng].map((n) => n.toFixed(4)).join(",")}`;
+  const { value } = await cached("route", key, () =>
+    fetchWalkingSecondsUncached(pickup, destination, signal),
+  );
+  return value;
+}
+
+async function fetchWalkingSecondsUncached(
   pickup: { lat: number; lng: number },
   destination: { lat: number; lng: number },
   signal?: AbortSignal,

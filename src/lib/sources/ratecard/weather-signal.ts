@@ -3,6 +3,8 @@
  * Precipitation / storms are among the strongest surge predictors in NYC studies.
  */
 
+import { cached } from "@/lib/quotes/data-cache";
+
 export type WeatherSignal = {
   precipMm: number;
   /** 0 = dry, 1 = heavy rain/snow */
@@ -33,7 +35,27 @@ export function dryWeather(): WeatherSignal {
 /**
  * Fetch current precip near pickup. Fails soft → dryWeather.
  */
+/**
+ * Precipitation, cached for minutes.
+ *
+ * It was fetched on every comparison. Rain does not change between two taps
+ * a few seconds apart, and rounding the point to ~1 km means everyone in a
+ * neighbourhood shares one reading — which is also about the resolution the
+ * signal actually has.
+ */
 export async function fetchWeatherSignal(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<WeatherSignal> {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+  const { value } = await cached("weather", key, () =>
+    fetchWeatherSignalUncached(lat, lng, signal),
+  );
+  return value;
+}
+
+async function fetchWeatherSignalUncached(
   lat: number,
   lng: number,
   signal?: AbortSignal,
