@@ -10,6 +10,7 @@ import {
   useRecentRoutes,
 } from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
+import { describeFailure } from "@/lib/domain/failure-message";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { ProviderId, QuoteSession } from "@/lib/domain/types";
 import type { MapRoute } from "@/components/route-map";
@@ -396,7 +397,11 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
             setRetryAfter(secs);
             throw new Error(`Too many compares — try again in about ${secs}s.`);
           }
-          throw new Error(data.message || data.error || `Request failed (${res.status})`);
+          /* Tagged so describeFailure can tell a 503 from a dropped
+             connection without re-parsing a sentence. */
+          const err = new Error(data.message || data.error || `Request failed (${res.status})`);
+          (err as Error & { status?: number }).status = res.status;
+          throw err;
         }
 
         const contentType = res.headers.get("content-type") || "";
@@ -461,7 +466,14 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (gen === requestGen.current) {
           refreshFailCount.current += 1;
-          setError(e instanceof Error ? e.message : "Comparison failed");
+          /*
+           * "Failed to fetch" was reaching the screen verbatim. A browser's
+           * own words are not a thing to show a person — see
+           * src/lib/domain/failure-message.ts.
+           */
+          const status = (e as Error & { status?: number })?.status;
+          const described = describeFailure(e, onlineRef.current, status);
+          setError(described.detail ? `${described.title}. ${described.detail}` : described.title);
           if (refresh && refreshFailCount.current >= 3 && autoRefresh) {
             setAutoRefresh(false);
             setShareNote("Auto-refresh paused after repeated errors");
