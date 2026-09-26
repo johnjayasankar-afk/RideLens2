@@ -54,7 +54,27 @@ type MapLibreGlobal = {
   };
 };
 
-const STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+/**
+ * Which basemap, from the page's own scheme.
+ *
+ * Read off the `--map-style` custom property rather than re-deriving the
+ * scheme here. That property already resolves the whole rule — system
+ * preference, plus a manual override that the system must not overrule —
+ * and having two answers to "is this dark" is how they end up disagreeing.
+ */
+const STYLES: Record<string, string> = {
+  positron: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  "dark-matter": "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+};
+
+function currentStyleUrl(): string {
+  if (typeof window === "undefined") return STYLES.positron!;
+  const name = getComputedStyle(document.documentElement)
+    .getPropertyValue("--map-style")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+  return STYLES[name] ?? STYLES.positron!;
+}
 
 /**
  * Loaded from the bundle, on demand.
@@ -104,6 +124,25 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
   const libRef = useRef<MapLibreGlobal | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  /*
+   * Changing this rebuilds the map rather than calling setStyle, because
+   * setStyle discards every layer and source and the route line would have
+   * to be re-added on a styledata event. A scheme change is a deliberate,
+   * rare click; a rebuild is the boring correct thing.
+   */
+  const [styleUrl, setStyleUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sync = () => setStyleUrl(currentStyleUrl());
+    sync();
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", sync);
+    window.addEventListener("ridelens:themechange", sync);
+    return () => {
+      mq.removeEventListener("change", sync);
+      window.removeEventListener("ridelens:themechange", sync);
+    };
+  }, []);
 
   const pickupLat = pickup.lat;
   const pickupLng = pickup.lng;
@@ -121,7 +160,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
           libRef.current = ml;
           const map = new ml.Map({
             container: containerRef.current,
-            style: STYLE,
+            style: styleUrl ?? currentStyleUrl(),
             center: [pickupLng, pickupLat],
             zoom: 11,
             attributionControl: false,
@@ -253,8 +292,9 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
       mapRef.current = null;
     };
     // Intentionally mount once; markers/route update in the effect below.
+    // Rebuilds on a scheme change; the rest is mount-once by design.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [styleUrl]);
 
   useEffect(() => {
     const map = mapRef.current;

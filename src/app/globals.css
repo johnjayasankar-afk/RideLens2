@@ -70,6 +70,11 @@
   --btn-2: var(--btn-2);
   --dot: rgba(28, 51, 38, 0.06);
   --dot-size: 22px;
+  /* The hero card's lift, and the translucent panels that float on the map. */
+  --paper-lift: #f4fbf7;
+  /* A translucent tint of the page itself, for panels that float over
+     the map or pin to the top of the results. */
+  --scrim: rgba(248, 246, 241, 0.92);
   --map-style: "positron";
   color-scheme: light;
 }
@@ -127,6 +132,8 @@
     --btn-1: #50caa0;
     --btn-2: #2f9d76;
     --dot: rgba(190, 226, 205, 0.05);
+    --paper-lift: #1d2c24;
+    --scrim: rgba(18, 28, 22, 0.92);
     --map-style: "dark-matter";
 
     /* Shadow does almost nothing on a dark ground; depth comes from the
@@ -177,6 +184,8 @@
   --btn-1: #50caa0;
   --btn-2: #2f9d76;
   --dot: rgba(190, 226, 205, 0.05);
+  --paper-lift: #1d2c24;
+  --scrim: rgba(18, 28, 22, 0.92);
   --map-style: "dark-matter";
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -323,7 +332,7 @@ code {
 }
 .brand-mark::after {
   right: 4px;
-  background: #f0f7f3;
+  background: var(--ink);
 }
 
 .topbar {
@@ -451,7 +460,10 @@ code {
   padding: 0 22px;
   font: 500 16px/1 var(--font-body);
   letter-spacing: -0.012em;
-  color: #fff;
+  /* The accent inverts between schemes — dark green in light, light mint in
+     dark — so the label on it has to invert too. White stayed white and
+     scored 2.04:1 on the dark button. */
+  color: var(--on-accent);
   background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
@@ -592,7 +604,7 @@ code {
   font: 500 13px/1.2 var(--font-body);
   letter-spacing: -0.01em;
   color: var(--ink-2);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--scrim);
   box-shadow:
     inset 0 0 0 1px var(--line),
     var(--sh-1);
@@ -760,7 +772,7 @@ h1.brand {
     0 0 0 4px rgba(52, 211, 153, 0.18);
 }
 .place-field.is-selected input {
-  background: #f3faf6;
+  background: var(--mint-bg);
   box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.38);
 }
 .place-field.is-selected input:focus {
@@ -1198,7 +1210,7 @@ h1.brand {
 .map-slot {
   overflow: hidden;
   border-radius: var(--radius);
-  background: #eef0ec;
+  background: var(--ground-2);
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-2);
@@ -1243,7 +1255,7 @@ h1.brand {
   max-width: min(300px, 72%);
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   box-shadow:
@@ -1333,7 +1345,7 @@ h1.brand {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  background: rgba(248, 246, 241, 0.9);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   box-shadow: 0 1px 0 var(--line);
@@ -1442,7 +1454,10 @@ h1.brand {
   font-weight: 500;
   line-height: 1.45;
   letter-spacing: -0.014em;
-  color: var(--forest-3);
+  /* --mint-t, not --forest-3: this sits on a mint surface, and the token
+     for "text on mint" is the one that follows the surface into dark.
+     --forest-3 is near-black in both schemes and scored 1.44:1 on dark. */
+  color: var(--mint-t);
 }
 
 .trip-stats {
@@ -1598,7 +1613,7 @@ h1.brand {
     var(--sh-2);
 }
 .quote-card.hero {
-  background: linear-gradient(180deg, #f4fbf7 0%, #fff 62%);
+  background: linear-gradient(180deg, var(--paper-lift) 0%, var(--paper) 62%);
   box-shadow:
     0 0 0 1px rgba(31, 107, 74, 0.34),
     0 0 0 5px rgba(167, 243, 208, 0.32),
@@ -1820,8 +1835,10 @@ h1.brand {
   padding: 0 20px;
   font: 500 15px/1 var(--font-body);
   letter-spacing: -0.012em;
-  color: #fff;
-  background: var(--forest-3);
+  /* The card's call to action, so it takes the accent rather than sitting
+     as a near-black pill on a near-black card. */
+  color: var(--on-accent);
+  background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
   box-shadow:
     0 1px 2px rgba(15, 23, 18, 0.2),
     0 10px 22px -14px rgba(15, 42, 29, 0.6);
@@ -2654,7 +2671,7 @@ h1.admin-title {
   color: var(--rose-t);
 }
 .source-status.is-muted {
-  background: #eee9dd;
+  background: var(--ground-2);
   color: var(--ink-3);
 }
 .source-feeds {
