@@ -65,9 +65,9 @@
   /* Tokens that exist so dark mode has somewhere to change them. Each one
      was a hardcoded literal that would have stayed light. */
   --on-accent: #fff;
-  --hairline: var(--hairline);
-  --btn-1: var(--btn-1);
-  --btn-2: var(--btn-2);
+  --hairline: #e6e1d6;
+  --btn-1: #2c5a42;
+  --btn-2: #1a3a2a;
   --dot: rgba(28, 51, 38, 0.06);
   --dot-size: 22px;
   /* The hero card's lift, and the translucent panels that float on the map. */
@@ -3382,4 +3382,94 @@ summary {
   margin: 2px 0 0;
   font-size: 11.5px;
   line-height: 1.45;
+}
+
+/* ── A shared comparison ──────────────────────────────────────────────────
+   The stamp goes first and is not subtle. Somebody arriving from a message
+   has no idea these numbers are old unless the page says so before it says
+   anything else. */
+.snapshot {
+  display: grid;
+  gap: 18px;
+  max-width: 640px;
+  padding: 28px 0 56px;
+}
+.snapshot-stamp {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-bg);
+  color: var(--amber-t);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.snapshot-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.snapshot-route {
+  margin: 0;
+  font: 500 30px/1.15 var(--font-body);
+  letter-spacing: -0.028em;
+  color: var(--ink);
+}
+.snapshot-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.snapshot-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.snapshot-row[data-best] {
+  background: var(--mint-bg);
+  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.2);
+}
+.snapshot-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  font-size: 14px;
+}
+.snapshot-name strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+.snapshot-name .muted {
+  font-size: 11.5px;
+}
+.snapshot-price {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.snapshot-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+.snapshot-cta {
+  text-decoration: none;
+}
+.snapshot-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
 }

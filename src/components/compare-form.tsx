@@ -612,11 +612,26 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
 
   const shareComparison = async () => {
     if (!pickup || !destination) return;
+    /*
+     * Share the snapshot when there is one.
+     *
+     * A deep link shares the *route*, and whoever opens it gets today's
+     * prices — a different artifact from "here is what I was looking at
+     * when I booked". Persisted sessions make the second one possible, and
+     * /c/<id> is explicit that its numbers are historical. Falls back to
+     * the deep link before a comparison has run, which is the only thing
+     * there is to share at that point.
+     */
     const url = new URL(window.location.href);
-    url.searchParams.set("from", encodePlace(pickup));
-    url.searchParams.set("to", encodePlace(destination));
-    url.searchParams.set("mode", mode);
-    url.searchParams.set("filter", filter);
+    if (activeSession?.id) {
+      url.pathname = `/c/${activeSession.id}`;
+      url.search = "";
+    } else {
+      url.searchParams.set("from", encodePlace(pickup));
+      url.searchParams.set("to", encodePlace(destination));
+      url.searchParams.set("mode", mode);
+      url.searchParams.set("filter", filter);
+    }
     const href = url.toString();
     const title = "RideLens comparison";
     const routeLine = `${pickup.label.split(",")[0]} → ${destination.label.split(",")[0]}`;
