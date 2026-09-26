@@ -32,6 +32,7 @@ import { AlternativesRow } from "./alternatives-row";
 import { PriceAxis } from "./price-axis";
 import { PartyPanel } from "./party-panel";
 import { DepartureStrip } from "./departure-strip";
+import { useCountUpRange } from "./use-count-up";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
 
@@ -212,6 +213,36 @@ function humanizeFeeKey(key: string): string {
   return map[key] || key.replace(/_/g, " ");
 }
 
+/**
+ * The price, counting up.
+ *
+ * Formats from the animated numbers rather than animating a formatted
+ * string, so the currency, the separator and the range shape all stay
+ * exactly what formatQuotePrice would have produced — the last frame is
+ * identical to the static render, not merely similar.
+ */
+function CountingPrice({ quote, animate }: { quote: NormalizedQuote; animate: boolean }) {
+  const isRange =
+    quote.priceType === "ESTIMATE_RANGE" || quote.priceMinMinor !== quote.priceMaxMinor;
+  const { low, high } = useCountUpRange(
+    isRange ? quote.priceMinMinor : quote.displayPriceMinor,
+    isRange ? quote.priceMaxMinor : quote.displayPriceMinor,
+    { enabled: animate },
+  );
+
+  const settled = formatQuotePrice(quote);
+  if (!animate) return <>{settled}</>;
+
+  /* Rounded to whole cents every frame: a price never shows a fraction. */
+  const shown: NormalizedQuote = {
+    ...quote,
+    priceMinMinor: Math.round(low),
+    priceMaxMinor: Math.round(high),
+    displayPriceMinor: Math.round(isRange ? low : high),
+  };
+  return <>{formatQuotePrice(shown)}</>;
+}
+
 function FeeBreakdown({ quote, now }: { quote: NormalizedQuote; now: Date }) {
   const fees = quote.metadata?.feeBreakdown as Record<string, number> | undefined;
   const center = quote.metadata?.centerFare as number | undefined;
@@ -354,8 +385,15 @@ function QuoteCard({
           <ProvenanceChip quote={quote} />
         </div>
         <div className="price-block">
+          {/*
+            The settled figure is the accessible name from the first frame,
+            and the animated text is hidden from assistive tech. Nobody is
+            read a number that is on its way somewhere.
+          */}
           <p className="price" aria-label={`Price ${formatQuotePrice(quote)}`}>
-            {formatQuotePrice(quote)}
+            <span aria-hidden>
+              <CountingPrice quote={quote} animate={animate} />
+            </span>
           </p>
           {dollarsPerMile != null ? (
             <p className="per-mile muted">${dollarsPerMile.toFixed(2)}/mi</p>
