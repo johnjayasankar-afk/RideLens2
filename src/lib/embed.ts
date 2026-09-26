@@ -31,9 +31,7 @@ export const EMBED_PARENTS = [
  * `process.env.NODE_ENV` is "production" in every deployed build.
  */
 const DEV_PARENTS =
-  process.env.NODE_ENV === "production"
-    ? []
-    : ["http://localhost:*", "http://127.0.0.1:*"];
+  process.env.NODE_ENV === "production" ? [] : ["http://localhost:*", "http://127.0.0.1:*"];
 
 /** The `frame-ancestors` value, and the whole of the enforced policy. */
 export const FRAME_ANCESTORS = ["'self'", ...EMBED_PARENTS, ...DEV_PARENTS].join(" ");
