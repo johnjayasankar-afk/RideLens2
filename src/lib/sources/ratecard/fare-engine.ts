@@ -234,12 +234,33 @@ export function buildNyFeeStack(
   };
 }
 
+/**
+ * ── What these are, accurately ─────────────────────────────────────────────
+ *
+ * Each anchor pulls a TNC price toward a figure for a known corridor, at a
+ * weight of roughly 0.4 — so they move the number materially. They were
+ * labelled "published / observed average" and carry comments citing
+ * "RideWise", the same authority `model-params.ts` records as appearing
+ * fourteen times across this directory and being checkable nowhere. Calling
+ * them observed was a claim the codebase cannot support.
+ *
+ * They are estimates of corridor price levels. They may well be good ones —
+ * they are the right order of magnitude and they stop the rate card drifting
+ * on the routes people actually take — but nobody has measured them, and
+ * they are the largest remaining source of error in a TNC price. The metered
+ * taxi could be corrected against a published tariff; this cannot, because
+ * there is no tariff to check it against.
+ *
+ * The fix is the calibration corpus, not a better guess. Once riders have
+ * reported enough fares on a corridor, an observed median belongs here in
+ * place of the estimate — see `docs/COLLECTION_PROTOCOL.md`.
+ */
 type CorridorAnchor = {
   id: string;
   /** Match pickup */
   pickupIn: (p: LatLng) => boolean;
   destIn: (p: LatLng) => boolean;
-  /** Published / observed average for UberX-class */
+  /** An estimated price level for UberX-class. Not measured. */
   uberxAvg: number;
   weight: number;
 };
