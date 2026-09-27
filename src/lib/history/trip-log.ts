@@ -39,6 +39,9 @@
  */
 
 import type { ConfidenceClass, ProviderId, QuoteSession, QuoteType } from "@/lib/domain/types";
+/* Type-only: report-proof.ts reaches for node:crypto, and this file runs
+   in the browser. The import is erased at compile time. */
+import type { PredictionClaim } from "@/lib/eval/report-proof";
 
 /** Bumped when the stored shape changes; older records are dropped, not guessed at. */
 export const TRIP_LOG_VERSION = 1;
@@ -77,6 +80,45 @@ export interface LoggedQuote {
   confidence: ConfidenceClass;
 }
 
+/**
+ * The option the rider actually tapped through to.
+ *
+ * Recorded at the handoff, which is the moment this is knowable — unlike the
+ * fare, which is not knowable for another half hour. Without it there is no
+ * way to ask a useful question later: "what did it cost?" needs to know
+ * which of six options is being asked about.
+ */
+export interface ChosenOption {
+  quoteId: string;
+  provider: ProviderId;
+  product: string;
+  /** The band as shown, so the question can state what was predicted. */
+  lowMinor: number;
+  highMinor: number;
+  at: string;
+  /**
+   * The prediction, signed by the server that made it.
+   *
+   * Carried so the rider can report the fare days later, once the session
+   * that produced it is long gone. Absent when the deployment has no
+   * `RIDELENS_REPORT_SECRET`, in which case the report stays on the device.
+   */
+  claim?: PredictionClaim;
+  signature?: string;
+}
+
+/** What the trip actually cost, once the rider has said. */
+export interface ReportedOutcome {
+  actualMinor: number;
+  at: string;
+  /**
+   * When this was contributed to the shared calibration corpus, or null if
+   * it was kept on the device. Contributing is always a separate, explicit
+   * act — the local record is private and the corpus is not.
+   */
+  sharedAt: string | null;
+}
+
 export interface TripRecord {
   v: number;
   /** The session this came from, so a re-render cannot log the same run twice. */
@@ -90,6 +132,19 @@ export interface TripRecord {
   quotes: LoggedQuote[];
   /** Records from different model versions are counted apart, never pooled. */
   modelVersion: string;
+
+  /*
+   * Everything below is optional and was added after v1 shipped. Optional
+   * additions do not need a version bump: an older record simply lacks them,
+   * and every reader here treats absence as "not known", which is true.
+   */
+
+  /** Set when the rider tapped through to a provider. */
+  chosen?: ChosenOption;
+  /** Set when the rider said what it cost. */
+  outcome?: ReportedOutcome;
+  /** Set when the rider declined to say, so they are never asked twice. */
+  declined?: boolean;
 }
 
 /**

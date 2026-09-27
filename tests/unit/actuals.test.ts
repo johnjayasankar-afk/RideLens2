@@ -68,9 +68,23 @@ describe("routeHash", () => {
     expect(other).not.toBe(routeHash(session));
   });
 
-  /* A hash is not a location: it must not carry full precision. */
-  it("does not preserve the original coordinates", () => {
-    expect(routeHash(session)).not.toContain("40.72251");
+  /*
+   * The old test asserted only that the *unrounded* figure was absent, which
+   * it always was — the value was the rounded coordinates joined by colons,
+   * a pair of street corners to within 110 m, under a comment claiming it
+   * was not a location. These assert the property the comment claimed.
+   */
+  it("carries no coordinate a reader could recognise", () => {
+    const hash = routeHash(session);
+    for (const fragment of ["40.72", "73.99", "40.64", "73.77", ".", ":", "-"]) {
+      expect(hash, `routeHash still contains "${fragment}"`).not.toContain(fragment);
+    }
+  });
+
+  it("looks like a digest, and a stable one", () => {
+    const hash = routeHash(session);
+    expect(hash).toMatch(/^[0-9a-f]{32}$/);
+    expect(routeHash(session)).toBe(hash);
   });
 });
 

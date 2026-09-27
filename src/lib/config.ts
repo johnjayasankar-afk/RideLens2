@@ -51,6 +51,13 @@ export const envSchema = z.object({
     .optional()
     .transform((v) => v === "true"),
   RIDELENS_ADMIN_SECRET: optionalString,
+  /*
+   * Signs the prediction a rider carries away, so they can report what they
+   * actually paid days later without RideLens still holding the session.
+   * Optional: without it, reporting falls back to requiring a live session,
+   * which is what it did before — see lib/eval/report-proof.ts.
+   */
+  RIDELENS_REPORT_SECRET: optionalString,
 
   /** Keyless live path: OSRM + published rate cards. Default on. */
   RATE_CARD_SOURCE_ENABLED: z

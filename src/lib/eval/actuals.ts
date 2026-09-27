@@ -15,23 +15,44 @@ import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { ActualRecord } from "./metrics";
+import { createHash } from "node:crypto";
+
 import type { CorpusRecord } from "./corpus";
+import type { PredictionClaim } from "./report-proof";
 
 /**
  * A stable id for a route, so the same corridor groups across sessions.
  *
- * Rounded to about 100 m. Finer than that and a corridor never accumulates
- * enough samples to report; coarser and two genuinely different trips merge.
- * Coordinates are rounded rather than stored, so the hash is not a location.
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This used to return "40.722:-73.994:40.645:-73.780" under a comment      │
+ * │ that said "the hash is not a location". It was a location — the rounded  │
+ * │ coordinates, joined by colons, to within about 110 m of both ends of     │
+ * │ somebody's journey. The test that guarded the claim only checked that    │
+ * │ the *unrounded* figure was absent, which it always was.                  │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Rounding first is still right: finer than about 100 m and a corridor never
+ * accumulates enough samples to report, coarser and two genuinely different
+ * trips merge. But rounding is not concealment, and this value leaves the
+ * device. So the rounded grid cell is hashed, one way, and only the digest
+ * is kept.
+ *
+ * A determined attacker with the whole city's grid could still enumerate
+ * cells and match digests — a hash of a small domain is not a secret. What
+ * it does buy is that the corpus, a database dump, or a log line no longer
+ * reads as a pair of street corners, and that is the realistic exposure.
  */
 export function routeHash(session: Pick<QuoteSession, "pickup" | "destination">): string {
   const r = (n: number) => n.toFixed(3);
-  return [
+  const cell = [
     r(session.pickup.lat),
     r(session.pickup.lng),
     r(session.destination.lat),
     r(session.destination.lng),
   ].join(":");
+  /* Truncated: 128 bits is far past collision risk for a city's worth of
+     corridors, and a shorter key keeps the corpus readable. */
+  return createHash("sha256").update(`ridelens:route:${cell}`).digest("hex").slice(0, 32);
 }
 
 export interface ReportInput {
@@ -47,14 +68,25 @@ export type ReportOutcome = { ok: true; stored: boolean } | { ok: false; reason:
 /** Nobody pays $12,000 for a cab. A typo should not become a data point. */
 const MAX_PLAUSIBLE_MINOR = 100_000;
 
-export function validateReport(input: ReportInput): string | null {
-  if (!Number.isFinite(input.actualMinor)) return "That is not a number.";
-  if (input.actualMinor <= 0) return "A fare has to be more than zero.";
-  if (input.actualMinor > MAX_PLAUSIBLE_MINOR) {
+/**
+ * The same checks whichever way the prediction arrived.
+ *
+ * Split out because a report can now come back days later carrying a signed
+ * prediction rather than a live session — see report-proof.ts — and the
+ * amount has to be judged identically either way.
+ */
+export function validateAmount(actualMinor: number, predictedMinMinor: number): string | null {
+  if (!Number.isFinite(actualMinor)) return "That is not a number.";
+  if (actualMinor <= 0) return "A fare has to be more than zero.";
+  if (actualMinor > MAX_PLAUSIBLE_MINOR) {
     return "That is higher than any fare this product models. Check the amount.";
   }
-  if (input.quote.priceMinMinor <= 0) return "This quote has no price to compare against.";
+  if (predictedMinMinor <= 0) return "This quote has no price to compare against.";
   return null;
+}
+
+export function validateReport(input: ReportInput): string | null {
+  return validateAmount(input.actualMinor, input.quote.priceMinMinor);
 }
 
 /**
@@ -68,7 +100,7 @@ export async function recordActual(input: ReportInput): Promise<ReportOutcome> {
   const invalid = validateReport(input);
   if (invalid) return { ok: false, reason: invalid };
 
-  const row = {
+  return persist({
     session_id: input.session.id,
     route_hash: routeHash(input.session),
     provider: input.quote.provider,
@@ -81,8 +113,45 @@ export async function recordActual(input: ReportInput): Promise<ReportOutcome> {
     actual_minor: Math.round(input.actualMinor),
     currency: input.quote.currency,
     note: input.note?.slice(0, 500) ?? null,
-  };
+  });
+}
 
+/**
+ * Record a fare against a prediction the server signed earlier.
+ *
+ * The caller must have verified the signature first — this function trusts
+ * the claim it is handed, and the whole integrity of the corpus rests on
+ * that check having happened. `/api/actuals` is the only caller.
+ *
+ * There is no session id: the session expired days ago, which is the reason
+ * this path exists at all.
+ */
+export async function recordVerifiedActual(input: {
+  claim: PredictionClaim;
+  actualMinor: number;
+  note?: string;
+}): Promise<ReportOutcome> {
+  const invalid = validateAmount(input.actualMinor, input.claim.predictedMinMinor);
+  if (invalid) return { ok: false, reason: invalid };
+
+  return persist({
+    session_id: null,
+    route_hash: input.claim.routeHash,
+    provider: input.claim.provider,
+    product_id: input.claim.productId,
+    market_id: input.claim.marketId,
+    predicted_min_minor: input.claim.predictedMinMinor,
+    predicted_max_minor: input.claim.predictedMaxMinor,
+    predicted_at: input.claim.predictedAt,
+    model_version: input.claim.modelVersion || null,
+    actual_minor: Math.round(input.actualMinor),
+    currency: "USD",
+    note: input.note?.slice(0, 500) ?? null,
+  });
+}
+
+/** One way in, whichever way the prediction was established. */
+async function persist(row: Record<string, unknown>): Promise<ReportOutcome> {
   if (!supabaseConfigured()) {
     // Accepted and not stored. Telling a rider their report failed because of
     // our configuration would be noise they cannot act on; silently claiming

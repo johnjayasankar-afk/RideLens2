@@ -3,6 +3,12 @@ import { getEnv } from "@/lib/config";
 import { computeFreshness } from "@/lib/domain/freshness";
 import { reconcileQuotes } from "@/lib/domain/reconciler";
 import { rankQuotes } from "@/lib/domain/ranking";
+import { routeHash } from "@/lib/eval/actuals";
+import {
+  proofsAvailable,
+  signPrediction,
+  type PredictionClaim,
+} from "@/lib/eval/report-proof";
 import type {
   CanonicalLocation,
   NormalizedQuote,
@@ -45,6 +51,49 @@ function withFreshness(quotes: NormalizedQuote[]): NormalizedQuote[] {
     ...q,
     freshness: computeFreshness(q.receivedAt, q.expiresAt, now),
   }));
+}
+
+/**
+ * Hand every quote a signed copy of its own prediction.
+ *
+ * The rider carries this away. Days later, when they know what the trip
+ * actually cost, they can send the claim and its signature back and the
+ * server can verify it said that — without the session still existing. That
+ * is the whole reason the calibration corpus can ever fill: the question is
+ * only answerable long after the comparison has expired.
+ *
+ * Unsigned when no `RIDELENS_REPORT_SECRET` is set, in which case reporting
+ * falls back to the live-session path it used before.
+ *
+ * The claim is stable across the stream's partial updates because every
+ * field in it is fixed at the moment the quote was made.
+ */
+function withReportProof(
+  quotes: NormalizedQuote[],
+  pickup: CanonicalLocation,
+  destination: CanonicalLocation,
+): NormalizedQuote[] {
+  if (!proofsAvailable()) return quotes;
+  const hash = routeHash({ pickup, destination });
+
+  return quotes.map((q) => {
+    const claim: PredictionClaim = {
+      routeHash: hash,
+      provider: q.provider,
+      productId: q.providerProductId,
+      marketId: (q.metadata?.marketId as string) ?? null,
+      predictedMinMinor: q.priceMinMinor,
+      predictedMaxMinor: q.priceMaxMinor,
+      predictedAt: q.receivedAt,
+      modelVersion: (q.metadata?.modelVersion as string) ?? "",
+      distanceMeters: q.distanceMeters,
+      predictedWaitLowSeconds: (q.metadata?.waitLowSeconds as number) ?? null,
+      predictedWaitHighSeconds: (q.metadata?.waitHighSeconds as number) ?? null,
+    };
+    const signature = signPrediction(claim);
+    if (!signature) return q;
+    return { ...q, metadata: { ...q.metadata, reportClaim: claim, reportSignature: signature } };
+  });
 }
 
 function deriveStatus(
@@ -242,7 +291,11 @@ export async function runQuoteSession(input: {
 
         const reconciled = reconcileQuotes(withFreshness(allCandidates));
         // Keep full catalog in session; UI filters client-side so XL/Premium chips work.
-        const ranked = rankQuotes(reconciled.visible, session.rankingMode, "ALL");
+        const ranked = withReportProof(
+          rankQuotes(reconciled.visible, session.rankingMode, "ALL"),
+          session.pickup,
+          session.destination,
+        );
 
         session = {
           ...session,
@@ -266,7 +319,11 @@ export async function runQuoteSession(input: {
   void results;
 
   const reconciled = reconcileQuotes(withFreshness(allCandidates));
-  const ranked = rankQuotes(reconciled.visible, session.rankingMode, "ALL");
+  const ranked = withReportProof(
+    rankQuotes(reconciled.visible, session.rankingMode, "ALL"),
+    session.pickup,
+    session.destination,
+  );
 
   session = {
     ...session,
