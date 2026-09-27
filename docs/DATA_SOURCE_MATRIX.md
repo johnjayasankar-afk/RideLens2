@@ -70,14 +70,14 @@ from the operator or the regulator rather than from a rideshare blog, which
 is the distinction `model-params.ts` draws when it records "RideWise"
 appearing fourteen times as an authority checkable nowhere.
 
-| Claim                                                                                                                                               | Source                                                                                                               | What it changed                           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Surge is "a multiplier to standard rates, an additional surge amount, or an upfront fare including the surge amount… varies depending on your city" | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Surge applies to the rate-driven fare     |
-| "Uber's service fee percentage does not change during surge pricing"                                                                                | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Flat fees are not surged                  |
-| "Service fee: Flat amount that varies by region"                                                                                                    | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Lyft's service fee is flat, so not surged |
-| Lyft base rate is set by "route, ride type, driver availability, and demand"                                                                        | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Base fare stays inside the multiplier     |
-| Drivers "Set Your Own Rates" or use "suggested rate card(s)"; no surge or demand mechanism documented                                               | [Empower, Drivers](https://driveempower.com/drivers/)                                                                | Empower no longer modelled as surging     |
-| HVFHS driver minimum $1.283/mile and $0.681/minute, effective 2026-03-01                                                                            | [NYC TLC, Driver pay rates](https://www.nyc.gov/site/tlc/about/driver-pay-rates.page)                                | Recorded; not yet wired as a price floor  |
+| Claim                                                                                                                                               | Source                                                                                                               | What it changed                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Surge is "a multiplier to standard rates, an additional surge amount, or an upfront fare including the surge amount… varies depending on your city" | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Surge applies to the rate-driven fare        |
+| "Uber's service fee percentage does not change during surge pricing"                                                                                | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Flat fees are not surged                     |
+| "Service fee: Flat amount that varies by region"                                                                                                    | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Lyft's service fee is flat, so not surged    |
+| Lyft base rate is set by "route, ride type, driver availability, and demand"                                                                        | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Base fare stays inside the multiplier        |
+| Drivers "Set Your Own Rates" or use "suggested rate card(s)"; no surge or demand mechanism documented                                               | [Empower, Drivers](https://driveempower.com/drivers/)                                                                | Empower no longer modelled as surging        |
+| HVFHS driver minimum $1.283/mile and $0.681/minute, effective 2026-03-01                                                                            | [NYC TLC, Driver pay rates](https://www.nyc.gov/site/tlc/about/driver-pay-rates.page)                                | Now a floor under Uber and Lyft fares in NYC |
 
 ### Empower and the TLC
 
@@ -91,3 +91,27 @@ This was raised and the decision was to leave RideLens's presentation of
 Empower in NYC unchanged — it is quoted like any other option, with no
 regulatory note. Recorded here because the `ProviderUnavailable` mechanism
 exists and was deliberately not used.
+
+### The one place a rate value could be corrected
+
+`city-rates.json` is unverified — `freshness.ts` says so for the whole table
+— so its values are left alone rather than swapped for a better guess. The
+exception is the New York per-minute rate, and it took a regulator to make
+the case.
+
+The card charges a _passenger_ $0.35 a minute. New York requires the
+operator to pay the *driver* $0.681 a minute. On a ten-mile, forty-five
+minute crawl the card produces $35.80 of rate-driven fare against a $43.48
+driver minimum — the passenger paying less than the driver must receive,
+before the platform takes anything at all.
+
+That does not establish what the right per-minute rate is, so the card is
+untouched. It does establish a floor, because a platform takes a commission
+rather than paying a subsidy. `tlcDriverMinimumDollars` is applied as one:
+before surge, since it bounds the trip rather than the demand on it, and
+only for Uber and Lyft in NYC — the metered taxi is priced under a different
+tariff, and Empower is not licensed as an HVFHS base.
+
+It moved 48 of 125 canonical fares, all upward, by 1.5% to 16.4%. Lyft moved
+further than Uber because its card's per-minute rate is a cent lower, so the
+floor bites harder.
