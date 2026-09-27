@@ -150,14 +150,43 @@ describe("the shape of the fare surface", () => {
    * could come back cheaper, every comparison on the page is untrustworthy
    * in a way no disclosure could cover.
    */
-  it("never charges less for a longer trip", () => {
+  it("never charges less for a longer trip at the same speed", () => {
     const r = rng(7);
     for (let i = 0; i < 400; i++) {
       const base = makeCase(r);
-      const shorter = { ...base, miles: 2 };
-      const longer = { ...base, miles: 20 };
+      /*
+       * Distance and duration scale together, because holding the duration
+       * fixed while changing the distance changes the implied speed — and
+       * for a metered taxi that is a different question with a different
+       * answer. Two miles taking 160 minutes is 0.75 mph; a meter charges
+       * that by time, and it genuinely can cost more than a twenty-mile
+       * highway run. Comparing at a constant speed is the property that is
+       * actually meant here.
+       */
+      const mph = base.miles / (base.osrmMinutes / 60);
+      const shorter = { ...base, miles: 2, osrmMinutes: (2 / mph) * 60 };
+      const longer = { ...base, miles: 20, osrmMinutes: (20 / mph) * 60 };
       const a = computeProductFare(shorter);
       const b = computeProductFare(longer);
+      expect(
+        b.center,
+        `20mi cheaper than 2mi at ${mph.toFixed(1)}mph — ${describeCase(base)}: ${a.center} vs ${b.center}`,
+      ).toBeGreaterThanOrEqual(a.center);
+    }
+  });
+
+  /*
+   * For a TNC the original, stronger property still holds: distance and time
+   * are billed together, so adding miles to a fixed duration can only add
+   * money. Only a meter has the either/or that breaks it.
+   */
+  it("charges a TNC more for more distance, whatever the duration", () => {
+    const r = rng(23);
+    for (let i = 0; i < 300; i++) {
+      const base = makeCase(r);
+      if (base.product === "taxi") continue;
+      const a = computeProductFare({ ...base, miles: 2 });
+      const b = computeProductFare({ ...base, miles: 20 });
       expect(
         b.center,
         `20mi cheaper than 2mi — ${describeCase(base)}: ${a.center} vs ${b.center}`,

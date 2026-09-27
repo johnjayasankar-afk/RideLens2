@@ -6,6 +6,18 @@ export type RateParts = {
   perMin: number;
   booking: number;
   minimum?: number;
+  /**
+   * How the two variable rates combine.
+   *
+   * `concurrent` — a TNC charges for distance *and* time at once. Uber and
+   * Lyft genuinely do this, and it is what every rate card here means.
+   *
+   * `taximeter` — a meter charges $0.70 per *unit*, and a unit is either one
+   * fifth of a mile travelled above 12 mph or sixty seconds at or below it.
+   * Never both for the same moment of travel. Defaults to concurrent,
+   * because only the metered products are meters.
+   */
+  meter?: "concurrent" | "taximeter";
 };
 
 export type CityRate = {
@@ -232,13 +244,41 @@ export function demandMultiplier(
   return { center: 1.0, band: 0.02, label: "off_peak" };
 }
 
+/**
+ * The variable part of a fare, combined the way the product actually charges.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This summed distance and time for everything, including the metered      │
+ * │ taxi — whose own rate comment in fare-engine.ts already said "$0.70 /    │
+ * │ 60s *in slow traffic*". A taximeter charges one or the other per unit of │
+ * │ travel, never both, and summing them put an 8.6-mile Midtown→LGA run at  │
+ * │ $50.81 against a meter reading of about $34.                             │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * `max` is not an approximation chosen for convenience. With the TLC rates
+ * the two are exactly equivalent at the 12 mph threshold — $3.50/mile is
+ * $0.70 per fifth of a mile, and $0.70/minute is the same money at 12 mph —
+ * so `max(perMile·D, perMin·T)` is algebraically identical to "charge the
+ * distance, then add time units only for the time spent below 12 mph".
+ *
+ * It is a *lower* bound on a real meter, because a trip that stops and
+ * starts accrues time units during the stops that a uniform-speed trip
+ * would not. Stops can only add. That is why the band it feeds is one-sided
+ * — see `stopAndGoAllowance` in fare-engine.ts.
+ */
+export function variableFareDollars(rates: RateParts, miles: number, minutes: number): number {
+  const byDistance = rates.perMile * miles;
+  const byTime = rates.perMin * minutes;
+  return rates.meter === "taximeter" ? Math.max(byDistance, byTime) : byDistance + byTime;
+}
+
 export function computeFareDollars(
   rates: RateParts,
   miles: number,
   minutes: number,
   multiplier: number,
 ): number {
-  const raw = rates.base + rates.perMile * miles + rates.perMin * minutes + rates.booking;
+  const raw = rates.base + variableFareDollars(rates, miles, minutes) + rates.booking;
   const floored = Math.max(rates.minimum ?? rates.base + rates.booking, raw);
   return floored * multiplier;
 }

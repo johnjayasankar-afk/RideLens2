@@ -41,8 +41,14 @@
  * v1 is the set the model shipped with — recorded, not endorsed. None of it
  * has been fitted to observed fares, because until the eval harness existed
  * there was nothing to fit against.
+ *
+ * 2026-09-27 is still not a fitting. It is a structural correction: the
+ * metered taxi was billed like a TNC, distance and time at once, when a
+ * taximeter charges one or the other per unit of travel. That is a published
+ * rule rather than a tuned constant, so it could be fixed without a corpus —
+ * and it moved 25 of 125 canonical fares, all of them taxi.
  */
-export const MODEL_VERSION = "2026-09-26.v1";
+export const MODEL_VERSION = "2026-09-27.v1";
 
 export interface TrafficParams {
   /** Multipliers on OSRM's free-flow duration, by period. */

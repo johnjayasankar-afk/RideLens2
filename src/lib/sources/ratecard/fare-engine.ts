@@ -154,16 +154,15 @@ export function buildNyFeeStack(
     (nearJfk(pickup) && inManhattanBelow96(destination.lat, destination.lng)) ||
     (nearJfk(destination) && inManhattanBelow96(pickup.lat, pickup.lng));
 
-  if (jfkLeg && (provider === "curb" || provider === "taxi")) {
-    return {
-      addOnDollars: 0,
-      breakdown: { nyc_jfk_flat: 70 },
-      nycJfkFlatTaxi: 70,
-      crossJurisdiction,
-      touchesBelow96,
-      touchesBelow60,
-    };
-  }
+  /*
+   * A JFK↔Manhattan taxi leg is a flat fare, and this used to return here
+   * with `addOnDollars: 0` — dropping every surcharge and every toll. The
+   * TLC flat fare is $70 *plus tolls and surcharges*, so the whole stack is
+   * accumulated below exactly as it is for a metered trip, and the flat
+   * figure replaces only the metered charge. It had been understating a JFK
+   * cab by the entire surcharge stack.
+   */
+  const flatTaxiLeg = jfkLeg && (provider === "curb" || provider === "taxi");
 
   const breakdown: Record<string, number> = {};
   let addOn = 0;
@@ -223,10 +222,12 @@ export function buildNyFeeStack(
     addOn += 0.8;
   }
 
+  if (flatTaxiLeg) breakdown.nyc_jfk_flat = 70;
+
   return {
     addOnDollars: addOn,
     breakdown,
-    nycJfkFlatTaxi: null,
+    nycJfkFlatTaxi: flatTaxiLeg ? 70 : null,
     crossJurisdiction,
     touchesBelow96,
     touchesBelow60,
@@ -334,6 +335,8 @@ export function productRates(marketId: string, product: FareProduct): RateParts 
         perMin: 0.7,
         booking: 0,
         minimum: 3.0,
+        // A meter, not a TNC: distance units or time units, never both.
+        meter: "taximeter",
       };
     case "comfort":
       return {
@@ -416,6 +419,32 @@ const BLACK_CAR_FUND = 0.025;
 /** NYC combined state/city sales tax on taxable FHV fare (metered portion). */
 const NY_SALES_TAX = 0.08875;
 
+/**
+ * How much a real meter can run above the uniform-speed reading.
+ *
+ * `variableFareDollars` charges a taximeter as if the vehicle held one speed
+ * for the whole trip. A real trip stops and starts, and every stop accrues
+ * time units the uniform trip never paid for. The meter can therefore read
+ * *higher* than the modelled centre and never lower, which makes this the
+ * one band in the product that is genuinely one-sided.
+ *
+ * The size of it is taken from the congestion the model has already
+ * computed, rather than invented: the further the charged duration runs
+ * above the free-flow duration, the more of the trip was spent stationary.
+ * Capped, because past a point the trip is slow enough that time units
+ * dominate outright and `max` has already switched to charging them.
+ */
+function stopAndGoAllowance(
+  freeFlowMinutes: number,
+  chargedMinutes: number,
+  product: FareProduct,
+): number {
+  if (product !== "taxi") return 0;
+  if (freeFlowMinutes <= 0) return 0;
+  const congestion = Math.max(0, chargedMinutes / freeFlowMinutes - 1);
+  return Math.min(0.09, congestion * 0.6);
+}
+
 export function computeProductFare(input: {
   product: FareProduct;
   provider: "uber" | "lyft" | "empower" | "curb";
@@ -449,15 +478,24 @@ export function computeProductFare(input: {
   const tolls = estimateRouteTolls(input.routeCoordinates);
 
   if (fees.nycJfkFlatTaxi != null && input.product === "taxi") {
-    // Flat fare still gets taxi peak/night additives when TLC applies them on top
-    const center = snapFareCenter(fees.nycJfkFlatTaxi + marketplace.additiveDollars);
+    /*
+     * The flat fare is $70 *plus* tolls and surcharges — the published rule,
+     * and the reason this adds the same stack a metered trip gets. It used
+     * to show the bare $70, which made a JFK cab look several dollars
+     * cheaper than it can legally be.
+     *
+     * The band stays tight because a flat fare is a published number: the
+     * only thing uncertain about it is which tolls the route takes.
+     */
+    const flatExtras = fees.addOnDollars + tolls.amount + marketplace.additiveDollars;
+    const center = snapFareCenter(fees.nycJfkFlatTaxi + flatExtras);
     return {
       center,
       low: center,
       high: Math.round((center + 1.5) * 100) / 100,
       band: 0.01,
       rateCardDollars: fees.nycJfkFlatTaxi,
-      feesDollars: marketplace.additiveDollars,
+      feesDollars: Math.round(flatExtras * 100) / 100,
       trafficMinutes,
       demandCenter: marketplace.multiplier,
       demandLabel: `flat_fare+${marketplace.label}`,
@@ -467,6 +505,7 @@ export function computeProductFare(input: {
       anchorWeight: 0,
       feeBreakdown: {
         ...fees.breakdown,
+        ...Object.fromEntries(tolls.items.map((t) => [`toll_${t.id}`, t.amount])),
         marketplace_additive: marketplace.additiveDollars,
       },
       marketplaceTick: marketplace.tickEpoch,
@@ -575,11 +614,21 @@ export function computeProductFare(input: {
   center = snapFareCenter(center);
   const { low, high } = fareBandDollars(center, liveBand);
 
+  /*
+   * A meter cannot read below its uniform-speed value, so the extra room for
+   * stop-and-go goes on the top edge only. Symmetric widening would have
+   * claimed the fare might come in under a figure that is arithmetically
+   * its floor.
+   */
+  const stopAndGo = stopAndGoAllowance(input.osrmMinutes, trafficMinutes, input.product);
+  const highWithStops =
+    stopAndGo > 0 ? Math.round(center * (1 + liveBand + stopAndGo) * 100) / 100 : high;
+
   return {
     center: Math.round(center * 100) / 100,
     low,
-    high,
-    band: liveBand,
+    high: highWithStops,
+    band: liveBand + stopAndGo,
     rateCardDollars: Math.round(rateCardTotal * 100) / 100,
     feesDollars: Math.round(feesDollars * 100) / 100,
     trafficMinutes,

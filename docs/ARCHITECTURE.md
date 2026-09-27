@@ -120,6 +120,49 @@ the clock, because it is a model of demand rather than a resample. It is
 allowed to move inside a tick; it is not allowed to move enough to notice, and
 a test holds it under half a percent.
 
+### Law on one side of the line, model on the other
+
+A NYC yellow cab is not priced by a model. It is priced by a published rule,
+which means the right answer is knowable without ground truth — the only
+part of this product where that is true. `tests/unit/tlc-tariff.test.ts`
+implements the TLC tariff a second time, from the rule rather than from
+`fare-engine.ts`, and checks the engine against it across four trips and
+four times of day.
+
+It takes the charged duration and the demand multiplier from whatever the
+engine reports, because both of those _are_ models and neither is under
+test. Only the arithmetic built on top of them is compared: the meter, the
+surcharge stack, the flat fare.
+
+It found two errors on its first run.
+
+**The meter was billed like a TNC.** `computeFareDollars` summed distance and
+time for every product, including the metered taxi — whose own rate comment
+already said "$0.70 / 60s *in slow traffic*". A taximeter charges $0.70 per
+unit, and a unit is a fifth of a mile above 12 mph _or_ sixty seconds at or
+below it, never both for the same moment. With the TLC rates the two are
+exactly equivalent at 12 mph, so `max(perMile·D, perMin·T)` is algebraically
+identical to "charge the distance, then add time units only for time below
+the threshold". Summing them put an 8.6-mile Midtown→LGA run at $50.81 of
+metered charge against a meter reading of about $33.
+
+`max` is a _lower_ bound, because a trip that stops and starts accrues time
+units a uniform-speed trip never pays. Stops can only add, which makes this
+the one band in the product that is genuinely one-sided.
+
+**The flat fare dropped its surcharges.** A JFK↔Manhattan taxi leg returned
+from the fee stack with `addOnDollars: 0`, so it quoted the bare $70. The
+TLC flat fare is $70 _plus tolls and surcharges_, and the stack now
+accumulates exactly as it does for a metered trip.
+
+Between them, 25 of 125 canonical fares moved — all taxi, none of the TNCs,
+because a TNC really does bill distance and time at once.
+
+A third, smaller one: a modelled ±15c fee jitter was applied to the taxi,
+whose additive is entirely TLC rule. It reported a published $2.50 peak
+surcharge as $2.46. A statutory amount is not an estimate, so the meter no
+longer gets one.
+
 ### Invariants instead of calibration
 
 The corpus is empty and will stay empty until riders report what they actually

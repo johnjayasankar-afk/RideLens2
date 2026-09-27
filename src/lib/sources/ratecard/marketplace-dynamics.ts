@@ -469,11 +469,28 @@ export function computeMarketplaceState(input: {
     multiplier = Math.min(1.12, Math.max(0.98, 1 + (multiplier - 1) * 0.35));
   }
 
-  const feeSeed = hash32(
-    `${input.provider}|fee|${micro.tick}|${geoCell(input.pickup.lat, input.pickup.lng)}`,
-  );
-  const feeJitter = (unitNoise(feeSeed) - 0.5) * 0.3;
-  additiveDollars += Math.round(feeJitter * 100) / 100;
+  /*
+   * A statutory amount is not an estimate.
+   *
+   * This jitter — a modelled ±15¢ standing in for small fees nobody has
+   * enumerated — was added to every provider, including the metered taxi,
+   * whose additive is *entirely* TLC rule: $2.50 in the weekday peak, $1.00
+   * overnight, and nothing otherwise. So the breakdown reported a published
+   * $2.50 surcharge as $2.46, and at off-peak it showed a bare "-0.04" where
+   * the correct answer is that there is no surcharge at all.
+   *
+   * There is nothing uncertain about a number written in the tariff, so the
+   * taxi does not get one. A TNC's fee stack has genuine unmodelled bits and
+   * keeps it.
+   */
+  const isMetered = input.provider === "curb" || input.product === "taxi";
+  if (!isMetered) {
+    const feeSeed = hash32(
+      `${input.provider}|fee|${micro.tick}|${geoCell(input.pickup.lat, input.pickup.lng)}`,
+    );
+    const feeJitter = (unitNoise(feeSeed) - 0.5) * 0.3;
+    additiveDollars += Math.round(feeJitter * 100) / 100;
+  }
 
   const trafficBoost = trafficMarketplaceBoost(multiplier, input.miles, input.osrmMinutes);
   const waitBoost = waitMarketplaceBoost(input.provider, multiplier);

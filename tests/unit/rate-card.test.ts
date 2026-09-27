@@ -11,6 +11,7 @@ import {
   fareBand,
   nearestCity,
   tripFees,
+  variableFareDollars,
 } from "@/lib/sources/ratecard/rates";
 import { formatPlaceLabel } from "@/lib/location/geocoder";
 
@@ -245,5 +246,143 @@ describe("place labels", () => {
     expect(label.primaryText).toBe("14 Prince Street");
     expect(label.secondaryText).toBe("New York, NY");
     expect(label.formattedAddress).toBe("14 Prince Street, New York, NY");
+  });
+});
+
+describe("how a meter differs from a TNC", () => {
+  const meterRates = {
+    base: 3,
+    perMile: 3.5,
+    perMin: 0.7,
+    booking: 0,
+    meter: "taximeter" as const,
+  };
+  const tncRates = { base: 2.55, perMile: 1.75, perMin: 0.35, booking: 2.55 };
+
+  /*
+   * A taximeter charges $0.70 per unit, and a unit is a fifth of a mile
+   * above 12 mph *or* sixty seconds at or below it. Never both for the same
+   * moment. Summing them put an 8.6-mile Midtown→LGA run at $50.81 against
+   * a meter reading of about $34.
+   */
+  it("charges a meter for distance or time, never both", () => {
+    // 8.6 miles in 25 minutes is 20.6 mph — comfortably above the threshold,
+    // so the meter reads distance units.
+    expect(variableFareDollars(meterRates, 8.6, 25)).toBeCloseTo(30.1, 2);
+    expect(variableFareDollars(meterRates, 8.6, 25)).not.toBeCloseTo(30.1 + 17.5, 2);
+  });
+
+  it("switches to time when the trip crawls", () => {
+    // 5 miles in 45 minutes is 6.7 mph — below the threshold, so time wins.
+    expect(variableFareDollars(meterRates, 5, 45)).toBeCloseTo(31.5, 2);
+  });
+
+  /*
+   * The two rates meet exactly at 12 mph, which is what makes `max` the
+   * faithful form rather than an approximation: $3.50/mile is $0.70 per
+   * fifth of a mile, and that is the same money as $0.70/minute at 12 mph.
+   */
+  it("meets exactly at the threshold the tariff names", () => {
+    const miles = 4;
+    const minutesAt12mph = (miles / 12) * 60;
+    expect(meterRates.perMile * miles).toBeCloseTo(meterRates.perMin * minutesAt12mph, 6);
+    expect(variableFareDollars(meterRates, miles, minutesAt12mph)).toBeCloseTo(14, 6);
+  });
+
+  /* A TNC really does bill both at once, so nothing here changes for them. */
+  it("still sums distance and time for a TNC", () => {
+    expect(variableFareDollars(tncRates, 10, 20)).toBeCloseTo(1.75 * 10 + 0.35 * 20, 6);
+  });
+
+  it("never lets a meter read above the concurrent sum", () => {
+    for (const [d, t] of [
+      [1, 5],
+      [8.6, 25],
+      [5, 45],
+      [30, 40],
+      [0.2, 60],
+    ]) {
+      const metered = variableFareDollars(meterRates, d, t);
+      const summed = meterRates.perMile * d + meterRates.perMin * t;
+      expect(metered).toBeLessThanOrEqual(summed);
+      expect(metered).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("the JFK flat fare", () => {
+  const midtown = { lat: 40.7549, lng: -73.984 };
+  const jfk = { lat: 40.6446, lng: -73.7797 };
+
+  /*
+   * The TLC flat fare is $70 *plus tolls and surcharges*. The fee stack used
+   * to return early with addOnDollars: 0, so a JFK cab was quoted at the
+   * bare $70 — several dollars under what it can legally cost.
+   */
+  it("adds the surcharges a metered trip would pay", () => {
+    const fare = computeProductFare({
+      product: "taxi",
+      provider: "curb",
+      pickup: midtown,
+      destination: jfk,
+      miles: 17.4,
+      osrmMinutes: 42,
+      now: new Date("2026-03-04T15:20:00.000Z"),
+    });
+    expect(fare.feeBreakdown.nyc_jfk_flat).toBe(70);
+    expect(fare.center).toBeGreaterThan(70);
+    /* The same surcharges a metered taxi pays, not a different set. */
+    expect(fare.feeBreakdown.mta_state_surcharge).toBeDefined();
+    expect(fare.feeBreakdown.nys_congestion_taxi).toBeDefined();
+  });
+
+  /* A published flat number: the only thing uncertain is which tolls apply. */
+  it("stays tightly banded, because the fare itself is published", () => {
+    const fare = computeProductFare({
+      product: "taxi",
+      provider: "curb",
+      pickup: jfk,
+      destination: midtown,
+      miles: 17.4,
+      osrmMinutes: 42,
+      now: new Date("2026-03-04T15:20:00.000Z"),
+    });
+    expect(fare.high - fare.low).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("statutory amounts are not estimates", () => {
+  const midtown = { lat: 40.7549, lng: -73.984 };
+  const harlem = { lat: 40.8116, lng: -73.9465 };
+  const fare = (iso: string) =>
+    computeProductFare({
+      product: "taxi",
+      provider: "curb",
+      pickup: midtown,
+      destination: harlem,
+      miles: 5.2,
+      osrmMinutes: 18,
+      now: new Date(iso),
+    });
+
+  /*
+   * A modelled ±15c jitter, standing in for fees nobody has enumerated, was
+   * applied to the metered taxi too — whose additive is entirely TLC rule.
+   * It reported a published $2.50 peak surcharge as $2.46, and showed a bare
+   * "-0.04" off-peak where the right answer is that there is no surcharge.
+   */
+  it("reports the TLC peak surcharge as the tariff writes it", () => {
+    const peak = fare("2026-03-03T21:30:00.000Z"); // Tue 16:30 New York
+    expect(peak.feeBreakdown.marketplace_rules).toBe(2.5);
+  });
+
+  it("reports the overnight surcharge exactly", () => {
+    const night = fare("2026-03-04T01:30:00.000Z"); // Tue 20:30 New York
+    expect(night.feeBreakdown.marketplace_rules).toBe(1);
+  });
+
+  it("adds nothing at all when no surcharge applies", () => {
+    const off = fare("2026-03-03T15:20:00.000Z"); // Tue 10:20 New York
+    expect(off.feeBreakdown.marketplace_rules ?? 0).toBe(0);
   });
 });
