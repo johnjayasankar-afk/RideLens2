@@ -7,6 +7,8 @@
  */
 import { expect, test } from "@playwright/test";
 
+import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
+
 /** 14 Prince St → JFK Terminal 4, the pair the fixtures are written around. */
 const PICKUP = {
   lat: 40.7225,
@@ -392,7 +394,7 @@ test.describe("your trips", () => {
           confidence: "MEDIUM",
         },
       ],
-      modelVersion: "2026-09-25.v1",
+      modelVersion: MODEL_VERSION,
     }));
 
   test("says so plainly when there is nothing kept", async ({ page }) => {

@@ -17,7 +17,11 @@ import {
 } from "@/lib/history/trip-log";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
 
-const MODEL = "2026-09-25.v1";
+/* Deliberately not a real MODEL_VERSION. These tests are about pooling
+   behaviour, not about any particular model, and a fixture that looks like
+   the live value invites the reader to assume it tracks it — one did, and
+   broke silently when the version was bumped. */
+const MODEL = "test-model.a";
 
 let seq = 0;
 function quote(over: Partial<NormalizedQuote> = {}): NormalizedQuote {
@@ -267,7 +271,7 @@ describe("what this route has cost before", () => {
     const older = logOf([[100, 100]]).map((r) => ({
       ...r,
       id: "old",
-      modelVersion: "2020-01-01.v0",
+      modelVersion: "test-model.b",
     }));
     const h = historyForRoute([...current, ...older], current[0].routeKey, MODEL)!;
     expect(h.n).toBe(3);
@@ -280,7 +284,7 @@ describe("what this route has cost before", () => {
       [1800, 1900],
       [2000, 2100],
       [2200, 2300],
-    ]).map((r) => ({ ...r, modelVersion: "2020-01-01.v0" }));
+    ]).map((r) => ({ ...r, modelVersion: "test-model.b" }));
     expect(historyForRoute(older, older[0].routeKey, MODEL)).toBeNull();
   });
 

@@ -769,6 +769,10 @@ export function QuoteResults({
             destination={mapDest}
             route={mapRoute}
             loading={mapLoading && !mapRoute}
+            /* Not while a price is still on its way. If the comparison ends
+               with no price at all the hold lifts anyway, because the map is
+               worth having even when pricing failed. */
+            hold={loading && !hero}
           />
         </div>
       ) : null}

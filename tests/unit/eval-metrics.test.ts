@@ -29,7 +29,7 @@ const rec = (over: Partial<ActualRecord> = {}): ActualRecord => ({
   predictedMaxMinor: 3000,
   actualMinor: 2500,
   predictedAt: "2026-03-04T14:00:00Z",
-  modelVersion: "2026-09-25.v1",
+  modelVersion: "test-model.a",
   distanceMeters: 8000,
   ...over,
 });

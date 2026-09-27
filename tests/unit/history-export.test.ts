@@ -31,7 +31,7 @@ function record(over: Partial<TripRecord> = {}): TripRecord {
         confidence: "HIGH",
       },
     ],
-    modelVersion: "2026-09-25.v1",
+    modelVersion: "test-model.a",
     ...over,
   };
 }
@@ -69,7 +69,7 @@ describe("what the file is allowed to call a number", () => {
 
   it("carries the model version on every row", () => {
     const lines = toCsv([record()]).trim().split("\n");
-    for (const line of lines.slice(1)) expect(line).toContain("2026-09-25.v1");
+    for (const line of lines.slice(1)) expect(line).toContain("test-model.a");
   });
 });
 

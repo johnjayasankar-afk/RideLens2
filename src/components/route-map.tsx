@@ -17,6 +17,21 @@ type Props = {
   destination: { lat: number; lng: number; label: string };
   route: MapRoute | null;
   loading?: boolean;
+  /**
+   * Hold the map back entirely — module and all.
+   *
+   * The scheduler below waits for the page to stop scrolling, and its
+   * comment assumed the map would therefore land "after the comparison is
+   * on screen". On a shared link it does not: there is nothing to scroll
+   * yet, so idle fires immediately and 276 KB of MapLibre starts parsing
+   * while the quotes are still in flight. Measured on a deep link, the
+   * quote data arrived at 714 ms and the price did not paint until 1480 ms,
+   * because the main thread was busy with the map.
+   *
+   * The price is the product and the map is supplementary, so the map
+   * waits.
+   */
+  hold?: boolean;
 };
 
 /** The slice of MapLibre this component actually touches. */
@@ -117,7 +132,7 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function RouteMap({ pickup, destination, route, loading }: Props) {
+export function RouteMap({ pickup, destination, route, loading, hold = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const markersRef = useRef<MlMarker[]>([]);
@@ -152,6 +167,8 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
   const destLabel = destination.label;
 
   useEffect(() => {
+    /* Nothing is scheduled, and nothing is imported, until the hold lifts. */
+    if (hold) return;
     let cancelled = false;
     const startMap = () =>
       loadMapLibre()
@@ -200,6 +217,13 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
      * blocked. None of it delays first paint, because the module is lazy.
      * It lands *after* the comparison is on screen — which is exactly when
      * somebody starts scrolling it.
+     *
+     * That last sentence was an assumption rather than a measurement, and on
+     * a shared link it was wrong: there is nothing to scroll yet, so idle
+     * fired immediately and the module began parsing while the quotes were
+     * still in flight. The `hold` prop makes it true — see Props above. The
+     * stillness rule below is unchanged and still runs afterwards; all the
+     * hold does is decide when it starts.
      *
      * Measured scrolling from the moment the cards appear, the worst frame
      * was 1.6 seconds. The median was a healthy 119 fps and it did not
@@ -294,7 +318,7 @@ export function RouteMap({ pickup, destination, route, loading }: Props) {
     // Intentionally mount once; markers/route update in the effect below.
     // Rebuilds on a scheme change; the rest is mount-once by design.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [styleUrl]);
+  }, [styleUrl, hold]);
 
   useEffect(() => {
     const map = mapRef.current;
