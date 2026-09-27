@@ -11,6 +11,8 @@
 
 import {
   computeFareDollars,
+  tlcDriverMinimumDollars,
+  variableFareDollars,
   getCityRate,
   nearestCity,
   type RateParts,
@@ -492,6 +494,7 @@ export function computeProductFare(input: {
     now,
     weatherSurgeLift: input.weatherSurgeLift,
   });
+  let feeBreakdownFloor = 0;
   const ctx = trafficContextFactor(input.miles, input.osrmMinutes);
   const trafficMinutes = input.osrmMinutes * traffic.factor * ctx * marketplace.trafficBoost;
   const fees = buildNyFeeStack(input.pickup, input.destination, input.provider);
@@ -536,7 +539,29 @@ export function computeProductFare(input: {
     };
   }
 
-  const metered = computeFareDollars(rates, input.miles, trafficMinutes, marketplace.multiplier);
+  /*
+   * The regulated floor applies to high-volume for-hire service in NYC —
+   * which is Uber and Lyft. It does not apply to the metered taxi, priced
+   * under a different tariff, nor to Empower, which the TLC does not licence
+   * as an HVFHS base at all. See tlcDriverMinimumDollars.
+   */
+  const isHvfhs = input.provider === "uber" || input.provider === "lyft";
+  const inNycTrip =
+    inNYC(input.pickup.lat, input.pickup.lng) ||
+    inNYC(input.destination.lat, input.destination.lng);
+  const regulatedFloor =
+    isHvfhs && inNycTrip ? tlcDriverMinimumDollars(input.miles, trafficMinutes) : 0;
+
+  const metered = computeFareDollars(
+    rates,
+    input.miles,
+    trafficMinutes,
+    marketplace.multiplier,
+    regulatedFloor,
+  );
+  if (regulatedFloor > 0) {
+    feeBreakdownFloor = regulatedFloor;
+  }
   const appliesBcf = input.provider === "uber" || input.provider === "lyft";
   // Empower: modeled without Black Car Fund / sales tax stack (app quotes often omit)
   const bcf =
@@ -562,6 +587,14 @@ export function computeProductFare(input: {
   };
   if (marketplace.additiveDollars) {
     feeBreakdown.marketplace_rules = marketplace.additiveDollars;
+  }
+  /* Shown only when it actually bound, so the breakdown does not imply a
+     floor was needed on a trip the card already priced above it. */
+  if (
+    feeBreakdownFloor > 0 &&
+    feeBreakdownFloor > rates.base + variableFareDollars(rates, input.miles, trafficMinutes)
+  ) {
+    feeBreakdown.tlc_driver_minimum = Math.round(feeBreakdownFloor * 100) / 100;
   }
   for (const item of tolls.items) {
     feeBreakdown[`toll_${item.id}`] = item.amount;

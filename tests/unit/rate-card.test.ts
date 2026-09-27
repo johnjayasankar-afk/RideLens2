@@ -10,6 +10,7 @@ import {
   demandMultiplier,
   fareBand,
   nearestCity,
+  tlcDriverMinimumDollars,
   tripFees,
   variableFareDollars,
 } from "@/lib/sources/ratecard/rates";
@@ -420,5 +421,75 @@ describe("surge applies where the operators say it applies", () => {
       (12 - withMinimum.booking) * 2 + withMinimum.booking,
       6,
     );
+  });
+});
+
+describe("the floor New York law puts under a for-hire trip", () => {
+  /*
+   * The NYC card here priced a *passenger* below what the operator must pay
+   * the *driver*: $35.80 of rate-driven fare on a 10-mile, 45-minute crawl
+   * against a $43.48 driver minimum. Its per-minute rate is $0.35; the
+   * regulated minimum is $0.681.
+   *
+   * The card's values are unverified and guessing better ones would only
+   * swap their guess for mine. The driver minimum is published regulation,
+   * and a platform takes a commission rather than paying a subsidy, so it
+   * is usable as a floor without claiming to know the card.
+   */
+  it("computes the published minimum", () => {
+    expect(tlcDriverMinimumDollars(10, 45)).toBeCloseTo(1.283 * 10 + 0.681 * 45, 6);
+    expect(tlcDriverMinimumDollars(0, 0)).toBe(0);
+  });
+
+  it("treats nonsense distances as zero rather than negative money", () => {
+    expect(tlcDriverMinimumDollars(-5, -5)).toBe(0);
+  });
+
+  it("lifts a fare that sits under it", () => {
+    const card = { base: 2.55, perMile: 1.75, perMin: 0.35, booking: 2.55 };
+    const floor = tlcDriverMinimumDollars(10, 45);
+    const withFloor = computeFareDollars(card, 10, 45, 1, floor);
+    const without = computeFareDollars(card, 10, 45, 1, 0);
+    expect(without).toBeLessThan(withFloor);
+    expect(withFloor).toBeCloseTo(floor + card.booking, 6);
+  });
+
+  /* Only a floor: where the card is already above it, nothing happens. */
+  it("does nothing to a fare already above it", () => {
+    const generous = { base: 10, perMile: 6, perMin: 2, booking: 2.55 };
+    expect(computeFareDollars(generous, 10, 45, 1, tlcDriverMinimumDollars(10, 45))).toBeCloseTo(
+      computeFareDollars(generous, 10, 45, 1, 0),
+      6,
+    );
+  });
+
+  /* It bounds the trip, not the demand on it, so surge applies after. */
+  it("is applied before surge", () => {
+    const card = { base: 2.55, perMile: 1.75, perMin: 0.35, booking: 2.55 };
+    const floor = tlcDriverMinimumDollars(10, 45);
+    expect(computeFareDollars(card, 10, 45, 2, floor)).toBeCloseTo(floor * 2 + card.booking, 6);
+  });
+
+  /*
+   * It is a New York high-volume for-hire rule. The metered taxi is priced
+   * under a different tariff, and Empower is not licensed as an HVFHS base.
+   */
+  it("does not reach the taxi or Empower", () => {
+    const slow = { miles: 10, osrmMinutes: 45, now: new Date("2026-03-04T15:20:00.000Z") };
+    const midtown = { lat: 40.7549, lng: -73.984 };
+    const soho = { lat: 40.7225, lng: -73.9945 };
+    for (const [product, provider] of [
+      ["taxi", "curb"],
+      ["empower", "empower"],
+    ] as const) {
+      const fare = computeProductFare({
+        product,
+        provider,
+        pickup: midtown,
+        destination: soho,
+        ...slow,
+      });
+      expect(fare.feeBreakdown.tlc_driver_minimum).toBeUndefined();
+    }
   });
 });

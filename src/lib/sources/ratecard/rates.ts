@@ -295,17 +295,57 @@ export function variableFareDollars(rates: RateParts, miles: number, minutes: nu
  *   https://www.uber.com/us/en/drive/driver-app/how-surge-works/
  *   https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated
  */
+/**
+ * The floor New York law puts under a high-volume for-hire trip.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The NYC rate card here prices a *passenger* below what the operator is   │
+ * │ required to pay the *driver*. On a 10-mile, 45-minute crawl the card     │
+ * │ produces $35.80 of rate-driven fare against a driver minimum of $43.48.  │
+ * │ The card's per-minute rate is $0.35; the regulated minimum is $0.681.    │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The rate values in `city-rates.json` are unverified — `freshness.ts` says
+ * so plainly, and guessing better ones would replace their guess with mine.
+ * But the driver minimum is published regulation, and a platform takes a
+ * commission rather than paying a subsidy, so the passenger fare cannot
+ * sensibly sit below it. That makes it usable as a floor without claiming to
+ * know the card.
+ *
+ * It is deliberately only a floor. Where the card is already above it
+ * nothing happens, and the floor is applied before surge, because it bounds
+ * the trip rather than the demand on it.
+ *
+ * Non-WAV, in-city rates effective 2026-03-01. Out-of-town rates are higher
+ * ($1.757/mile, $0.725/minute), so using the in-city pair everywhere is the
+ * conservative choice.
+ *
+ * Source, read 2026-09-27:
+ *   https://www.nyc.gov/site/tlc/about/driver-pay-rates.page
+ */
+export const TLC_HVFHS_DRIVER_MIN_PER_MILE = 1.283;
+export const TLC_HVFHS_DRIVER_MIN_PER_MINUTE = 0.681;
+
+export function tlcDriverMinimumDollars(miles: number, minutes: number): number {
+  return (
+    TLC_HVFHS_DRIVER_MIN_PER_MILE * Math.max(0, miles) +
+    TLC_HVFHS_DRIVER_MIN_PER_MINUTE * Math.max(0, minutes)
+  );
+}
+
 export function computeFareDollars(
   rates: RateParts,
   miles: number,
   minutes: number,
   multiplier: number,
+  /** A regulated floor on the rate-driven fare — see tlcDriverMinimumDollars. */
+  regulatedFloor = 0,
 ): number {
   const surgeable = rates.base + variableFareDollars(rates, miles, minutes);
   /* The minimum is a floor on the *total*, so the floor on the surgeable
      part is that minus the booking fee added after it. */
   const surgeableFloor = (rates.minimum ?? rates.base + rates.booking) - rates.booking;
-  const floored = Math.max(surgeableFloor, surgeable);
+  const floored = Math.max(surgeableFloor, regulatedFloor, surgeable);
   /* The booking fee is added after, at face value, however hot the market. */
   return floored * multiplier + rates.booking;
 }

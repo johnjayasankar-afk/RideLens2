@@ -50,6 +50,13 @@
  * when a taximeter charges one or the other per unit of travel. 25 of 125
  * canonical fares moved, all of them taxi.
  *
+ * v3 — the NYC card priced a passenger below the driver minimum New York
+ * requires the operator to pay: $35.80 of rate-driven fare on a 10-mile,
+ * 45-minute crawl against a $43.48 minimum, a per-minute rate of $0.35
+ * against a regulated $0.681. The published minimum is now a floor, applied
+ * before surge, for Uber and Lyft in NYC only. 48 of 125 fares moved, all of
+ * them upward and all of them TNC.
+ *
  * v2 — surge multiplied the booking fee. Uber calls surge "a multiplier to
  * standard rates" and says its service fee percentage does not change during
  * surge; Lyft lists its service fee as a flat regional amount. And Empower
@@ -57,7 +64,7 @@
  * drivers set their own rates and the platform takes no commission. 100 of
  * 125 fares moved, all of them TNC.
  */
-export const MODEL_VERSION = "2026-09-27.v2";
+export const MODEL_VERSION = "2026-09-27.v3";
 
 export interface TrafficParams {
   /** Multipliers on OSRM's free-flow duration, by period. */
