@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { buildDepartureWindow, type ForecastInput } from "@/lib/domain/departure-window";
 import { getSession } from "@/lib/quotes/orchestrator";
+import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
 import type { NormalizedQuote } from "@/lib/domain/types";
 import type {
   MarketplaceProduct,
@@ -61,6 +62,19 @@ function projectable(quote: NormalizedQuote): ForecastInput | null {
 }
 
 export async function GET(req: NextRequest) {
+  /*
+   *  Pure computation over a session already in hand, so the ceiling
+   *  is about protecting this process rather than anyone else's.
+   */
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(rateLimitKey({ ip, action: "forecast" }), 60, 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now.", retryAfter: rl.retryAfterSeconds },
+      { status: 429 },
+    );
+  }
+
   const id = req.nextUrl.searchParams.get("session");
   if (!id) {
     return NextResponse.json({ error: "session is required." }, { status: 400 });

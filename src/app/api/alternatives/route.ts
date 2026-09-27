@@ -11,10 +11,24 @@ import { transitAlternativeFor, walkAlternative } from "@/lib/transit/alternativ
 import type { TransitAlternative } from "@/lib/transit/types";
 import { fetchWalkingSeconds } from "@/lib/routing/osrm";
 import { getSession } from "@/lib/quotes/orchestrator";
+import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  /*
+   *  Reaches outward for transit and walking legs, so it is capped
+   *  like any other route that spends someone else's capacity.
+   */
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(rateLimitKey({ ip, action: "alternatives" }), 40, 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now.", retryAfter: rl.retryAfterSeconds },
+      { status: 429 },
+    );
+  }
+
   const id = req.nextUrl.searchParams.get("session");
   if (!id) return NextResponse.json({ error: "session is required." }, { status: 400 });
 

@@ -70,6 +70,27 @@ beside the control rather than behind a disclosure triangle.
 
 Server-side sliding window on compare / places / book. Client timers are not trusted.
 
+### Every route, or a stated reason
+
+`/api/walk` fans out to a public walking router — somebody else's server —
+and shipped with no ceiling at all. Its own header argues that sixteen
+speculative queries per comparison is not a reasonable thing to send, and
+then left the number of comparisons unbounded. `/api/alternatives` was the
+same, and `/api/forecast` had none either. Every endpoint written before
+those three had a limit; the three added later did not, and nothing noticed.
+
+`tests/unit/api-rate-limits.test.ts` now fails on any route that answers
+without one. Three are exempt, each with its reason recorded in the test:
+the health probe (rate-limiting a liveness check means an orchestrator can
+be told the service is down for asking), the admin overview (behind
+`RIDELENS_ADMIN_SECRET`, 401 before any work), and reading one already
+computed session by its unguessable id. Anything that reaches outward,
+spends money or writes is not exempt, and the list is checked in both
+directions so it cannot stop describing the code.
+
+Limits are proportional to what a call costs someone else: walk 20/min,
+alternatives 40/min, forecast 60/min.
+
 ## Cache isolation
 
 Account-linked quotes never stored under public cache keys.

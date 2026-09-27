@@ -14,6 +14,7 @@ import { computeProductFare } from "@/lib/sources/ratecard/fare-engine";
 import type { FareProduct } from "@/lib/sources/ratecard/fare-engine";
 import { fetchWalkingSeconds } from "@/lib/routing/osrm";
 import { getSession } from "@/lib/quotes/orchestrator";
+import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,21 @@ export const dynamic = "force-dynamic";
 const MAX_ROUTED = 3;
 
 export async function GET(req: NextRequest) {
+  /*
+   *  Each call fans out to MAX_ROUTED requests against a public
+   *  walking router — somebody else's server, and the reason this file
+   *  already refuses to send sixteen. A per-IP ceiling is the other half
+   *  of that argument.
+   */
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(rateLimitKey({ ip, action: "walk" }), 20, 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now.", retryAfter: rl.retryAfterSeconds },
+      { status: 429 },
+    );
+  }
+
   const id = req.nextUrl.searchParams.get("session");
   if (!id) return NextResponse.json({ error: "session is required." }, { status: 400 });
 
