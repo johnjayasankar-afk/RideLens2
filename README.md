@@ -59,10 +59,21 @@ npm run verify        # format, lint, types, tokens, unit, build, budget
 Four standing guards, each written after the thing it catches shipped:
 
 ```bash
-npm run tokens        # dark blocks agree; no undefined or self-referential var()
-npm run budget        # gzipped client JS, CSS, fonts, lazy map
-npm run contrast      # six OS x choice combinations at WCAG 2.2 AA
-npm run perf          # frame times and CLS while scrolling
+npm run tokens          # dark blocks agree; no undefined or self-referential var()
+npm run budget          # gzipped client JS, CSS, fonts, lazy map
+npm run contrast        # six OS x choice combinations at WCAG 2.2 AA
+npm run perf            # frame times and CLS while scrolling
+npm run snapshot:model  # rewrite the committed fares after an intended change
+```
+
+The model has no ground truth to be scored against — see `docs/CALIBRATION.md`
+— so it is held to coherence instead. Two fuzzers assert what must be true of
+every fare and every comparison, and 125 canonical fares are checked in, so a
+change to a coefficient shows up in the diff as the prices it moves rather than
+as the coefficient alone:
+
+```
+soho→jfk | weekday_offpeak | uber/uberx   $81.00–87.40 → $81.67–86.73  (+0.67, +0.8%)
 ```
 
 `contrast` and `perf` need a running build (`npm run build && npm run start`).

@@ -1,0 +1,1256 @@
+{
+  "modelVersion": "2026-09-26.v1",
+  "note": "Regenerate with `npm run snapshot:model`. A failing snapshot test means the model moved — decide whether that was intended, then bump MODEL_VERSION.",
+  "rows": [
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_offpeak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 81,
+      "high": 87.4,
+      "waitBoost": 1.2761,
+      "multiplier": 1.251
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_offpeak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 119.81,
+      "high": 129.79,
+      "waitBoost": 1.3456,
+      "multiplier": 1.314
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_offpeak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 79.26,
+      "high": 85.64,
+      "waitBoost": 1.3356,
+      "multiplier": 1.268
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_offpeak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 69.85,
+      "high": 71.35,
+      "waitBoost": 1.0061,
+      "multiplier": 1.01
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_offpeak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 47.07,
+      "high": 50.53,
+      "waitBoost": 1.1577,
+      "multiplier": 1.088
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_am_peak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 101.95,
+      "high": 110.45,
+      "waitBoost": 1.5663,
+      "multiplier": 1.515
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_am_peak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 163.49,
+      "high": 177.11,
+      "waitBoost": 1.7237,
+      "multiplier": 1.658
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_am_peak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 97.73,
+      "high": 105.87,
+      "waitBoost": 1.6352,
+      "multiplier": 1.508
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_am_peak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 70.1,
+      "high": 71.6,
+      "waitBoost": 1.0069,
+      "multiplier": 1.012
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_am_peak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 55.06,
+      "high": 59.64,
+      "waitBoost": 1.4746,
+      "multiplier": 1.264
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberx",
+      "weather": 1.6,
+      "low": 127.1,
+      "high": 137.7,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberxl",
+      "weather": 1.6,
+      "low": 186.86,
+      "high": 202.44,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_pm_peak",
+      "product": "lyft/lyft",
+      "weather": 1.6,
+      "low": 122.26,
+      "high": 132.44,
+      "waitBoost": 2.0625,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_pm_peak",
+      "product": "curb/taxi",
+      "weather": 1.6,
+      "low": 72.35,
+      "high": 73.85,
+      "waitBoost": 1.0132,
+      "multiplier": 1.022
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "weekday_pm_peak",
+      "product": "empower/empower",
+      "weather": 1.6,
+      "low": 64.18,
+      "high": 69.52,
+      "waitBoost": 1.81,
+      "multiplier": 1.45
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "saturday_night",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 101.33,
+      "high": 109.77,
+      "waitBoost": 1.6082,
+      "multiplier": 1.553
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "saturday_night",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 154.27,
+      "high": 167.13,
+      "waitBoost": 1.7186,
+      "multiplier": 1.653
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "saturday_night",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 105.6,
+      "high": 114.4,
+      "waitBoost": 1.8413,
+      "multiplier": 1.673
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "saturday_night",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 71,
+      "high": 72.5,
+      "waitBoost": 1.0075,
+      "multiplier": 1.013
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "saturday_night",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 56.26,
+      "high": 60.94,
+      "waitBoost": 1.585,
+      "multiplier": 1.325
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "overnight",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 79.63,
+      "high": 85.87,
+      "waitBoost": 1.2669,
+      "multiplier": 1.243
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "overnight",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 122.21,
+      "high": 132.39,
+      "waitBoost": 1.3993,
+      "multiplier": 1.363
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "overnight",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 82.61,
+      "high": 89.49,
+      "waitBoost": 1.4201,
+      "multiplier": 1.336
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "overnight",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 71.15,
+      "high": 72.65,
+      "waitBoost": 1.0043,
+      "multiplier": 1.007
+    },
+    {
+      "leg": "soho→jfk",
+      "when": "overnight",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 52.46,
+      "high": 56.84,
+      "waitBoost": 1.456,
+      "multiplier": 1.253
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_offpeak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 51.08,
+      "high": 54.62,
+      "waitBoost": 1.261,
+      "multiplier": 1.237
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_offpeak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 80.26,
+      "high": 86.94,
+      "waitBoost": 1.4061,
+      "multiplier": 1.369
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_offpeak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 51.18,
+      "high": 54.92,
+      "waitBoost": 1.3501,
+      "multiplier": 1.28
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_offpeak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 60.74,
+      "high": 64.27,
+      "waitBoost": 1.0036,
+      "multiplier": 1.006
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_offpeak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 30.56,
+      "high": 32.74,
+      "waitBoost": 1.2938,
+      "multiplier": 1.163
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_am_peak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 62.78,
+      "high": 68.02,
+      "waitBoost": 1.4957,
+      "multiplier": 1.451
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_am_peak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 104.78,
+      "high": 113.52,
+      "waitBoost": 1.6857,
+      "multiplier": 1.623
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_am_peak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 61.68,
+      "high": 66.82,
+      "waitBoost": 1.5938,
+      "multiplier": 1.475
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_am_peak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 65.44,
+      "high": 69.26,
+      "waitBoost": 1.0057,
+      "multiplier": 1.01
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_am_peak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 36.58,
+      "high": 39.62,
+      "waitBoost": 1.6018,
+      "multiplier": 1.334
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberx",
+      "weather": 1.6,
+      "low": 82.7,
+      "high": 89.6,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberxl",
+      "weather": 1.6,
+      "low": 123.89,
+      "high": 134.21,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_pm_peak",
+      "product": "lyft/lyft",
+      "weather": 1.6,
+      "low": 79.49,
+      "high": 86.11,
+      "waitBoost": 2.0625,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_pm_peak",
+      "product": "curb/taxi",
+      "weather": 1.6,
+      "low": 69.74,
+      "high": 73.86,
+      "waitBoost": 1.0114,
+      "multiplier": 1.019
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "weekday_pm_peak",
+      "product": "empower/empower",
+      "weather": 1.6,
+      "low": 40.32,
+      "high": 43.68,
+      "waitBoost": 1.81,
+      "multiplier": 1.45
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "saturday_night",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 58.7,
+      "high": 63.6,
+      "waitBoost": 1.4634,
+      "multiplier": 1.421
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "saturday_night",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 98.3,
+      "high": 106.5,
+      "waitBoost": 1.7005,
+      "multiplier": 1.637
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "saturday_night",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 64.61,
+      "high": 69.99,
+      "waitBoost": 1.7663,
+      "multiplier": 1.613
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "saturday_night",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 61.95,
+      "high": 65.55,
+      "waitBoost": 1.0045,
+      "multiplier": 1.007
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "saturday_night",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 33.44,
+      "high": 36.16,
+      "waitBoost": 1.504,
+      "multiplier": 1.28
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "overnight",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 52.23,
+      "high": 56.07,
+      "waitBoost": 1.3157,
+      "multiplier": 1.287
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "overnight",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 79.01,
+      "high": 85.59,
+      "waitBoost": 1.4218,
+      "multiplier": 1.383
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "overnight",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 49.63,
+      "high": 53.17,
+      "waitBoost": 1.3286,
+      "multiplier": 1.263
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "overnight",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 60.34,
+      "high": 63.86,
+      "waitBoost": 1.0054,
+      "multiplier": 1.009
+    },
+    {
+      "leg": "midtown→lga",
+      "when": "overnight",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 30.63,
+      "high": 32.87,
+      "waitBoost": 1.3303,
+      "multiplier": 1.183
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_offpeak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 30.16,
+      "high": 32.24,
+      "waitBoost": 1.1452,
+      "multiplier": 1.132
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_offpeak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 46.08,
+      "high": 49.62,
+      "waitBoost": 1.2478,
+      "multiplier": 1.225
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_offpeak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 29.99,
+      "high": 32.11,
+      "waitBoost": 1.1892,
+      "multiplier": 1.151
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_offpeak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 37.47,
+      "high": 39.63,
+      "waitBoost": 1.0017,
+      "multiplier": 1.003
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_offpeak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 15.19,
+      "high": 16.31,
+      "waitBoost": 1.1615,
+      "multiplier": 1.09
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_am_peak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 37.49,
+      "high": 40.61,
+      "waitBoost": 1.3356,
+      "multiplier": 1.305
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_am_peak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 57.98,
+      "high": 62.82,
+      "waitBoost": 1.4518,
+      "multiplier": 1.411
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_am_peak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 36.72,
+      "high": 39.78,
+      "waitBoost": 1.3971,
+      "multiplier": 1.318
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_am_peak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 40.81,
+      "high": 43.19,
+      "waitBoost": 1.0051,
+      "multiplier": 1.009
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_am_peak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 17.42,
+      "high": 18.78,
+      "waitBoost": 1.2442,
+      "multiplier": 1.136
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberx",
+      "weather": 1.6,
+      "low": 56.93,
+      "high": 61.67,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberxl",
+      "weather": 1.6,
+      "low": 81.26,
+      "high": 88.04,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_pm_peak",
+      "product": "lyft/lyft",
+      "weather": 1.6,
+      "low": 54.77,
+      "high": 59.33,
+      "waitBoost": 2.0625,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_pm_peak",
+      "product": "curb/taxi",
+      "weather": 1.6,
+      "low": 44.29,
+      "high": 46.91,
+      "waitBoost": 1.0093,
+      "multiplier": 1.016
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "weekday_pm_peak",
+      "product": "empower/empower",
+      "weather": 1.6,
+      "low": 23.76,
+      "high": 25.74,
+      "waitBoost": 1.81,
+      "multiplier": 1.45
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "saturday_night",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 36.24,
+      "high": 39.26,
+      "waitBoost": 1.3808,
+      "multiplier": 1.346
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "saturday_night",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 59.9,
+      "high": 64.9,
+      "waitBoost": 1.6006,
+      "multiplier": 1.546
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "saturday_night",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 40.18,
+      "high": 43.52,
+      "waitBoost": 1.6631,
+      "multiplier": 1.53
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "saturday_night",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 38.86,
+      "high": 41.14,
+      "waitBoost": 1.0071,
+      "multiplier": 1.012
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "saturday_night",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 18.14,
+      "high": 19.66,
+      "waitBoost": 1.469,
+      "multiplier": 1.261
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "overnight",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 30.41,
+      "high": 32.59,
+      "waitBoost": 1.1848,
+      "multiplier": 1.168
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "overnight",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 44.78,
+      "high": 48.22,
+      "waitBoost": 1.2456,
+      "multiplier": 1.223
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "overnight",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 31.1,
+      "high": 33.5,
+      "waitBoost": 1.2891,
+      "multiplier": 1.231
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "overnight",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 37.37,
+      "high": 39.53,
+      "waitBoost": 1.0022,
+      "multiplier": 1.004
+    },
+    {
+      "leg": "midtown→harlem",
+      "when": "overnight",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 15.78,
+      "high": 17.02,
+      "waitBoost": 1.2685,
+      "multiplier": 1.149
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_offpeak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 27.85,
+      "high": 29.65,
+      "waitBoost": 1.0924,
+      "multiplier": 1.084
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_offpeak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 39.66,
+      "high": 42.34,
+      "waitBoost": 1.1275,
+      "multiplier": 1.116
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_offpeak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 26.98,
+      "high": 28.72,
+      "waitBoost": 1.1011,
+      "multiplier": 1.081
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_offpeak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 34.84,
+      "high": 36.86,
+      "waitBoost": 1.0031,
+      "multiplier": 1.005
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_offpeak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 14.37,
+      "high": 15.43,
+      "waitBoost": 1.1712,
+      "multiplier": 1.095
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_am_peak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 36.14,
+      "high": 39.16,
+      "waitBoost": 1.3374,
+      "multiplier": 1.307
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_am_peak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 53.52,
+      "high": 57.98,
+      "waitBoost": 1.4151,
+      "multiplier": 1.377
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_am_peak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 31.68,
+      "high": 34.02,
+      "waitBoost": 1.235,
+      "multiplier": 1.188
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_am_peak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 38.14,
+      "high": 40.36,
+      "waitBoost": 1.0038,
+      "multiplier": 1.006
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_am_peak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 16.36,
+      "high": 17.64,
+      "waitBoost": 1.2602,
+      "multiplier": 1.145
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberx",
+      "weather": 1.6,
+      "low": 54.43,
+      "high": 58.97,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberxl",
+      "weather": 1.6,
+      "low": 76.9,
+      "high": 83.3,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_pm_peak",
+      "product": "lyft/lyft",
+      "weather": 1.6,
+      "low": 52.51,
+      "high": 56.89,
+      "waitBoost": 2.0625,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_pm_peak",
+      "product": "curb/taxi",
+      "weather": 1.6,
+      "low": 41.57,
+      "high": 44.03,
+      "waitBoost": 1.0113,
+      "multiplier": 1.019
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "weekday_pm_peak",
+      "product": "empower/empower",
+      "weather": 1.6,
+      "low": 22.37,
+      "high": 24.23,
+      "waitBoost": 1.81,
+      "multiplier": 1.45
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "saturday_night",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 35.18,
+      "high": 38.12,
+      "waitBoost": 1.3946,
+      "multiplier": 1.359
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "saturday_night",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 53.09,
+      "high": 57.51,
+      "waitBoost": 1.5055,
+      "multiplier": 1.46
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "saturday_night",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 34.51,
+      "high": 37.39,
+      "waitBoost": 1.4695,
+      "multiplier": 1.376
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "saturday_night",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 36.19,
+      "high": 38.31,
+      "waitBoost": 1.0055,
+      "multiplier": 1.009
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "saturday_night",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 16.51,
+      "high": 17.89,
+      "waitBoost": 1.4099,
+      "multiplier": 1.228
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "overnight",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 29.48,
+      "high": 31.62,
+      "waitBoost": 1.1957,
+      "multiplier": 1.178
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "overnight",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 41.78,
+      "high": 44.92,
+      "waitBoost": 1.2262,
+      "multiplier": 1.206
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "overnight",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 29.12,
+      "high": 31.28,
+      "waitBoost": 1.2433,
+      "multiplier": 1.195
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "overnight",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 35.08,
+      "high": 37.12,
+      "waitBoost": 1.0046,
+      "multiplier": 1.008
+    },
+    {
+      "leg": "soho→brooklyn",
+      "when": "overnight",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 14.44,
+      "high": 15.56,
+      "waitBoost": 1.2315,
+      "multiplier": 1.129
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_offpeak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 86.28,
+      "high": 93.32,
+      "waitBoost": 1.199,
+      "multiplier": 1.181
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_offpeak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 147.98,
+      "high": 160.32,
+      "waitBoost": 1.2753,
+      "multiplier": 1.25
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_offpeak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 82.09,
+      "high": 88.71,
+      "waitBoost": 1.2106,
+      "multiplier": 1.169
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_offpeak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 122.94,
+      "high": 131.86,
+      "waitBoost": 1.0001,
+      "multiplier": 1
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_offpeak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 48.02,
+      "high": 51.08,
+      "waitBoost": 1.0361,
+      "multiplier": 1.02
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_am_peak",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 102.96,
+      "high": 111.54,
+      "waitBoost": 1.3692,
+      "multiplier": 1.336
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_am_peak",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 185.86,
+      "high": 201.34,
+      "waitBoost": 1.4869,
+      "multiplier": 1.443
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_am_peak",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 100.61,
+      "high": 108.99,
+      "waitBoost": 1.4447,
+      "multiplier": 1.356
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_am_peak",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 132.85,
+      "high": 142.65,
+      "waitBoost": 1.0086,
+      "multiplier": 1.014
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_am_peak",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 57.98,
+      "high": 62.82,
+      "waitBoost": 1.3481,
+      "multiplier": 1.193
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberx",
+      "weather": 1.6,
+      "low": 149.33,
+      "high": 161.77,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_pm_peak",
+      "product": "uber/uberxl",
+      "weather": 1.6,
+      "low": 253.1,
+      "high": 274.2,
+      "waitBoost": 1.935,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_pm_peak",
+      "product": "lyft/lyft",
+      "weather": 1.6,
+      "low": 143.14,
+      "high": 155.06,
+      "waitBoost": 2.0625,
+      "multiplier": 1.85
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_pm_peak",
+      "product": "curb/taxi",
+      "weather": 1.6,
+      "low": 136.82,
+      "high": 146.88,
+      "waitBoost": 1.0072,
+      "multiplier": 1.012
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "weekday_pm_peak",
+      "product": "empower/empower",
+      "weather": 1.6,
+      "low": 72.86,
+      "high": 78.94,
+      "waitBoost": 1.81,
+      "multiplier": 1.45
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "saturday_night",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 101.42,
+      "high": 109.88,
+      "waitBoost": 1.4049,
+      "multiplier": 1.368
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "saturday_night",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 178.08,
+      "high": 192.92,
+      "waitBoost": 1.5187,
+      "multiplier": 1.472
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "saturday_night",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 104.3,
+      "high": 113,
+      "waitBoost": 1.5688,
+      "multiplier": 1.455
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "saturday_night",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 124.59,
+      "high": 133.71,
+      "waitBoost": 1.0043,
+      "multiplier": 1.007
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "saturday_night",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 57.31,
+      "high": 62.09,
+      "waitBoost": 1.3978,
+      "multiplier": 1.221
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "overnight",
+      "product": "uber/uberx",
+      "weather": 1,
+      "low": 84.38,
+      "high": 91.22,
+      "waitBoost": 1.1899,
+      "multiplier": 1.173
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "overnight",
+      "product": "uber/uberxl",
+      "weather": 1,
+      "low": 150.91,
+      "high": 163.49,
+      "waitBoost": 1.3322,
+      "multiplier": 1.302
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "overnight",
+      "product": "lyft/lyft",
+      "weather": 1,
+      "low": 82.14,
+      "high": 88.86,
+      "waitBoost": 1.2297,
+      "multiplier": 1.184
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "overnight",
+      "product": "curb/taxi",
+      "weather": 1,
+      "low": 121,
+      "high": 129.8,
+      "waitBoost": 1.0019,
+      "multiplier": 1.003
+    },
+    {
+      "leg": "scarsdale→midtown",
+      "when": "overnight",
+      "product": "empower/empower",
+      "weather": 1,
+      "low": 57.26,
+      "high": 62.04,
+      "waitBoost": 1.429,
+      "multiplier": 1.238
+    }
+  ]
+}

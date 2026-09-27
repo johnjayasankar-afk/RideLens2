@@ -15,6 +15,7 @@ import {
   nearestCity,
   type RateParts,
 } from "@/lib/sources/ratecard/rates";
+import { MODEL_PARAMS } from "@/lib/sources/ratecard/model-params";
 import { estimateRouteTolls, trafficContextFactor } from "@/lib/sources/ratecard/tolls";
 import { computeMarketplaceState } from "@/lib/sources/ratecard/marketplace-dynamics";
 import { directionalAsymmetry } from "@/lib/sources/ratecard/hotspots";
@@ -390,7 +391,14 @@ export function uncertaintyBand(input: {
   if (input.isPeak) band += 0.006;
   if (input.product === "empower") band += 0.004;
   if (input.product === "taxi") band += 0.006;
-  return Math.min(0.035, Math.round(band * 1000) / 1000);
+  /*
+   * The cap was the literal 0.035, which is also the value of
+   * MODEL_PARAMS.band.baseRelativeHalfWidth — a parameter nothing read. Two
+   * copies of one number, and only one of them did anything, in a file whose
+   * header says changing a value there means bumping MODEL_VERSION and
+   * re-running the eval. Tuning it changed nothing at all.
+   */
+  return Math.min(MODEL_PARAMS.band.baseRelativeHalfWidth, Math.round(band * 1000) / 1000);
 }
 
 export function fareBandDollars(center: number, band: number): { low: number; high: number } {

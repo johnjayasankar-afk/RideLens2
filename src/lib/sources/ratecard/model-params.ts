@@ -19,6 +19,20 @@
  * `npm run eval`, and refusing the change if coverage-adjusted sharpness
  * regressed. That is the whole point of the version: a quote records which
  * parameter set produced it, so a corpus spanning a change can be split.
+ *
+ * ── Eleven of these are not wired to anything ──────────────────────────────
+ *
+ * The sentence above was not true of all of them. Eleven fields below are
+ * read nowhere in the codebase, so changing one moves no fare, produces no
+ * eval movement, and is indistinguishable from a model that is insensitive
+ * to it. `baseRelativeHalfWidth` was the clearest: its value, 0.035, was
+ * also written as a literal cap inside `uncertaintyBand` — two copies of one
+ * number, only one of which did anything. That one is wired now.
+ *
+ * The rest are kept because each records a real modelling intention, and are
+ * named in `tests/unit/model-params-wired.test.ts`, which fails if a twelfth
+ * appears or if one of the eleven is wired without being struck off. Wiring
+ * one is a modelling decision with a version bump attached, not a tidy-up.
  */
 
 /**

@@ -25,7 +25,8 @@
     "predev": "npm run vendor:map",
     "perf": "node scripts/perf.mjs",
     "contrast": "node scripts/contrast-audit.mjs",
-    "tokens": "node scripts/css-tokens.mjs"
+    "tokens": "node scripts/css-tokens.mjs",
+    "snapshot:model": "tsx scripts/model-snapshot.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
