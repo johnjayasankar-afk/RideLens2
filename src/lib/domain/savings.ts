@@ -44,3 +44,22 @@ export function computeSavings(
     text: `Save ${formatMoneyMinor(cmp.savingsMinor)} vs ${name}`,
   };
 }
+
+/**
+ * Join sentences that were written separately.
+ *
+ * The savings line is a fragment by design — "Save $28.20 vs UberX" — because
+ * it is also used on its own. Joined to a following sentence with a bare
+ * space it produced "Save $28.20 vs UberX Weather is lifting estimated
+ * prices.", which reads as one broken sentence rather than two good ones.
+ *
+ * Each part is terminated before it is joined. Empty parts are dropped, so a
+ * caller can build a list conditionally without guarding every push.
+ */
+export function joinSentences(parts: readonly string[]): string {
+  return parts
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => (/[.!?…]$/.test(p) ? p : `${p}.`))
+    .join(" ");
+}

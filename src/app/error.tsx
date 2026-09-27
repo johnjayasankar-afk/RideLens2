@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 
+/**
+ * A page that threw, rendered inside the layout that survived.
+ *
+ * If the layout itself is what threw, this never runs — `global-error.tsx`
+ * does, and replaces the whole document.
+ */
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -26,6 +33,16 @@ export default function Error({
           Back to comparison
         </Link>
       </div>
+      {/*
+        A hash, not a message, so it leaks nothing — and the only thing that
+        lets somebody reporting this be matched to the server log that
+        explains it.
+      */}
+      {error.digest ? (
+        <p className="muted fine status-digest">
+          If you report this, quote <code className="mono">{error.digest}</code>.
+        </p>
+      ) : null}
     </div>
   );
 }

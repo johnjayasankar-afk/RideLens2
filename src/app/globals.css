@@ -2272,11 +2272,43 @@ h1.admin-title {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--filters-fade-l, 0px),
+      #000 calc(100% - var(--filters-fade-r, 28px)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--filters-fade-l, 0px),
+      #000 calc(100% - var(--filters-fade-r, 28px)),
+      transparent 100%
+    );
   }
   .filters::-webkit-scrollbar {
     display: none;
+  }
+
+  /*
+   * The fade is the only thing telling anyone the row scrolls, and it was
+   * fixed to the right edge — so it still promised more after you had
+   * reached the end, and never hinted at the chips now hidden to the left.
+   *
+   * Driven from the row's own scroll position it becomes true: the right
+   * edge fades out as you reach it, the left edge fades in as you leave it.
+   * Registered custom properties, because a raw var() inside a gradient is
+   * not an animatable value.
+   *
+   * Browsers without scroll-driven animations keep the static fade above,
+   * which is what they had.
+   */
+  @supports (animation-timeline: scroll()) {
+    .filters {
+      animation: filters-edges linear both;
+      animation-timeline: scroll(self inline);
+    }
   }
   .chip,
   .sep {
@@ -3601,6 +3633,27 @@ details[open] > summary::before {
   color: var(--mint-t);
 }
 
+@property --filters-fade-l {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --filters-fade-r {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 28px;
+}
+@keyframes filters-edges {
+  from {
+    --filters-fade-l: 0px;
+    --filters-fade-r: 28px;
+  }
+  to {
+    --filters-fade-l: 28px;
+    --filters-fade-r: 0px;
+  }
+}
+
 /* ── Command palette ──────────────────────────────────────────────────────
    Sits above everything, including the sticky topbar (z-index 40) and the
    provider sheet. */
@@ -3958,4 +4011,11 @@ details[open] > summary::before {
   .cmd-hint {
     display: none;
   }
+}
+
+/* The error digest: present for anyone who needs it, quiet for everyone
+   who does not. */
+.status-digest {
+  margin-top: 18px;
+  font-size: 12px;
 }

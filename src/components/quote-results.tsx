@@ -23,7 +23,7 @@ import {
 } from "@/lib/domain/freshness";
 import { categoryLabel } from "@/lib/domain/taxonomy";
 import { rankQuotes } from "@/lib/domain/ranking";
-import { computeSavings, defaultBaseline } from "@/lib/domain/savings";
+import { computeSavings, defaultBaseline, joinSentences } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RouteStanding } from "@/components/route-standing";
 import { PriceWatchControl } from "@/components/price-watch-control";
@@ -648,7 +648,8 @@ export function QuoteResults({
       }
     }
     if (!parts.length) return null;
-    return parts[0] + (parts[1] ? ` ${parts[1]}` : "");
+    /* Two at most, each terminated — see joinSentences. */
+    return joinSentences(parts.slice(0, 2));
   }, [hero, insight, rest]);
 
   const tripStats = useMemo(() => {

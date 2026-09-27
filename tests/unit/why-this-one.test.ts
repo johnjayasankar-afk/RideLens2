@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { clearlyCheapest, explainWinner } from "@/lib/domain/why-this-one";
+import { joinSentences } from "@/lib/domain/savings";
 import type { NormalizedQuote } from "@/lib/domain/types";
 
 let seq = 0;
@@ -173,5 +174,36 @@ describe("staying quiet", () => {
   it("says nothing with fewer than two rows to compare", () => {
     expect(explainWinner([], "cheapest")).toBeNull();
     expect(explainWinner([quote()], "cheapest")).toBeNull();
+  });
+});
+
+describe("joining sentences that were written apart", () => {
+  /*
+   * The savings line is a fragment on purpose, because it is also shown on
+   * its own. Joined with a bare space it produced one broken sentence:
+   * "Save $28.20 vs UberX Weather is lifting estimated prices."
+   */
+  it("terminates a fragment before the next sentence", () => {
+    expect(joinSentences(["Save $28.20 vs UberX", "Weather is lifting estimated prices."])).toBe(
+      "Save $28.20 vs UberX. Weather is lifting estimated prices.",
+    );
+  });
+
+  it("leaves punctuation that is already there alone", () => {
+    expect(joinSentences(["Prices are climbing.", "Refresh before you book."])).toBe(
+      "Prices are climbing. Refresh before you book.",
+    );
+    expect(joinSentences(["Really?", "Yes!"])).toBe("Really? Yes!");
+  });
+
+  it("drops empty parts, so a caller can build the list conditionally", () => {
+    expect(joinSentences(["Only this", "", "   "])).toBe("Only this.");
+    expect(joinSentences([])).toBe("");
+  });
+
+  it("never leaves two sentences running together", () => {
+    const joined = joinSentences(["one", "two", "three"]);
+    expect(joined).toBe("one. two. three.");
+    expect(joined).not.toMatch(/[a-z] [A-Z]/);
   });
 });
