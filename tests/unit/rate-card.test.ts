@@ -141,7 +141,17 @@ describe("marketplace realtime dynamics", () => {
     expect(a.center).not.toBe(b.center);
   });
 
-  it("is deterministic within the same tick", () => {
+  /*
+   * This was called "is deterministic within the same tick" and passed the
+   * same instant to both calls, so it could only ever prove that the
+   * function is pure. It passed for a year while the multiplier swept a
+   * full sine cycle inside every tick.
+   *
+   * The tick claim is asserted properly in fare-invariants.test.ts, against
+   * two *different* instants inside one tick. This one keeps the narrower
+   * property it actually checks, under a name that says so.
+   */
+  it("returns the same fare for the same instant", () => {
     const now = new Date("2026-09-04T17:30:12.000Z");
     const a = computeProductFare({
       product: "lyft",

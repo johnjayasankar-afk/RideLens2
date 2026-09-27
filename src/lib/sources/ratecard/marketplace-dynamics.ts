@@ -41,6 +41,9 @@ export type MarketplaceState = {
 
 const TICK_MS = 55_000;
 
+/** How many ticks the slow drift takes to come round — about twelve minutes. */
+const WAVE_PERIOD_TICKS = 13;
+
 /** Deterministic 32-bit hash (FNV-1a style). */
 export function hash32(input: string): number {
   let h = 0x811c9dc5;
@@ -320,8 +323,26 @@ export function microVolatility(input: {
   const u = unitNoise(seed);
   const u2 = unitNoise(seed ^ 0xa5a5a5a5);
 
+  /*
+   * ┌────────────────────────────────────────────────────────────────────┐
+   * │ This read `ms / TICK_MS`, which is the raw clock rather than the   │
+   * │ tick above it — so the sine completed a full cycle *inside* every  │
+   * │ tick and the multiplier swept continuously. Two quotes ten seconds │
+   * │ apart, inside one tick, came back up to 3% apart.                  │
+   * │                                                                    │
+   * │ Three things claimed otherwise: the architecture doc ("determin-   │
+   * │ istic per-tick noise"), the quote TTL (12s, chosen so a price       │
+   * │ never outlives a tick), and the countdown on screen — "Prices      │
+   * │ reshape in 17s" reads as a promise that they are not reshaping     │
+   * │ right now. Found by the invariant fuzzer, not by looking.          │
+   * └────────────────────────────────────────────────────────────────────┘
+   *
+   * The drift was meant to be slow, so it now advances once per tick over
+   * a period of several minutes. Within a tick it does not move at all,
+   * which is what every other part of the system already assumed.
+   */
   const phase = unitNoise(hash32(`${input.provider}|${cell}`));
-  const wave = Math.sin(2 * Math.PI * (ms / TICK_MS + phase));
+  const wave = Math.sin(2 * Math.PI * (tick / WAVE_PERIOD_TICKS + phase));
 
   const amp =
     input.provider === "empower"

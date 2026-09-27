@@ -97,6 +97,48 @@ the way a marketplace would while remaining reproducible for a given route and
 clock. That determinism is a testing property, not a licence to present the
 output as observed pricing.
 
+### The tick is the unit of change
+
+Three things assume a price holds for one ~55s tick: the sentence above, the
+12-second quote TTL (chosen so a price never outlives a tick), and the
+countdown on screen — "Prices reshape in 17s" reads as a promise that they
+are not reshaping right now.
+
+For a long time none of that was true. `microVolatility` seeded its jump from
+the tick but its drift from `ms / TICK_MS`, the raw clock, so the sine
+completed a whole cycle _inside_ every tick: two quotes ten seconds apart came
+back up to 3% apart. The drift now advances once per tick over about twelve
+minutes, and within a tick the noise does not move at all.
+
+It was found by `tests/unit/fare-invariants.test.ts`, not by reading the code.
+An existing test called "is deterministic within the same tick" had passed the
+same instant to both calls, so it could only ever prove the function was pure;
+it is now named for what it checks.
+
+The smooth demand curve underneath the noise is still a continuous function of
+the clock, because it is a model of demand rather than a resample. It is
+allowed to move inside a tick; it is not allowed to move enough to notice, and
+a test holds it under half a percent.
+
+### Invariants instead of calibration
+
+The corpus is empty and will stay empty until riders report what they actually
+paid, so nothing can yet say whether a number is _right_. Plenty can say
+whether it is _coherent_, and a model that contradicts itself is wrong without
+needing ground truth to prove it. Two fuzzers assert the properties the rest of
+the product relies on:
+
+- `fare-invariants.test.ts` — bands contain their centres, a longer or slower
+  trip never costs less, rain never lowers a fare, multipliers stay inside the
+  ranges their own comments claim, the tick holds.
+- `ranking-invariants.test.ts` — `comparePrices` is antisymmetric, never names
+  a winner on overlapping bands, and — since it is handed straight to
+  `Array.sort` — produces an order in which no later row is outright cheaper
+  than an earlier one. Without that, "Best price" would be whichever row the
+  engine's sort happened to leave first.
+
+Both draw from seeded generators, so a failure reproduces exactly.
+
 Nothing may make that model _less_ honest about being a model without an
 explicit decision to do so.
 

@@ -28,7 +28,7 @@
  * has been fitted to observed fares, because until the eval harness existed
  * there was nothing to fit against.
  */
-export const MODEL_VERSION = "2026-09-25.v1";
+export const MODEL_VERSION = "2026-09-26.v1";
 
 export interface TrafficParams {
   /** Multipliers on OSRM's free-flow duration, by period. */
