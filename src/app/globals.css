@@ -4019,3 +4019,29 @@ details[open] > summary::before {
   margin-top: 18px;
   font-size: 12px;
 }
+
+/* What sits under the best price: where it stands against your own record,
+   and the standing question you can set about it. Tucked into the card
+   above rather than floating below it — a lone pill between the hero and
+   "All options" read as something that had come loose. */
+.hero-extras {
+  display: grid;
+  gap: 8px;
+  /* Inset from the card's edge and sitting directly beneath it, rather than
+     tucked under with a negative margin — the card's rounded bottom over a
+     square top left a visible seam. */
+  margin: 3px 10px 0;
+  padding: 12px 14px;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--soft);
+  /* No top edge: the card's own bottom is the line between them. */
+  border-inline: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.hero-extras > .watch {
+  margin-top: 0;
+}
+.hero-extras > .route-standing + .watch {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}

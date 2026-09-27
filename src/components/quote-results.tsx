@@ -1156,19 +1156,27 @@ export function QuoteResults({
             now={now}
             animate={animateEntrance}
           />
-          {session ? (
-            <RouteStanding session={session} records={tripRecords} modelVersion={MODEL_VERSION} />
-          ) : null}
-          {watchContext ? (
-            <PriceWatchControl
-              from={watchContext.from}
-              to={watchContext.to}
-              cheapestLowMinor={watchContext.low}
-              watch={watchContext.watch}
-              result={watchContext.result}
-              onSet={priceWatches.set}
-              onRemove={priceWatches.remove}
-            />
+          {/*
+            One strip, tucked under the card rather than two things floating
+            below it. The watch control on its own read as an orphaned pill
+            sitting between the hero and "All options" — it belongs to the
+            price above it, and now looks like it.
+          */}
+          {session && (watchContext || tripRecords.length > 0) ? (
+            <div className="hero-extras">
+              <RouteStanding session={session} records={tripRecords} modelVersion={MODEL_VERSION} />
+              {watchContext ? (
+                <PriceWatchControl
+                  from={watchContext.from}
+                  to={watchContext.to}
+                  cheapestLowMinor={watchContext.low}
+                  watch={watchContext.watch}
+                  result={watchContext.result}
+                  onSet={priceWatches.set}
+                  onRemove={priceWatches.remove}
+                />
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
