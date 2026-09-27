@@ -272,15 +272,42 @@ export function variableFareDollars(rates: RateParts, miles: number, minutes: nu
   return rates.meter === "taximeter" ? Math.max(byDistance, byTime) : byDistance + byTime;
 }
 
+/**
+ * A fare with demand applied where demand actually applies.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This multiplied the whole subtotal — booking fee included — so a 1.8x    │
+ * │ surge charged 1.8x the booking fee too. Both operators say otherwise in  │
+ * │ their own words.                                                         │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Uber describes surge as "a multiplier to standard rates", and says plainly
+ * that "Uber's service fee percentage does not change during surge pricing".
+ * Lyft lists its service fee as a "Flat amount that varies by region".
+ * Neither is a rate, so neither is surged.
+ *
+ * The base fare stays inside the multiplier: Lyft describes its base rate as
+ * set by "route, ride type, driver availability, and demand", and Uber's
+ * "standard rates" reads as including it. That one is a judgement; the
+ * booking fee is not.
+ *
+ * Sources, read 2026-09-27:
+ *   https://www.uber.com/us/en/drive/driver-app/how-surge-works/
+ *   https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated
+ */
 export function computeFareDollars(
   rates: RateParts,
   miles: number,
   minutes: number,
   multiplier: number,
 ): number {
-  const raw = rates.base + variableFareDollars(rates, miles, minutes) + rates.booking;
-  const floored = Math.max(rates.minimum ?? rates.base + rates.booking, raw);
-  return floored * multiplier;
+  const surgeable = rates.base + variableFareDollars(rates, miles, minutes);
+  /* The minimum is a floor on the *total*, so the floor on the surgeable
+     part is that minus the booking fee added after it. */
+  const surgeableFloor = (rates.minimum ?? rates.base + rates.booking) - rates.booking;
+  const floored = Math.max(surgeableFloor, surgeable);
+  /* The booking fee is added after, at face value, however hot the market. */
+  return floored * multiplier + rates.booking;
 }
 
 export function fareBand(centerFare: number, band: number): { low: number; high: number } {

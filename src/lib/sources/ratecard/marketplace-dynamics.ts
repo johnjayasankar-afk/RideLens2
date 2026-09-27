@@ -451,13 +451,36 @@ export function computeMarketplaceState(input: {
     destination: input.destination,
   });
   multiplier *= 1 + micro.jitter;
-  // Weather also multiplies after personality (TNCs only)
-  if (input.provider !== "curb" && weatherLift > 1) {
+  /* Weather lifts a platform's demand price. Empower has no such price to
+     lift, and the metered taxi's tariff does not move for rain either. */
+  if (input.provider !== "curb" && input.provider !== "empower" && weatherLift > 1) {
     multiplier *= 1 + (weatherLift - 1) * 0.65;
   }
 
-  const maxMult = input.provider === "empower" ? 1.45 : input.provider === "curb" ? 1.15 : 1.85;
-  multiplier = Math.min(maxMult, Math.max(0.92, multiplier));
+  /*
+   * ── Empower does not surge ─────────────────────────────────────────────
+   *
+   * Uber and Lyft both publish a demand mechanism. Empower does not have
+   * one: drivers set their own rates and the platform takes no commission,
+   * charging a flat monthly subscription instead. Its own driver page offers
+   * only "suggested rate card(s)" and documents no surge or demand pricing
+   * at all.
+   *
+   * This modelled Empower at up to 1.45x, which is a demand response nobody
+   * has described. An individual driver may well charge more at midnight,
+   * but there is no published rule to reproduce and no basis to invent one,
+   * so the multiplier is left at parity and says so. Empower prices still
+   * move with the route — traffic changes the metered minutes — they just
+   * do not surge.
+   *
+   * Source, read 2026-09-27: https://driveempower.com/drivers/
+   */
+  if (input.provider === "empower") {
+    multiplier = 1;
+  }
+
+  const maxMult = input.provider === "empower" ? 1 : input.provider === "curb" ? 1.15 : 1.85;
+  multiplier = Math.min(maxMult, Math.max(input.provider === "empower" ? 1 : 0.92, multiplier));
 
   let additiveDollars = 0;
   const factorTags = [tod.tag, ...zone.tags, cal.tag];

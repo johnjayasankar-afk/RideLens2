@@ -42,13 +42,22 @@
  * has been fitted to observed fares, because until the eval harness existed
  * there was nothing to fit against.
  *
- * 2026-09-27 is still not a fitting. It is a structural correction: the
- * metered taxi was billed like a TNC, distance and time at once, when a
- * taximeter charges one or the other per unit of travel. That is a published
- * rule rather than a tuned constant, so it could be fixed without a corpus —
- * and it moved 25 of 125 canonical fares, all of them taxi.
+ * 2026-09-27 is still not a fitting. Both changes that day are structural
+ * corrections against published rules rather than tuned constants, which is
+ * why they could be made without a corpus.
+ *
+ * v1 — the metered taxi was billed like a TNC, distance and time at once,
+ * when a taximeter charges one or the other per unit of travel. 25 of 125
+ * canonical fares moved, all of them taxi.
+ *
+ * v2 — surge multiplied the booking fee. Uber calls surge "a multiplier to
+ * standard rates" and says its service fee percentage does not change during
+ * surge; Lyft lists its service fee as a flat regional amount. And Empower
+ * was modelled surging to 1.45x when it publishes no demand mechanism at all:
+ * drivers set their own rates and the platform takes no commission. 100 of
+ * 125 fares moved, all of them TNC.
  */
-export const MODEL_VERSION = "2026-09-27.v1";
+export const MODEL_VERSION = "2026-09-27.v2";
 
 export interface TrafficParams {
   /** Multipliers on OSRM's free-flow duration, by period. */

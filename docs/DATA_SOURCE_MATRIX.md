@@ -61,3 +61,33 @@ wrong they are.
 
 The Empower "~30% under Uber/Lyft" figure, attributed to "Obi Q1 2026", has
 the same problem and is now described to riders as an unverified estimate.
+
+## Pricing structure, per operator
+
+Read 2026-09-27. These are structural facts about how each operator prices —
+not rate values, which remain unverified per `freshness.ts`. Each is quoted
+from the operator or the regulator rather than from a rideshare blog, which
+is the distinction `model-params.ts` draws when it records "RideWise"
+appearing fourteen times as an authority checkable nowhere.
+
+| Claim                                                                                                                                               | Source                                                                                                               | What it changed                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Surge is "a multiplier to standard rates, an additional surge amount, or an upfront fare including the surge amount… varies depending on your city" | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Surge applies to the rate-driven fare     |
+| "Uber's service fee percentage does not change during surge pricing"                                                                                | [Uber, How surge works](https://www.uber.com/us/en/drive/driver-app/how-surge-works/)                                | Flat fees are not surged                  |
+| "Service fee: Flat amount that varies by region"                                                                                                    | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Lyft's service fee is flat, so not surged |
+| Lyft base rate is set by "route, ride type, driver availability, and demand"                                                                        | [Lyft, How fares are calculated](https://help.lyft.com/hc/en-us/articles/115012925707-How-Lyft-fares-are-calculated) | Base fare stays inside the multiplier     |
+| Drivers "Set Your Own Rates" or use "suggested rate card(s)"; no surge or demand mechanism documented                                               | [Empower, Drivers](https://driveempower.com/drivers/)                                                                | Empower no longer modelled as surging     |
+| HVFHS driver minimum $1.283/mile and $0.681/minute, effective 2026-03-01                                                                            | [NYC TLC, Driver pay rates](https://www.nyc.gov/site/tlc/about/driver-pay-rates.page)                                | Recorded; not yet wired as a price floor  |
+
+### Empower and the TLC
+
+The NYC TLC stated on 2026-02-13 that Empower is not licensed in New York
+City, that "every ride is illegal", and that in a crash "both the rider and
+the driver might not get insurance covering that ride because it's not
+registered" ([FOX 5 New York](https://www.fox5ny.com/news/empower-uber-lyft-drivers-nyc-tlc)).
+Empower's own site continues to list New York as a market.
+
+This was raised and the decision was to leave RideLens's presentation of
+Empower in NYC unchanged — it is quoted like any other option, with no
+regulatory note. Recorded here because the `ProviderUnavailable` mechanism
+exists and was deliberately not used.

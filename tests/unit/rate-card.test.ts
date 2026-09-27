@@ -386,3 +386,39 @@ describe("statutory amounts are not estimates", () => {
     expect(off.feeBreakdown.marketplace_rules ?? 0).toBe(0);
   });
 });
+
+describe("surge applies where the operators say it applies", () => {
+  const uberx = { base: 2.55, perMile: 1.75, perMin: 0.35, booking: 2.55 };
+  const withMinimum = { ...uberx, minimum: 12 };
+
+  /*
+   * Uber describes surge as "a multiplier to standard rates" and says its
+   * service fee percentage does not change during surge; Lyft lists its
+   * service fee as a "Flat amount that varies by region". Neither is a rate.
+   * This used to multiply the whole subtotal, so a 3x surge charged 3x the
+   * booking fee too.
+   */
+  it("never multiplies the booking fee", () => {
+    for (const surge of [1, 1.5, 2, 3]) {
+      const fare = computeFareDollars(uberx, 10, 25, surge);
+      const rateDriven = uberx.base + uberx.perMile * 10 + uberx.perMin * 25;
+      expect(fare).toBeCloseTo(rateDriven * surge + uberx.booking, 6);
+    }
+  });
+
+  /* At parity the two formulations agree, so nothing moves off-peak. */
+  it("changes nothing when the market is not surging", () => {
+    const flat = computeFareDollars(uberx, 10, 25, 1);
+    expect(flat).toBeCloseTo(uberx.base + 17.5 + 8.75 + uberx.booking, 6);
+  });
+
+  it("keeps the minimum a floor on the total, not on the surgeable part", () => {
+    /* A trip far below the minimum still bills exactly the minimum. */
+    expect(computeFareDollars(withMinimum, 0.1, 1, 1)).toBeCloseTo(12, 6);
+    /* And the floor is not surged either — it is a minimum, not a rate. */
+    expect(computeFareDollars(withMinimum, 0.1, 1, 2)).toBeCloseTo(
+      (12 - withMinimum.booking) * 2 + withMinimum.booking,
+      6,
+    );
+  });
+});

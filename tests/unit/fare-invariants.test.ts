@@ -238,13 +238,16 @@ describe("the marketplace multiplier", () => {
         true,
       );
 
+      /*
+       * Empower publishes no demand mechanism — drivers set their own rates
+       * and the platform takes no commission — so it sits at parity rather
+       * than surging. Asserted exactly, because "at most 1.45" would pass
+       * whether or not the surge had actually been removed.
+       */
       const ceiling =
-        c.provider === "empower"
-          ? 1.45
-          : c.provider === "curb" || c.product === "taxi"
-            ? 1.12
-            : 1.85;
-      const floor = c.provider === "curb" || c.product === "taxi" ? 0.98 : 0.92;
+        c.provider === "empower" ? 1 : c.provider === "curb" || c.product === "taxi" ? 1.12 : 1.85;
+      const floor =
+        c.provider === "empower" ? 1 : c.provider === "curb" || c.product === "taxi" ? 0.98 : 0.92;
 
       expect(s.multiplier, `below floor — ${describeCase(c)}`).toBeGreaterThanOrEqual(floor);
       expect(s.multiplier, `above ceiling — ${describeCase(c)}`).toBeLessThanOrEqual(ceiling);
