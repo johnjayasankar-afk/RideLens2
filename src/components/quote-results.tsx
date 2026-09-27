@@ -30,7 +30,8 @@ import { PriceWatchControl } from "@/components/price-watch-control";
 import { usePriceWatches } from "@/components/use-price-watch";
 import { evaluateWatch } from "@/lib/history/price-watch";
 import { cheapestLowMinor, routeKeyFor } from "@/lib/history/trip-log";
-import { useTripLog } from "@/components/use-trip-log";
+import { noteChoice, useTripLog } from "@/components/use-trip-log";
+import type { PredictionClaim } from "@/lib/eval/report-proof";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
@@ -449,7 +450,28 @@ function QuoteCard({
 
       <FeeBreakdown quote={quote} now={now} />
 
-      <a className="book book-with-logo" href={bookHref}>
+      <a
+        className="book book-with-logo"
+        href={bookHref}
+        /*
+          The one moment the choice is knowable. What it cost is not knowable
+          for another half hour, which is why the old prompt on the handoff
+          page — asked on the way out — could never be answered.
+        */
+        onClick={() => {
+          if (!sessionId) return;
+          noteChoice(sessionId, {
+            quoteId: quote.id,
+            provider: quote.provider,
+            product: quote.providerProductName,
+            lowMinor: quote.priceMinMinor,
+            highMinor: quote.priceMaxMinor,
+            at: new Date().toISOString(),
+            claim: quote.metadata?.reportClaim as PredictionClaim | undefined,
+            signature: quote.metadata?.reportSignature as string | undefined,
+          });
+        }}
+      >
         <ProviderLogo provider={quote.provider} size={24} />
         {bookLabel}
       </a>

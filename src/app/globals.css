@@ -2772,17 +2772,6 @@ h1.admin-title {
 /* ── Reported actuals ─────────────────────────────────────────────────────
    The question that makes the model measurable. Quiet by design: a rider who
    skips it loses nothing. */
-.actual-form {
-  margin: 22px 0 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--line, var(--hairline));
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--mint-bg) 35%, transparent);
-}
-.actual-form label {
-  display: block;
-  font-size: 13.5px;
-}
 .actual-hint {
   display: block;
   margin-top: 4px;
@@ -2790,37 +2779,10 @@ h1.admin-title {
   font-size: 12.5px;
   line-height: 1.5;
 }
-.actual-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.actual-row input {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--line, var(--hairline));
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-  font: 500 15px/1 var(--font-body);
-}
-.actual-row button {
-  min-height: 44px;
-  white-space: nowrap;
-}
 .actual-error {
   margin: 8px 0 0;
   color: var(--rose-t);
   font-size: 12.5px;
-}
-.actual-done {
-  margin: 22px 0 8px;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  background: var(--mint-bg);
-  color: var(--mint-t);
-  font-size: 13.5px;
 }
 
 /* ── Departure window ──────────────────────────────────────────────────────
@@ -4042,6 +4004,134 @@ details[open] > summary::before {
   margin-top: 0;
 }
 .hero-extras > .route-standing + .watch {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── The question the corpus was waiting for ──────────────────────────────
+   Asked on the way back, about a trip the rider chose, once it has had time
+   to finish. Quiet: it is a favour being asked, not an interruption. */
+.report-outcome {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--mint-bg);
+}
+.report-outcome-q {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mint-t);
+}
+.report-outcome .fine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.report-outcome-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+.report-outcome-currency {
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.report-outcome-input {
+  width: 104px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 15px;
+}
+@media (pointer: coarse) {
+  .report-outcome-input {
+    min-height: 44px;
+  }
+}
+
+.book-will-ask {
+  max-width: 44ch;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+/* ── How the estimate has done ────────────────────────────────────────────
+   A record, not a scoreboard. Hits and misses are marked with a hairline
+   rather than a colour block: this is the model being marked, and a wall of
+   green would be the product congratulating itself. */
+.accuracy {
+  display: grid;
+  gap: 10px;
+}
+.accuracy-headline {
+  margin: 0;
+  font-size: 15px;
+}
+.accuracy-figures {
+  display: grid;
+  gap: 4px;
+}
+.accuracy-figures .fine,
+.accuracy-share .fine {
+  margin: 0;
+  max-width: 68ch;
+  line-height: 1.5;
+}
+.accuracy-waiting {
+  margin: 0;
+  max-width: 68ch;
+  line-height: 1.55;
+}
+.accuracy-list {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.accuracy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 9px 12px 9px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  font-size: 13px;
+  /* The verdict, as an edge rather than a fill. */
+  border-left: 3px solid var(--line-2);
+}
+.accuracy-row.is-hit {
+  border-left-color: var(--mint-t);
+}
+.accuracy-row.is-miss {
+  border-left-color: var(--ink-3);
+}
+.accuracy-route {
+  font-weight: 500;
+}
+.accuracy-numbers {
+  font-size: 12px;
+}
+.accuracy-verdict {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.accuracy-when {
+  width: 100%;
+}
+.accuracy-share {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }

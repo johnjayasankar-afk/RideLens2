@@ -16,13 +16,56 @@ that lacks one, and the report prints the mix.
 
 ### (a) Rider-reported actuals — `origin: "reported"`
 
-The capture on the booking handoff. A rider comes back and says what they
-actually paid. This is the only source that scales, and the only one that
-reflects what real riders really book.
+A rider comes back and says what they actually paid. This is the only source
+that scales, and the only one that reflects what real riders really book.
 
-It is also the most biased: people who bother to report may be the ones who were
-surprised. Treat a small `reported` sample as a signal about outliers rather
-than about the middle.
+#### It was asked at a moment nobody could answer
+
+For as long as this document has existed, the capture lived on the booking
+handoff — the interstitial shown _while the rider is being sent to the
+provider_. At that moment they have not taken the trip. The only honest
+answer is "I don't know yet", and it is a page people pass through in two
+seconds on their way out. A rider who came back later, when they did know,
+was told the comparison had expired, because `/api/actuals` looked the
+prediction up in a live session.
+
+That is why the corpus held zero records. Not reluctance — an unanswerable
+question.
+
+#### How it works now
+
+1. **At the handoff**, RideLens records which option was opened. That is
+   knowable then; the fare is not knowable for another half hour.
+2. **On the next visit**, if that trip is between twenty-five minutes and
+   seven days old, it asks once what the trip came to, stating the estimate
+   before the question. Skipping hides it forever.
+3. **The answer stays on the device.** The rider gets their own calibration
+   from it at twenty reports — coverage, where inside the band fares landed,
+   and how far the misses missed by.
+4. **Contributing is separate and explicit.** It sends the distance, hour,
+   provider, band, fare and a one-way route hash. No addresses, no
+   coordinates.
+
+#### Why a late report can be trusted
+
+The session is long gone, so the prediction comes back from the rider's
+device — and a calibration corpus that accepts predictions the client can
+edit measures nothing. Each prediction is therefore signed when it is made
+(`lib/eval/report-proof.ts`, HMAC-SHA256 over the corpus fields,
+length-prefixed so no field can forge a boundary). The rider keeps the claim
+and the signature; the server verifies rather than trusts, and refuses
+anything older than seven days so a prediction cannot be replayed against a
+market that has since moved.
+
+Set `RIDELENS_REPORT_SECRET` to enable it. Without it no proof is issued and
+reporting falls back to requiring a live session — which is to say, back to
+not working.
+
+#### The bias has not gone away
+
+People who bother to report may be the ones who were surprised. Treat a
+small `reported` sample as a signal about outliers rather than about the
+middle.
 
 ### (b) Manual collection — `origin: "manual"`
 

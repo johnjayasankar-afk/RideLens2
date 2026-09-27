@@ -31,6 +31,7 @@ import {
   recentTrips,
   type TripRecord,
 } from "@/lib/history/trip-log";
+import { AccuracyPanel } from "@/components/accuracy-panel";
 import { useTripLog } from "@/components/use-trip-log";
 import { usePriceWatches } from "@/components/use-price-watch";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
@@ -138,6 +139,9 @@ export function TripsPanel() {
 
   return (
     <div className="trips-panel">
+      {/* The payoff for answering. Renders nothing until there is one. */}
+      <AccuracyPanel records={tripLog.records} onShared={tripLog.noteShared} />
+
       {routes.length > 0 ? (
         <section aria-labelledby="trips-heading">
           <div className="section-label-row">

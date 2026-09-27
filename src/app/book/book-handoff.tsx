@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProviderLogo } from "@/components/provider-logo";
-import { ReportActual } from "@/components/report-actual";
 import { isAllowedBookingUrl } from "@/lib/booking/allowed-hosts";
 import type { ProviderId } from "@/lib/domain/types";
 
@@ -187,7 +186,21 @@ function BookInner() {
         </button>
       ) : null}
 
-      {trip ? <ReportActual sessionId={sessionId} quoteId={quoteId} predicted={price} /> : null}
+      {/*
+        This used to ask "what did you actually pay?" — here, on the way out,
+        before the trip had happened. It could not be answered, and the
+        calibration corpus held zero records for as long as it was the only
+        place the question was asked.
+
+        RideLens notes which option was opened and asks on the way back
+        instead, once the trip has had time to finish. Nothing to do here.
+      */}
+      {trip ? (
+        <p className="muted fine book-will-ask">
+          RideLens will ask what this came to next time you open it. Answering is what lets it tell
+          you whether its estimates are any good.
+        </p>
+      ) : null}
 
       <button type="button" className="ghost book-back" onClick={goBack}>
         Back to comparison

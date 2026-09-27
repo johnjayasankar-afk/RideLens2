@@ -153,13 +153,19 @@ export function reportedTrips(records: readonly TripRecord[]): ReportedTrip[] {
       return {
         record: r,
         contained: inside,
-        missedByMinor: inside ? 0 : actualMinor < lowMinor ? actualMinor - lowMinor : actualMinor - highMinor,
+        missedByMinor: inside
+          ? 0
+          : actualMinor < lowMinor
+            ? actualMinor - lowMinor
+            : actualMinor - highMinor,
         actualMinor,
         lowMinor,
         highMinor,
       };
     })
-    .sort((a, b) => new Date(b.record.outcome!.at).getTime() - new Date(a.record.outcome!.at).getTime());
+    .sort(
+      (a, b) => new Date(b.record.outcome!.at).getTime() - new Date(a.record.outcome!.at).getTime(),
+    );
 }
 
 export interface PersonalAccuracy {
@@ -172,8 +178,15 @@ export interface PersonalAccuracy {
     coverage: number;
     /** Mean signed position in the band: <0.5 means the fare ran low. */
     meanPosition: number;
-    /** Mean absolute error against the nearest band edge, in minor units. */
-    meanMissMinor: number;
+    /** How many of the n fell outside the band. */
+    misses: number;
+    /**
+     * Mean distance outside the band, over the misses alone — not over all
+     * n. Averaged over every trip it read as "when it missed, it missed by
+     * $1.14" while each actual miss was $4.55, which is a different claim
+     * from the one the sentence made. Null when nothing missed.
+     */
+    meanMissMinor: number | null;
   } | null;
 }
 
@@ -208,13 +221,19 @@ export function personalAccuracy(records: readonly TripRecord[]): PersonalAccura
     position({ min: r.predictedMinMinor, max: r.predictedMaxMinor }, r.actualMinor),
   );
 
+  const missed = reports.filter((r) => !r.contained);
+
   return {
     n,
     remaining,
     summary: {
       coverage: covered / n,
       meanPosition: positions.reduce((a, b) => a + b, 0) / n,
-      meanMissMinor: reports.reduce((a, r) => a + Math.abs(r.missedByMinor), 0) / n,
+      misses: missed.length,
+      meanMissMinor:
+        missed.length === 0
+          ? null
+          : missed.reduce((a, r) => a + Math.abs(r.missedByMinor), 0) / missed.length,
     },
   };
 }

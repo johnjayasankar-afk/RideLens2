@@ -1,8 +1,39 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { recordActual } from "@/lib/eval/actuals";
+import { z } from "zod";
+
+import { recordActual, recordVerifiedActual } from "@/lib/eval/actuals";
+import { verifyPrediction } from "@/lib/eval/report-proof";
 import { getSession } from "@/lib/quotes/orchestrator";
 import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
+
+/*
+ * Validated rather than trusted, even though the signature is checked
+ * immediately after: verifyPrediction re-serialises these fields, and a
+ * field of the wrong type would serialise to something that could not have
+ * been signed anyway. This turns that into a clear 400 instead.
+ */
+const claimSchema = z.object({
+  routeHash: z.string().min(1).max(64),
+  provider: z.string().min(1).max(32),
+  productId: z.string().min(1).max(64),
+  marketId: z.string().max(64).nullable(),
+  predictedMinMinor: z.number().int().nonnegative(),
+  predictedMaxMinor: z.number().int().nonnegative(),
+  predictedAt: z.string().min(1).max(40),
+  modelVersion: z.string().max(64),
+  distanceMeters: z.number().nullable(),
+  predictedWaitLowSeconds: z.number().nullable(),
+  predictedWaitHighSeconds: z.number().nullable(),
+});
+
+/** What to tell the rider. None of these are their fault. */
+const REASONS: Record<string, string> = {
+  no_secret: "This deployment cannot accept reports after the fact.",
+  bad_signature: "That report could not be verified.",
+  expired: "That comparison is too old to report against.",
+  future: "That report is dated ahead of the comparison.",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +54,57 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { sessionId?: string; quoteId?: string; actualMinor?: number; note?: string };
+  let body: {
+    sessionId?: string;
+    quoteId?: string;
+    actualMinor?: number;
+    note?: string;
+    claim?: unknown;
+    signature?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Malformed request." }, { status: 400 });
   }
 
-  if (!body.sessionId || !body.quoteId || typeof body.actualMinor !== "number") {
+  if (typeof body.actualMinor !== "number") {
+    return NextResponse.json({ error: "actualMinor is required." }, { status: 400 });
+  }
+
+  /*
+   * ── The late path ────────────────────────────────────────────────────────
+   *
+   * A rider only knows what a trip cost once it is over, which is long after
+   * the comparison expired. Asking them to answer while the session is still
+   * alive is asking them to answer before they can — it is why this corpus
+   * was empty. So a signed prediction they carried away is accepted in place
+   * of a session, and verified before anything is written.
+   */
+  if (body.claim !== undefined || body.signature !== undefined) {
+    const parsed = claimSchema.safeParse(body.claim);
+    if (!parsed.success || typeof body.signature !== "string") {
+      return NextResponse.json({ error: "Malformed report." }, { status: 400 });
+    }
+
+    const verdict = verifyPrediction(parsed.data, body.signature);
+    if (!verdict.ok) {
+      const status = verdict.reason === "expired" || verdict.reason === "future" ? 410 : 400;
+      return NextResponse.json({ error: REASONS[verdict.reason] }, { status });
+    }
+
+    const result = await recordVerifiedActual({
+      claim: parsed.data,
+      actualMinor: body.actualMinor,
+      note: typeof body.note === "string" ? body.note : undefined,
+    });
+    if (!result.ok) return NextResponse.json({ error: result.reason }, { status: 400 });
+    return NextResponse.json({ ok: true, stored: result.stored });
+  }
+
+  if (!body.sessionId || !body.quoteId) {
     return NextResponse.json(
-      { error: "sessionId, quoteId and actualMinor are required." },
+      { error: "sessionId and quoteId are required when no signed prediction is sent." },
       { status: 400 },
     );
   }

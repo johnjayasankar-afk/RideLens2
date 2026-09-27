@@ -233,3 +233,34 @@ describe("what the rider's own record says", () => {
     expect(reportedTrips([older, newer])[0].actualMinor).toBe(2);
   });
 });
+
+describe('what "it missed by" means', () => {
+  const reported = (low: number, high: number, actual: number) =>
+    trip({
+      chosen: chosen({ lowMinor: low, highMinor: high }),
+      outcome: { actualMinor: actual, at: minutesAgo(5), sharedAt: null },
+    });
+
+  /*
+   * Averaged over every trip, a handful of $4.55 misses among twenty reads
+   * as "when it missed, it missed by $1.14" — a different claim from the one
+   * that sentence makes. The average is over the misses.
+   */
+  it("averages over the misses, not over every trip", () => {
+    const records = [
+      ...Array.from({ length: 16 }, () => reported(6995, 7445, 7100)),
+      ...Array.from({ length: 4 }, () => reported(6995, 7445, 7900)),
+    ];
+    const s = personalAccuracy(records).summary!;
+    expect(s.misses).toBe(4);
+    expect(s.meanMissMinor).toBe(455);
+    expect(s.coverage).toBeCloseTo(0.8, 5);
+  });
+
+  it("has nothing to say about misses when there were none", () => {
+    const all = Array.from({ length: REPORTS_FOR_ACCURACY }, () => reported(6995, 7445, 7100));
+    const s = personalAccuracy(all).summary!;
+    expect(s.misses).toBe(0);
+    expect(s.meanMissMinor).toBeNull();
+  });
+});

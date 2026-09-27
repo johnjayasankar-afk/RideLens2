@@ -39,6 +39,31 @@ seen, which is the one form of context a model cannot invent for itself.
 None of it is transmitted, all of it expires, and every route has a Forget
 control beside it. See `docs/SECURITY.md`.
 
+## Telling the model whether it was right
+
+RideLens rests on a modelled number, and `docs/CALIBRATION.md` has said since
+it was written that the model has never been measured against a real fare.
+The machinery to find out existed; it asked at the wrong moment. The question
+"what did you actually pay?" lived on the booking handoff — the page shown
+_while you are being sent to the provider_ — so it arrived before the trip
+had happened, and a rider who came back later was told the comparison had
+expired.
+
+Now RideLens notes which option you opened, and asks on your next visit, once
+the trip has had time to finish. It states its own estimate before asking.
+The answer stays on your device, and at twenty reports it can tell you how
+its estimates have done **for you**: how often the band contained the fare,
+where inside the band fares landed, and how far the misses missed by. Below
+twenty it says so instead of showing an average, for the same reason the
+published corpus withholds one.
+
+Contributing to that shared corpus is a separate, explicit action. It sends
+the distance, the hour, the provider, the band, the fare, and a one-way hash
+of the route — no addresses and no coordinates. Because the session is long
+gone by then, each prediction is signed when it is made and verified when it
+comes back, so nothing a client can edit enters the corpus. Set
+`RIDELENS_REPORT_SECRET` to enable it.
+
 Ranges are refused below three observations, and comparisons made by
 different `MODEL_VERSION`s are counted apart rather than pooled — a figure
 spanning two estimators is a figure no estimator ever produced.

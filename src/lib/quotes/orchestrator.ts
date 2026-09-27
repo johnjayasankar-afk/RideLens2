@@ -4,11 +4,7 @@ import { computeFreshness } from "@/lib/domain/freshness";
 import { reconcileQuotes } from "@/lib/domain/reconciler";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { routeHash } from "@/lib/eval/actuals";
-import {
-  proofsAvailable,
-  signPrediction,
-  type PredictionClaim,
-} from "@/lib/eval/report-proof";
+import { proofsAvailable, signPrediction, type PredictionClaim } from "@/lib/eval/report-proof";
 import type {
   CanonicalLocation,
   NormalizedQuote,

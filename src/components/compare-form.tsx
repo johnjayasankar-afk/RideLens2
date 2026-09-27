@@ -10,6 +10,8 @@ import {
 } from "@/components/use-deep-link-state";
 import { QuoteResults } from "@/components/quote-results";
 import { RecentTrips } from "@/components/recent-trips";
+import { ReportOutcome } from "@/components/report-outcome";
+import { reportedTrips, tripAwaitingReport } from "@/lib/history/outcome";
 import { CommandPalette, useCommandPalette, type Command } from "@/components/command-palette";
 import { applyTheme } from "@/components/theme-toggle";
 import { useTripLog } from "@/components/use-trip-log";
@@ -132,6 +134,9 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
     forgetLegacyRecentRoutes();
   }, []);
   const priceWatches = usePriceWatches();
+  /* Derived, not stored: both are pure reads of the log. */
+  const awaitingReport = tripAwaitingReport(tripLog.records);
+  const reportedCount = reportedTrips(tripLog.records).length;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -958,6 +963,20 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
               />
             </div>
           </div>
+
+          {/*
+            The question the corpus was waiting for. It only appears for a
+            trip the rider actually chose, once enough time has passed for it
+            to be over — and once, because it is dismissible forever.
+          */}
+          {awaitingReport ? (
+            <ReportOutcome
+              trip={awaitingReport}
+              reported={reportedCount}
+              onReport={(actualMinor) => tripLog.reportOutcome(awaitingReport.id, actualMinor)}
+              onDismiss={() => tripLog.dismissReport(awaitingReport.id)}
+            />
+          ) : null}
 
           {/* Your own trips before a generic list of airports. Hidden once
               both endpoints are set — at that point the form is about the

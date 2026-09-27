@@ -458,3 +458,132 @@ test("the command palette can be opened by pointer", async ({ page }) => {
   await page.getByRole("button", { name: /^Commands/ }).click();
   await expect(page.getByRole("dialog", { name: "Commands" })).toBeVisible();
 });
+
+/*
+ * The loop that makes the model measurable.
+ *
+ * `docs/CALIBRATION.md` said "the model has never been measured against a
+ * real fare" because the only question that could change that was asked on
+ * the handoff page — before the rider had taken the trip. These check it is
+ * now asked at a moment somebody can answer, and not before.
+ */
+test.describe("reporting what a trip cost", () => {
+  const A = { lat: 40.7225, lng: -73.9945, label: "14 Prince St" };
+  const B = { lat: 40.6446, lng: -73.7797, label: "JFK Terminal 4" };
+
+  const seedChosen = (minutesAgo: number, extra: Record<string, unknown> = {}) => [
+    {
+      v: 1,
+      id: "chosen-1",
+      at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+      from: A,
+      to: B,
+      routeKey: "40.723,-73.994>40.645,-73.780",
+      miles: 17.9,
+      minutes: 33,
+      quotes: [
+        {
+          provider: "curb",
+          product: "Curb Taxi",
+          lowMinor: 6995,
+          highMinor: 7445,
+          type: "ESTIMATE_RANGE",
+          confidence: "MEDIUM",
+        },
+      ],
+      modelVersion: MODEL_VERSION,
+      chosen: {
+        quoteId: "curb:taxi",
+        provider: "curb",
+        product: "Curb Taxi",
+        lowMinor: 6995,
+        highMinor: 7445,
+        at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+      },
+      ...extra,
+    },
+  ];
+
+  test("does not ask about a trip that cannot be over yet", async ({ page }) => {
+    await page.addInitScript(
+      (t) => localStorage.setItem("ridelens.trips", JSON.stringify(t)),
+      seedChosen(5),
+    );
+    await page.goto("/");
+    await page.waitForSelector('[data-commands="ready"]');
+    await expect(page.locator(".report-outcome")).toHaveCount(0);
+  });
+
+  test("asks on the way back, states the estimate, and takes an answer", async ({ page }) => {
+    await page.addInitScript(
+      (t) => localStorage.setItem("ridelens.trips", JSON.stringify(t)),
+      seedChosen(90),
+    );
+    await page.goto("/");
+    await page.waitForSelector('[data-commands="ready"]');
+
+    const ask = page.locator(".report-outcome");
+    await expect(ask).toContainText("Curb Taxi");
+    /* The prediction is stated before the question, not after. */
+    await expect(ask).toContainText("$69.95");
+    await expect(ask).toContainText("$74.45");
+
+    await page.getByLabel("What the trip actually cost, in dollars").fill("73.40");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(ask).toHaveCount(0);
+
+    const stored = await page.evaluate(
+      () => JSON.parse(localStorage.getItem("ridelens.trips") || "[]")[0]?.outcome,
+    );
+    expect(stored.actualMinor).toBe(7340);
+    /* Kept on the device: contributing is a separate, explicit act. */
+    expect(stored.sharedAt).toBeNull();
+  });
+
+  test("never asks twice once skipped", async ({ page }) => {
+    /*
+     * Seeded only if nothing is there. addInitScript runs on every
+     * navigation, so an unconditional write would restore the record on
+     * reload and this would be testing the seed rather than the decline.
+     */
+    await page.addInitScript((t) => {
+      if (!localStorage.getItem("ridelens.trips")) {
+        localStorage.setItem("ridelens.trips", JSON.stringify(t));
+      }
+    }, seedChosen(90));
+    await page.goto("/");
+    await page.waitForSelector('[data-commands="ready"]');
+    await page.getByRole("button", { name: "Skip" }).click();
+    await expect(page.locator(".report-outcome")).toHaveCount(0);
+
+    await page.reload();
+    await page.waitForSelector('[data-commands="ready"]');
+    await expect(page.locator(".report-outcome")).toHaveCount(0);
+  });
+
+  test("refuses a statistic below the minimum, and says what it is waiting for", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (t) => localStorage.setItem("ridelens.trips", JSON.stringify(t)),
+      seedChosen(200, {
+        outcome: { actualMinor: 7340, at: new Date().toISOString(), sharedAt: "done" },
+      }),
+    );
+    await page.goto("/trips");
+    const accuracy = page.locator(".accuracy");
+    await expect(accuracy).toContainText("1 of 20");
+    await expect(accuracy).toContainText("in band");
+    await expect(accuracy).not.toContainText("%");
+  });
+
+  /*
+   * The handoff used to carry the question. It now says when it will be
+   * asked instead, because asking on the way out is what kept the corpus
+   * empty.
+   */
+  test("the handoff no longer asks a question nobody can answer", async ({ page }) => {
+    await page.goto("/book?provider=curb&price=%2471.00&pickup=A&destination=B");
+    await expect(page.locator('[data-testid="report-actual"]')).toHaveCount(0);
+  });
+});

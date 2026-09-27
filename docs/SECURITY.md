@@ -46,6 +46,25 @@ A list of somebody's regular movements is exactly the kind of thing people
 assume has been uploaded. The UI says "On this device only" next to it rather
 than waiting to be asked.
 
+### Reported fares
+
+A rider can say what a trip actually cost. Three things bound what that
+means:
+
+- **The answer is local first.** It is written to the trip log and nowhere
+  else. Contributing it to the shared calibration corpus is a separate,
+  explicit action, and the button says exactly what it sends.
+- **What it sends carries no location.** The distance, the hour, the
+  provider and product, the predicted band, the fare, and `routeHash` — a
+  one-way digest of the route rounded to about 100 m. Not the addresses, and
+  not the coordinates. `routeHash` used to be the rounded coordinates joined
+  by colons, under a comment claiming it was not a location; it is a digest
+  now, and a test asserts no coordinate fragment survives in it.
+- **A prediction cannot be forged.** The claim is signed when the quote is
+  made and verified on the way back in, so a client cannot post a flattering
+  pair of numbers into the corpus. See `lib/eval/report-proof.ts`.
+  `RIDELENS_REPORT_SECRET` must be set for late reporting to work at all.
+
 ### Price watches
 
 `src/lib/history/price-watch.ts` stores a route and a threshold under
