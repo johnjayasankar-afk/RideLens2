@@ -8,6 +8,7 @@ import {
   addRecord,
   cheapestLowMinor,
   historyForRoute,
+  historySeries,
   pruneRecords,
   recentTrips,
   routeKeyFor,
@@ -368,5 +369,58 @@ describe("one definition of cheapest", () => {
 
   it("has nothing to say about an empty list", () => {
     expect(cheapestLowMinor([])).toBeNull();
+  });
+});
+
+describe("the shape of a route's history", () => {
+  it("returns the cheapest low per comparison, oldest first", () => {
+    const log = logOf([
+      [2200, 2300],
+      [1800, 1900],
+      [2600, 2700],
+    ]);
+    const series = historySeries(log, log[0].routeKey, MODEL);
+    expect(series).toHaveLength(3);
+    expect(series.map((p) => p.lowMinor)).toEqual([2200, 1800, 2600]);
+    /* Oldest first, so a chart reads left to right in time. */
+    const times = series.map((p) => new Date(p.at).getTime());
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+  });
+
+  /* Three points is the fewest that can show a shape rather than an accident. */
+  it("refuses to draw a line through too few points", () => {
+    const log = logOf([
+      [2200, 2300],
+      [1800, 1900],
+    ]);
+    expect(historySeries(log, log[0].routeKey, MODEL)).toEqual([]);
+  });
+
+  /* A series spanning two estimators is a line no estimator ever drew. */
+  it("never mixes model versions into one line", () => {
+    const current = logOf([
+      [2200, 2300],
+      [1800, 1900],
+      [2600, 2700],
+    ]);
+    const older = logOf([[100, 100]]).map((r) => ({
+      ...r,
+      id: "old",
+      modelVersion: "test-model.b",
+    }));
+    const series = historySeries([...current, ...older], current[0].routeKey, MODEL);
+    expect(series).toHaveLength(3);
+    expect(series.some((p) => p.lowMinor === 100)).toBe(false);
+  });
+
+  it("agrees with the summary it sits beside", () => {
+    const log = logOf([
+      [2200, 2300],
+      [1800, 1900],
+      [2600, 2700],
+    ]);
+    const series = historySeries(log, log[0].routeKey, MODEL);
+    const summary = historyForRoute(log, log[0].routeKey, MODEL)!;
+    expect(Math.min(...series.map((p) => p.lowMinor))).toBe(summary.cheapestLowMinor);
   });
 });

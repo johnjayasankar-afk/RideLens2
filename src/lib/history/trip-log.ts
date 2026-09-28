@@ -407,3 +407,37 @@ export function standingAgainstHistory(
     return { label: "above_usual", text: `Toward the high end of your ${n} looks` };
   return { label: "in_range", text: `About the middle of your ${n} looks` };
 }
+
+export interface HistoryPoint {
+  at: string;
+  /** The cheapest option's low, in minor units — the same figure the summary uses. */
+  lowMinor: number;
+}
+
+/**
+ * This route's cheapest option over time, oldest first.
+ *
+ * The same observations `historyForRoute` summarises, kept in order instead
+ * of collapsed to a range — so a chart of them and the sentence beside it
+ * cannot disagree. Pooled by model version for the same reason: a series
+ * spanning two estimators is a line no estimator ever drew.
+ *
+ * Returns an empty array below MIN_SAMPLES_FOR_RANGE. Three points is the
+ * fewest that can show a shape rather than an accident.
+ */
+export function historySeries(
+  records: readonly TripRecord[],
+  routeKey: string,
+  modelVersion: string,
+): HistoryPoint[] {
+  const points = records
+    .filter((r) => r.routeKey === routeKey && r.modelVersion === modelVersion)
+    .map((r) => {
+      const low = cheapestLowMinor(r.quotes);
+      return low === null ? null : { at: r.at, lowMinor: low };
+    })
+    .filter((p): p is HistoryPoint => p !== null)
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+  return points.length >= MIN_SAMPLES_FOR_RANGE ? points : [];
+}

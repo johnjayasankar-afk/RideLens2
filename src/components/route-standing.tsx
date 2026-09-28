@@ -26,9 +26,11 @@
 
 import { formatMoneyMinor } from "@/lib/domain/money";
 import { coarseAgeLabel } from "@/lib/domain/freshness";
+import { PriceSparkline } from "@/components/price-sparkline";
 import {
   cheapestLowMinor,
   historyForRoute,
+  historySeries,
   routeKeyFor,
   standingAgainstHistory,
   type TripRecord,
@@ -62,11 +64,22 @@ export function RouteStanding({ session, records, modelVersion }: Props) {
 
   const standing = standingAgainstHistory(todayLow, history);
 
+  /* The same observations the sentence below is built from, kept in order. */
+  const series = historySeries(earlier, routeKey, modelVersion);
+
   return (
     <div className={`route-standing standing-${standing.label}`}>
       <p className="route-standing-line">
         <span className="route-standing-verdict">{standing.text}</span>
       </p>
+      {series.length >= 3 ? (
+        <PriceSparkline
+          points={series}
+          todayLowMinor={todayLow}
+          scaleLowMinor={history.cheapestLowMinor}
+          scaleHighMinor={history.cheapestHighMinor}
+        />
+      ) : null}
       <p className="muted fine">
         The cheapest option has run {formatMoneyMinor(history.cheapestLowMinor)} to{" "}
         {formatMoneyMinor(history.cheapestHighMinor)} across {history.n} comparisons you ran, the
