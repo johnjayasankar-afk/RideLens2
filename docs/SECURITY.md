@@ -65,6 +65,38 @@ means:
   pair of numbers into the corpus. See `lib/eval/report-proof.ts`.
   `RIDELENS_REPORT_SECRET` must be set for late reporting to work at all.
 
+### The assistant
+
+A language model inside this product is a liability before it is a feature.
+Every other honesty measure here exists to stop RideLens saying something it
+cannot support, and one confidently invented fare undoes all of them. Four
+things bound it:
+
+- **It is given a brief, not a topic.** `lib/assistant/context.ts` builds the
+  figures actually on the reader's screen — prices as the strings they are
+  shown as, the named charges behind them, the rider's own record where there
+  is enough of it — plus an explicit list of what is not known. The system
+  prompt forbids stating any figure outside it, averaging a band, naming a
+  winner on overlapping ranges, or calling a modelled estimate a live quote.
+- **Money never reaches it as a number.** Every figure arrives pre-formatted
+  ("$69.95 to 71.45"). A model handed minor units eventually divides by a
+  hundred in prose; a model handed a band eventually averages it. Neither can
+  happen to a string it is told to quote verbatim. Multipliers and weights are
+  filtered out of the charge list for the same reason.
+- **It cannot act, only propose.** The five tools map to things the rider can
+  already do with one tap — refresh, swap, re-rank, filter, watch. The model
+  returns an intent; the server validates it, the client validates it again,
+  and then runs it through the same path the command palette uses. It cannot
+  book, pay, send, share or delete, and a test asserts none of those words
+  appear anywhere in the tool surface.
+- **The key is server-side and nothing is kept.** `ANTHROPIC_API_KEY` is read
+  in a route handler. The trip log arrives in the request body from the
+  client and is never stored; no transcript is written. Unset, the assistant
+  is hidden entirely rather than degraded.
+
+Rate limited to 20 questions per five minutes per IP, tighter than the other
+routes because each call costs real money.
+
 ### Price watches
 
 `src/lib/history/price-watch.ts` stores a route and a threshold under

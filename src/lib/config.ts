@@ -58,6 +58,13 @@ export const envSchema = z.object({
    * which is what it did before — see lib/eval/report-proof.ts.
    */
   RIDELENS_REPORT_SECRET: optionalString,
+  /*
+   * Powers the in-app assistant. Server-side only — it is read in a route
+   * handler and never reaches the browser. Unset, the assistant is hidden
+   * entirely rather than degraded, because a chat box that cannot answer is
+   * worse than no chat box.
+   */
+  ANTHROPIC_API_KEY: optionalString,
 
   /** Keyless live path: OSRM + published rate cards. Default on. */
   RATE_CARD_SOURCE_ENABLED: z

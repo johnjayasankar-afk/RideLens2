@@ -29,6 +29,7 @@
     "snapshot:model": "tsx scripts/model-snapshot.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",
     "date-fns": "^4.4.0",

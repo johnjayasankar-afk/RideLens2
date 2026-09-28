@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   Freshness,
   NormalizedQuote,
@@ -25,7 +25,10 @@ import { categoryLabel } from "@/lib/domain/taxonomy";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline, joinSentences } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
+import { Assistant } from "@/components/assistant";
 import { RouteStanding } from "@/components/route-standing";
+import { makeWatch } from "@/lib/history/price-watch";
+import type { AssistantAction } from "@/lib/assistant/actions";
 import { PriceWatchControl } from "@/components/price-watch-control";
 import { usePriceWatches } from "@/components/use-price-watch";
 import { evaluateWatch } from "@/lib/history/price-watch";
@@ -479,6 +482,30 @@ function QuoteCard({
   );
 }
 
+/**
+ * Re-sort with a transition where the browser has one.
+ *
+ * Changing the ranking or the filter reorders the list under the reader's
+ * eye. Without this the rows teleport and you lose which card you were
+ * reading; with it, the same card is visibly the same card in a new place.
+ *
+ * Feature-detected rather than assumed, and skipped when the reader has
+ * asked for less motion — in both cases the update happens exactly as it
+ * did before, just without the tween.
+ */
+function withTransition(run: () => void): void {
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => unknown;
+  };
+  const wants =
+    typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (wants && typeof doc.startViewTransition === "function") {
+    doc.startViewTransition(run);
+    return;
+  }
+  run();
+}
+
 export function QuoteResults({
   session,
   loading,
@@ -593,6 +620,53 @@ export function QuoteResults({
       result: watch ? evaluateWatch(watch, priced) : null,
     };
   }, [session, priceWatches.watches]);
+
+  /*
+   * The assistant proposes; this runs it. Every branch is a call the rider
+   * could already make themselves — that is the whole bound on what it can
+   * do, and the reason it needs no permissions of its own.
+   */
+  /*
+   * Offered before anyone types. Drawn from the comparison in front of them
+   * rather than a fixed list, so the questions are always answerable from
+   * the brief.
+   */
+  const assistantSuggestions = useMemo(() => {
+    const out: string[] = [];
+    if (hero) out.push(`Why is ${providerLabel(hero)} the cheapest here?`);
+    const second = ranked[1];
+    if (second) out.push(`What makes ${providerLabel(second)} more expensive?`);
+    out.push("What fees are in this price?");
+    if (mapRoute || hero) out.push("Watch this trip under $40");
+    return out.slice(0, 4);
+  }, [hero, ranked, mapRoute]);
+
+  const runAssistantAction = useCallback(
+    (action: AssistantAction) => {
+      switch (action.action) {
+        case "refresh":
+          onRefresh();
+          return;
+        case "swap":
+          onReverseTrip?.();
+          return;
+        case "rank":
+          onModeChange(action.mode);
+          return;
+        case "filter":
+          onFilterChange(action.category);
+          return;
+        case "watch": {
+          if (!watchContext) return;
+          priceWatches.set(
+            makeWatch(watchContext.from, watchContext.to, Math.round(action.threshold * 100)),
+          );
+          return;
+        }
+      }
+    },
+    [onRefresh, onReverseTrip, onModeChange, onFilterChange, watchContext, priceWatches],
+  );
 
   /*
    * True when nothing on screen came from a provider.
@@ -1091,7 +1165,7 @@ export function QuoteResults({
             type="button"
             className={mode === id ? "chip active" : "chip"}
             aria-pressed={mode === id}
-            onClick={() => onModeChange(id)}
+            onClick={() => withTransition(() => onModeChange(id))}
           >
             {label}
           </button>
@@ -1111,7 +1185,7 @@ export function QuoteResults({
             type="button"
             className={filter === id ? "chip active" : "chip"}
             aria-pressed={filter === id}
-            onClick={() => onFilterChange(id)}
+            onClick={() => withTransition(() => onFilterChange(id))}
           >
             {label}
           </button>
@@ -1198,6 +1272,14 @@ export function QuoteResults({
                   onRemove={priceWatches.remove}
                 />
               ) : null}
+              {/* Asked about the price directly above it, rather than
+                  floating between the hero and the list. */}
+              <Assistant
+                sessionId={session.id}
+                trips={tripRecords}
+                onAction={runAssistantAction}
+                suggestions={assistantSuggestions}
+              />
             </div>
           ) : null}
         </div>

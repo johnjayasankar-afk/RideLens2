@@ -1602,12 +1602,32 @@ h1.brand {
     0 0 0 1px var(--line-2),
     var(--sh-2);
 }
+/*
+ * The hero is the answer; the rest are the working. It carried the same
+ * elevation as every other row, so the eye had to read the border to find
+ * it. It now sits a step further off the page, and its own price is the
+ * largest figure on screen.
+ */
 .quote-card.hero {
   background: linear-gradient(180deg, var(--paper-lift) 0%, var(--paper) 62%);
   box-shadow:
     0 0 0 1px rgba(31, 107, 74, 0.34),
     0 0 0 5px rgba(167, 243, 208, 0.32),
-    var(--sh-2);
+    var(--sh-3);
+}
+.quote-card.hero .price {
+  font-size: 34px;
+  letter-spacing: -0.045em;
+}
+.quote-card.hero:hover {
+  transform: translateY(-2px);
+}
+/* The hero does not need the hover lift the list rows use to feel live —
+   it is already raised — so only the shadow deepens. */
+@media (max-width: 720px) {
+  .quote-card.hero .price {
+    font-size: 30px;
+  }
 }
 .quote-card-header {
   display: grid;
@@ -3135,7 +3155,7 @@ h1.admin-title {
 .axis-track {
   position: relative;
   display: block;
-  height: 12px;
+  height: 16px;
   border-radius: 999px;
   background: var(--ground);
   box-shadow: inset 0 0 0 1px var(--line);
@@ -3146,20 +3166,44 @@ h1.admin-title {
   bottom: 0;
   border-radius: 999px;
   background: var(--forest-2);
+  /* Each band draws itself in, left to right, in list order. */
+  animation: axis-draw 0.5s var(--ease) both;
+  transform-origin: left center;
+}
+@keyframes axis-draw {
+  from {
+    transform: scaleX(0.04);
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axis-bar {
+    animation: none;
+  }
 }
 /* Sharing ground with the leader is the thing worth seeing, so it is the
    thing that gets the colour. */
 .axis-bar[data-overlaps="true"] {
   background: linear-gradient(90deg, var(--mint-3), var(--forest-2));
 }
+/*
+ * A band that does not overlap the leader still represents a real price a
+ * rider might pay, and this drew it in --line-2 — a hairline border colour.
+ * On the JFK comparison that made UberX and Lyft all but invisible, which is
+ * the opposite of what a chart is for. It is quieter than the leader, not
+ * absent.
+ */
 .axis-bar[data-overlaps="false"] {
-  background: var(--line-2);
+  background: var(--ink-3);
+  opacity: 0.55;
 }
 .axis-value {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--ink-2);
   white-space: nowrap;
+  /* Figures in a column only read as a column when they align. */
+  font-variant-numeric: tabular-nums;
 }
 .axis-scale {
   display: flex;
@@ -3168,6 +3212,7 @@ h1.admin-title {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 .axis-note {
   margin: 0;
@@ -4007,6 +4052,27 @@ details[open] > summary::before {
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+/* The drawer holds the standing, the watch and the assistant. Each earns a
+   hairline from whatever precedes it rather than a margin, so the stack
+   reads as one panel however many of them are present. */
+.hero-extras > .ask-open,
+.hero-extras > .ask {
+  margin-top: 2px;
+}
+.hero-extras > * + .ask-open {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  justify-self: start;
+}
+.hero-extras > * + .ask-open:hover {
+  background: transparent;
+  color: var(--mint-t);
+  transform: none;
+}
 
 /* ── The question the corpus was waiting for ──────────────────────────────
    Asked on the way back, about a trip the rider chose, once it has had time
@@ -4134,4 +4200,233 @@ details[open] > summary::before {
   justify-items: start;
   padding-top: 8px;
   border-top: 1px solid var(--line);
+}
+
+/* ══ Ask ═══════════════════════════════════════════════════════════════════
+   A panel, not a floating bubble. It belongs to the comparison it is about,
+   so it sits in the column with it and scrolls away with it. */
+.ask-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-top: 12px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+.ask-open:hover {
+  background: var(--mint-bg);
+  box-shadow: inset 0 0 0 1px transparent;
+  transform: translateY(-1px);
+}
+.ask-open-glyph {
+  color: var(--mint-t);
+  font-size: 13px;
+  /* A slow pulse: present, not demanding. */
+  animation: ask-spark 4.5s var(--ease) infinite;
+}
+@keyframes ask-spark {
+  0%,
+  88%,
+  100% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-open-glyph {
+    animation: none;
+  }
+}
+
+.ask {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    var(--sh-2);
+  animation: ask-in 0.26s var(--ease) both;
+}
+@keyframes ask-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask {
+    animation: none;
+  }
+}
+.ask-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ask-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ask-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ask-close:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+.ask-log {
+  display: grid;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-log {
+    scroll-behavior: auto;
+  }
+}
+.ask-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ask-suggestion {
+  font-size: 12.5px;
+  text-align: left;
+}
+.ask-turn {
+  display: grid;
+  gap: 3px;
+  animation: ask-turn-in 0.2s var(--ease) both;
+}
+@keyframes ask-turn-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-turn {
+    animation: none;
+  }
+}
+.ask-turn.is-user {
+  justify-items: end;
+}
+.ask-turn.is-user .ask-text {
+  max-width: 85%;
+  padding: 7px 12px;
+  border-radius: 14px 14px 3px 14px;
+  background: var(--mint-bg);
+  color: var(--mint-t);
+}
+.ask-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  /* A long address or product name must not push the panel wide. */
+  overflow-wrap: anywhere;
+}
+.ask-did {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mint-t);
+}
+.ask-typing {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  animation: ask-pulse 1s ease-in-out infinite;
+}
+@keyframes ask-pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-typing {
+    animation: none;
+  }
+}
+.ask-form {
+  display: flex;
+  gap: 6px;
+}
+.ask-input {
+  flex: 1;
+  /* Without this a long value makes the flex item refuse to shrink. */
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 14px;
+}
+.ask-input:disabled {
+  opacity: 0.6;
+}
+@media (pointer: coarse) {
+  .ask-input {
+    min-height: 44px;
+  }
+}
+.ask-foot {
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* ══ Moving between states ═════════════════════════════════════════════════
+   Changing the ranking or the filter re-sorts the list underneath the
+   reader. Without a transition the rows teleport and the eye loses which
+   card it was reading; with one, the same card is visibly the same card in
+   a new place.
+
+   Progressive: browsers without view transitions get the instant swap they
+   already had. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (view-transition-name: none) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.22s;
+      animation-timing-function: var(--ease);
+    }
+  }
 }

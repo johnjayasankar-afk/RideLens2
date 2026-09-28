@@ -587,3 +587,64 @@ test.describe("reporting what a trip cost", () => {
     await expect(page.locator('[data-testid="report-actual"]')).toHaveCount(0);
   });
 });
+
+/*
+ * The assistant.
+ *
+ * The live answer path needs a real ANTHROPIC_API_KEY, which CI does not
+ * have. What is checked here is the behaviour that must hold without one:
+ * the surface is absent rather than broken, and the endpoint refuses rather
+ * than pretending.
+ */
+test.describe("the assistant", () => {
+  const LINK = "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204";
+
+  test("is hidden entirely when it is not configured", async ({ page }) => {
+    await page.goto(LINK);
+    await page.waitForSelector(".hero-quote");
+    await page.waitForTimeout(500);
+
+    const available = await page.evaluate(async () => {
+      const res = await fetch("/api/ask");
+      return ((await res.json()) as { available: boolean }).available;
+    });
+
+    /* A chat box that cannot answer is worse than no chat box. */
+    if (!available) {
+      await expect(page.locator(".ask-open")).toHaveCount(0);
+      await expect(page.locator(".ask")).toHaveCount(0);
+    } else {
+      await expect(page.locator(".ask-open")).toBeVisible();
+    }
+  });
+
+  test("refuses to answer rather than failing open", async ({ page }) => {
+    await page.goto(LINK);
+    const result = await page.evaluate(async () => {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "definitely-not-a-session",
+          messages: [{ role: "user", content: "what is the price" }],
+        }),
+      });
+      return { status: res.status };
+    });
+    /* 503 unconfigured, 404 unknown session — never 200 with an invention. */
+    expect([404, 503]).toContain(result.status);
+  });
+
+  test("rejects a malformed question", async ({ page }) => {
+    await page.goto(LINK);
+    const status = await page.evaluate(async () => {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: "x" }),
+      });
+      return res.status;
+    });
+    expect([400, 503]).toContain(status);
+  });
+});
