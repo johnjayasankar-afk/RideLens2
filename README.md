@@ -39,6 +39,27 @@ seen, which is the one form of context a model cannot invent for itself.
 None of it is transmitted, all of it expires, and every route has a Forget
 control beside it. See `docs/SECURITY.md`.
 
+## Ask about a comparison
+
+Set `ANTHROPIC_API_KEY` and an assistant appears under the best price. It can
+explain the fee stack, say why one provider is dearer, tell you what a band
+means, and read your own history back to you — and it can act: re-run the
+comparison, swap the trip, re-rank, filter, set a price watch.
+
+What it cannot do is invent a number. It is handed a brief of the figures
+already on your screen, with money pre-formatted as the strings you are
+looking at, and told it may not state a figure outside it, average a band,
+name a winner when two ranges overlap, or call a modelled estimate a live
+quote. Its five actions are things you can already do with one tap; it
+returns an intent, which is validated on the server, validated again in the
+browser, and then run through the same path the command palette uses. It
+cannot book, pay, send, share or delete — and a test greps the whole tool
+surface to keep it that way.
+
+The key is read server-side and never reaches the browser. Your trip log is
+sent with the question and is not stored; no transcript is kept. Without a
+key the assistant is hidden rather than broken.
+
 ## Telling the model whether it was right
 
 RideLens rests on a modelled number, and `docs/CALIBRATION.md` has said since
