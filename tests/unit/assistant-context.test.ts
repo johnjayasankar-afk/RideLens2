@@ -243,3 +243,141 @@ describe("what the assistant can do", () => {
     expect(describeAction({ action: "watch", threshold: 40 })).toContain("when you next open");
   });
 });
+
+/**
+ * The two things the brief learned to say.
+ *
+ * Both are answers the charge list could not give: what the difference between
+ * two options actually is, and whether paying it buys anything.
+ */
+describe("what a fare is made of", () => {
+  function priced(over: Partial<NormalizedQuote> = {}): NormalizedQuote {
+    return quote({
+      metadata: {
+        centerFare: 118.05,
+        rateCardDollars: 99.74,
+        feesDollars: 16.38,
+        feesInsideRateCard: true,
+        feeBreakdown: { nys_congestion_below_96: 2.75, black_car_fund: 2.63 },
+        anchorWeight: 0.24,
+        band: 0.035,
+        demandCenter: 1.02,
+      },
+      priceMinMinor: 10373,
+      priceMaxMinor: 11237,
+      ...over,
+    });
+  }
+
+  it("says how much of the fare is the ride and how much is everything else", () => {
+    const brief = buildBrief(session({ quotes: [priced()] }));
+    const parts = brief.options[0]!.madeOf;
+    expect(parts.map((p) => p.part)).toContain("the ride itself");
+    expect(parts.map((p) => p.part).join(" ")).toMatch(/taxes/);
+    expect(parts.find((p) => p.part === "the ride itself")!.amount).toBe("$83.36");
+  });
+
+  /*
+   * The slices sum to the model's centre, which is a real intermediate
+   * quantity and a number nobody was ever quoted. Putting it in the brief is
+   * putting it in the model's mouth.
+   */
+  it("never writes the total those parts add up to", () => {
+    const text = renderBrief(buildBrief(session({ quotes: [priced()] })));
+    expect(text).not.toContain("118.05");
+    expect(text).toContain("$103.73 to 112.37");
+  });
+
+  it("offers nothing to take apart when the source published no arithmetic", () => {
+    const bare = quote({ metadata: {} });
+    expect(buildBrief(session({ quotes: [bare] })).options[0]!.madeOf).toEqual([]);
+  });
+
+  it("holds the model to the range rather than the parts", () => {
+    const prompt = ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(prompt).toContain("never total them");
+    expect(prompt).toContain("the price is the range");
+  });
+});
+
+describe("what the dearer options buy, in the brief", () => {
+  const cheap = () =>
+    quote({
+      providerProductName: "Curb Taxi",
+      priceMinMinor: 7930,
+      priceMaxMinor: 8080,
+      rankingPriceMinor: 8005,
+      pickupEtaSeconds: 180,
+      tripDurationSeconds: 2220,
+    });
+
+  it("states a rate when there is one", () => {
+    const brief = buildBrief(
+      session({
+        quotes: [
+          cheap(),
+          quote({
+            providerProductName: "UberX",
+            rankingPriceMinor: 10005,
+            pickupEtaSeconds: 180,
+            tripDurationSeconds: 1020,
+          }),
+        ],
+      }),
+    );
+    expect(brief.tradeoffs).toHaveLength(1);
+    expect(brief.tradeoffs[0]).toContain("UberX is $20.00 more than Curb Taxi");
+    expect(brief.tradeoffs[0]).toMatch(/\$\d+ an hour/);
+  });
+
+  /*
+   * The refusals are the reason these sentences are written here rather than
+   * left to the model. Handed two numbers and asked whether it is worth it, a
+   * model divides; handed the sentence, there is nothing left to divide.
+   */
+  it("carries the refusal through, with no rate anywhere in it", () => {
+    const brief = buildBrief(
+      session({
+        quotes: [
+          cheap(),
+          quote({
+            providerProductName: "Lyft",
+            rankingPriceMinor: 12005,
+            pickupEtaSeconds: 420,
+            tripDurationSeconds: 2400,
+          }),
+        ],
+      }),
+    );
+    expect(brief.tradeoffs[0]).toContain("arrives no sooner");
+    expect(brief.tradeoffs[0]).not.toMatch(/an hour/);
+  });
+
+  it("says why it will not divide when the gap is inside the resolution", () => {
+    const brief = buildBrief(
+      session({
+        quotes: [
+          cheap(),
+          quote({
+            providerProductName: "Uber Comfort",
+            rankingPriceMinor: 12005,
+            pickupEtaSeconds: 180,
+            tripDurationSeconds: 2160,
+          }),
+        ],
+      }),
+    );
+    expect(brief.tradeoffs[0]).toContain("smaller than this model can resolve");
+    expect(brief.tradeoffs[0]).not.toMatch(/an hour/);
+  });
+
+  it("has nothing to say when there is only one option", () => {
+    expect(buildBrief(session()).tradeoffs).toEqual([]);
+  });
+
+  it("tells the model not to redo the arithmetic it was handed", () => {
+    const prompt = ASSISTANT_SYSTEM_PROMPT.toLowerCase();
+    expect(prompt).toContain("do not redo the arithmetic");
+    expect(prompt).toContain("do not supply a rate where one of them declined to");
+  });
+});

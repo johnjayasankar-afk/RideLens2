@@ -127,16 +127,46 @@ describe("the decomposition is real", () => {
   it("names every fee the engine emitted rather than dropping it", () => {
     const rows = provenanceRows(real);
     const labels = rows.map((r) => r.label.toLowerCase());
+    const printed = rows.map((r) => String(r.value)).join(" | ");
     for (const key of Object.keys(fare.feeBreakdown)) {
-      if (!fare.feeBreakdown[key]) continue;
-      // Every non-zero fee has to appear somewhere, under a human label.
-      const shown = rows.some(
-        (r) =>
-          r.kind !== "note" && typeof r.value === "number" && r.value === fare.feeBreakdown[key],
-      );
-      expect(shown, `${key} = ${fare.feeBreakdown[key]} was not shown`).toBe(true);
+      const amount = fare.feeBreakdown[key]!;
+      if (!amount) continue;
+      /*
+       * Every non-zero entry has to appear somewhere. How it appears is the
+       * next test's business — an addition is money, and something already
+       * inside the subtotal is a note that still states its amount.
+       */
+      const shown =
+        rows.some((r) => typeof r.value === "number" && r.value === amount) ||
+        printed.includes(amount.toFixed(2));
+      expect(shown, `${key} = ${amount} was not shown`).toBe(true);
     }
     expect(labels.some((l) => l.includes("traffic"))).toBe(true);
+  });
+
+  /*
+   * The sheet's whole claim is that its lines reconcile to the figure on the
+   * card. `tlc_driver_minimum` is recorded only when the floor *bound* — the
+   * metered fare was raised to meet it — so it is already inside the subtotal
+   * and listing it as money adds most of the fare to itself a second time. A
+   * $53 UberX itemised a $36.97 "charge" that was, in fact, its fare.
+   */
+  it("never lists the regulated floor as money added to the fare", () => {
+    const floored = {
+      ...real,
+      metadata: {
+        ...real.metadata,
+        feeBreakdown: { ...fare.feeBreakdown, tlc_driver_minimum: 36.97 },
+      },
+    };
+    const rows = provenanceRows(floored);
+    const row = rows.find((r) => r.label.toLowerCase().includes("driver-pay"));
+    expect(row, "the floor vanished from the sheet entirely").toBeDefined();
+    expect(row!.kind).toBe("note");
+    expect(String(row!.value)).toContain("36.97");
+    expect(String(row!.value)).toMatch(/raised to meet it/);
+    /* And nothing else picked it up as an amount. */
+    expect(rows.filter((r) => r.kind === "money" && r.value === 36.97)).toHaveLength(0);
   });
 
   it("marks the traffic figure as modeled rather than measured", () => {

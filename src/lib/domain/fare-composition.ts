@@ -86,6 +86,21 @@ function isFactorKey(key: string): boolean {
   return key.endsWith("_factor") || key === "directional_asymmetry";
 }
 
+/**
+ * Whether a `feeBreakdown` entry is money added on top of the fare.
+ *
+ * Exported because three places itemise that object — this module, the
+ * provenance sheet and the assistant's brief — and each one learned the rule
+ * separately or not at all. The brief was telling the model a $53 UberX
+ * included a "$36.97 regulated driver-pay minimum": a floor the metered fare
+ * was raised to meet, recorded so a reader can see it bound, described to a
+ * language model as the largest charge on the trip.
+ */
+export function isAdditiveFee(key: string, value: unknown): value is number {
+  if (NOT_AN_ADD_ON.has(key) || isFactorKey(key)) return false;
+  return typeof value === "number" && Number.isFinite(value) && value !== 0;
+}
+
 const FEE_ITEM_LABELS: Record<string, string> = {
   nys_congestion_below_96: "NYS congestion surcharge",
   nys_congestion_taxi: "NYS congestion surcharge",
@@ -188,9 +203,8 @@ export function composeFare(quote: NormalizedQuote): FareComposition | null {
   let named = 0;
   /* Nothing to itemise when there is no fee slice to itemise it under. */
   for (const [key, raw] of feesShown > 0 ? Object.entries(breakdown) : []) {
-    if (NOT_AN_ADD_ON.has(key) || isFactorKey(key)) continue;
-    const value = num(raw);
-    if (value === null || value === 0) continue;
+    if (!isAdditiveFee(key, raw)) continue;
+    const value = num(raw)!;
     const label = key.startsWith("toll_")
       ? `Toll — ${TOLL_NAMES[key.slice(5)] ?? key.slice(5).replace(/[-_]/g, " ")}`
       : (FEE_ITEM_LABELS[key] ?? key.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase()));
@@ -244,7 +258,10 @@ export function composeFare(quote: NormalizedQuote): FareComposition | null {
     const anchorWeight = num(m.anchorWeight) ?? 0;
     slices.push({
       id: "calibration",
-      label: calibration >= 0 ? "Corridor calibration" : "Corridor calibration (down)",
+      /* One marker for the direction, not two: with "(down)" in the label the
+         brief rendered "corridor calibration (down) -$4.75", and the card
+         legend printed a minus beside a word that already said minus. */
+      label: "Corridor calibration",
       dollars: worthNaming ? calibration : round2(centerR - ride - feesShown),
       detail:
         anchorWeight > 0

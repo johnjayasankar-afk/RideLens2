@@ -628,12 +628,20 @@ export function QuoteResults({
    * rather than a fixed list, so the questions are always answerable from
    * the brief.
    */
+  /*
+   * Four openers, chosen to be things the brief can actually answer well.
+   *
+   * The brief now carries each fare's composition and the trade-off ledger's
+   * own sentences, so "is it worth paying more" has a grounded answer rather
+   * than an invented rate — which is exactly the question a price list
+   * provokes and could never settle.
+   */
   const assistantSuggestions = useMemo(() => {
     const out: string[] = [];
-    if (hero) out.push(`Why is ${providerLabel(hero)} the cheapest here?`);
     const second = ranked[1];
-    if (second) out.push(`What makes ${providerLabel(second)} more expensive?`);
-    out.push("What fees are in this price?");
+    if (second) out.push(`Is ${providerLabel(second)} worth the extra?`);
+    if (hero) out.push(`Why is ${providerLabel(hero)} the cheapest here?`);
+    out.push("How much of this is fees?");
     if (mapRoute || hero) out.push("Watch this trip under $40");
     return out.slice(0, 4);
   }, [hero, ranked, mapRoute]);
@@ -1261,7 +1269,17 @@ export function QuoteResults({
             sitting between the hero and "All options" — it belongs to the
             price above it, and now looks like it.
           */}
-          {session && (watchContext || tripRecords.length > 0) ? (
+          {/*
+            Gated on the session and nothing else.
+            ───────────────────────────────────────
+            This used to require a watch context or a trip log — which is true
+            in practice the moment anything is priced, and was still the wrong
+            condition: whether the assistant exists is a question about
+            whether it is configured, not about whether the rider happens to
+            have a history. Each piece inside decides for itself, and each one
+            already knows how to render nothing.
+          */}
+          {session ? (
             <div className="hero-extras">
               <RouteStanding session={session} records={tripRecords} modelVersion={MODEL_VERSION} />
               {watchContext ? (

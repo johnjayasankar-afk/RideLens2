@@ -27,8 +27,10 @@
  * string it is told to quote verbatim.
  */
 
+import { composeFare, isAdditiveFee } from "@/lib/domain/fare-composition";
 import { confidenceLabel } from "@/lib/domain/confidence";
 import { formatMoneyMinor, formatQuotePrice } from "@/lib/domain/money";
+import { buildTradeoffs, formatMinutes, RESOLUTION_MINUTES } from "@/lib/domain/tradeoffs";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { rankQuotes } from "@/lib/domain/ranking";
 import { historyForRoute, routeKeyFor, type TripRecord } from "@/lib/history/trip-log";
@@ -47,6 +49,18 @@ export interface BriefOption {
   basis: string;
   /** Named charges that make up this fare, already in dollars. */
   charges: Array<{ name: string; amount: string }>;
+  /**
+   * How much of this fare is the ride, and how much is everything else.
+   *
+   * The single most common question the charge list cannot answer: "why is
+   * Lyft $40 more?" is answered by the ride being $20 more, not by a list of
+   * surcharges that are within a dollar of each other on every option.
+   *
+   * The slices only. Their total is the model's centre, which is a real
+   * intermediate quantity and not a price anybody was quoted, and a figure in
+   * a brief is a figure that gets said out loud.
+   */
+  madeOf: Array<{ part: string; amount: string }>;
 }
 
 export interface AssistantBrief {
@@ -55,6 +69,12 @@ export interface AssistantBrief {
   options: BriefOption[];
   /** The marketplace state these prices were produced under. */
   market: { demand: string; weather: string | null; modelVersion: string };
+  /**
+   * What the dearer options buy, one sentence each, or nothing when there is
+   * nothing to weigh. Pre-written rather than left to the model, because the
+   * refusals are the part that matters and a model asked to divide will.
+   */
+  tradeoffs: string[];
   /** The rider's own record, when there is enough of it to mention. */
   yourHistory: string | null;
   /** Said out loud, so the model has it rather than inferring it. */
@@ -94,20 +114,33 @@ function chargeName(key: string): string {
 /**
  * Charges worth naming.
  *
- * Multipliers and weights are filtered out: `directional_asymmetry: 1.08` is a
- * ratio, and a model shown a bare 1.08 beside a list of dollar amounts will
- * eventually describe it as $1.08.
+ * `isAdditiveFee` does the filtering, and it does two jobs. Multipliers are
+ * kept out because `directional_asymmetry: 1.08` is a ratio and a model shown
+ * a bare 1.08 beside a list of dollar amounts will eventually describe it as
+ * $1.08. And entries that are not additions at all are kept out because they
+ * were being presented as though they were: a $53 UberX arrived here
+ * carrying a "$36.97 regulated driver-pay minimum", which is the floor its
+ * metered fare was raised to meet, not a charge on top of it.
  */
 function chargesOf(quote: NormalizedQuote): Array<{ name: string; amount: string }> {
   const breakdown = quote.metadata?.feeBreakdown;
   if (!breakdown || typeof breakdown !== "object") return [];
   const out: Array<{ name: string; amount: string }> = [];
   for (const [key, value] of Object.entries(breakdown as Record<string, unknown>)) {
-    if (typeof value !== "number" || !Number.isFinite(value) || value === 0) continue;
-    if (key.endsWith("_factor") || key === "directional_asymmetry") continue;
+    if (!isAdditiveFee(key, value)) continue;
     out.push({ name: chargeName(key), amount: formatMoneyMinor(Math.round(value * 100)) });
   }
   return out;
+}
+
+/** The composition, as parts without their total. See BriefOption.madeOf. */
+function madeOf(quote: NormalizedQuote): Array<{ part: string; amount: string }> {
+  const composition = composeFare(quote);
+  if (!composition) return [];
+  return composition.slices.map((slice) => ({
+    part: slice.label.toLowerCase(),
+    amount: formatMoneyMinor(Math.round(slice.dollars * 100)),
+  }));
 }
 
 /**
@@ -135,6 +168,7 @@ export function buildBrief(
     arrivesIn: minutes(q.tripDurationSeconds),
     basis: provenanceOf(q).label,
     charges: chargesOf(q),
+    madeOf: madeOf(q),
   }));
 
   const hero = ranked[0];
@@ -156,6 +190,27 @@ export function buildBrief(
     modelVersion,
   );
   const accuracy = personalAccuracy(records);
+
+  /*
+   * The ledger's sentences, including the ones that decline to divide. A
+   * model handed two numbers and asked "is it worth it" will produce a rate
+   * whether or not the inputs can carry one; handed the sentence, it has
+   * nothing left to compute.
+   */
+  const ledger = buildTradeoffs(ranked);
+  const tradeoffs = (ledger?.rows ?? []).map((row) => {
+    const head = `${row.productName} is ${formatMoneyMinor(row.extraMinor)} more than ${ledger!.referenceName}`;
+    switch (row.kind) {
+      case "BUYS_TIME":
+        return `${head} and arrives ${formatMinutes(row.minutesSaved!)} sooner — $${row.dollarsPerHour!.toFixed(0)} an hour for the time saved.`;
+      case "BUYS_NOTHING":
+        return `${head} and arrives no sooner. The extra buys nothing.`;
+      case "TOO_CLOSE":
+        return `${head}, and the difference in arrival time is under ${RESOLUTION_MINUTES} minutes — smaller than this model can resolve, so there is no rate to quote.`;
+      default:
+        return `${head}. One of the two durations is unknown, so they cannot be compared on time.`;
+    }
+  });
 
   const yourHistory = history
     ? `Across ${history.n} earlier comparisons of this exact route, the cheapest option ran ` +
@@ -188,6 +243,7 @@ export function buildBrief(
       weather: typeof weather === "string" && weather ? weather : null,
       modelVersion: modelVersion || "unknown",
     },
+    tradeoffs,
     yourHistory,
     limits: [
       "These are modeled estimates, not live quotes from the providers. RideLens has no partner API switched on.",
@@ -221,11 +277,19 @@ export function renderBrief(brief: AssistantBrief): string {
     if (o.pickupWait) lines.push(`    pickup wait: ${o.pickupWait}`);
     if (o.arrivesIn) lines.push(`    drive: ${o.arrivesIn}`);
     lines.push(`    basis: ${o.basis}`);
+    if (o.madeOf.length > 0) {
+      lines.push(`    made of: ${o.madeOf.map((m) => `${m.part} ${m.amount}`).join(", ")}`);
+    }
     if (o.charges.length > 0) {
       lines.push(
         `    charges included: ${o.charges.map((c) => `${c.name} ${c.amount}`).join(", ")}`,
       );
     }
+  }
+  if (brief.tradeoffs.length > 0) {
+    lines.push("");
+    lines.push("WHAT THE DEARER OPTIONS BUY:");
+    for (const line of brief.tradeoffs) lines.push(`- ${line}`);
   }
   if (brief.yourHistory) {
     lines.push("");
@@ -255,6 +319,8 @@ HARD RULES — these outrank being helpful:
 4. Never describe these as live quotes, real-time prices, or what the rider will be charged. They are modeled estimates. If asked what they will actually pay, say that the provider decides that at booking.
 5. If the BRIEF does not contain what is needed to answer, say so plainly and stop. Do not reason toward a number. "I don't have that" is a complete and correct answer.
 6. Never give investment, legal or safety advice, and never claim a provider is licensed, safe or insured.
+7. The "made of" lines say how a fare was built. They add up to the model's centre, which is not a price anybody was quoted. Never total them, and never present any figure derived from them as what the trip costs. The price is the range.
+8. The "what the dearer options buy" lines are already worked out, including the ones that refuse to give a rate. Quote them; do not redo the arithmetic, and do not supply a rate where one of them declined to.
 
 STYLE: brief and plain. Two or three sentences for most questions. No bullet lists unless comparing three or more things. No preamble — answer the question first. Write like a knowledgeable person explaining a receipt, not like a chatbot.
 

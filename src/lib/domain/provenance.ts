@@ -206,6 +206,30 @@ export function provenanceRows(quote: NormalizedQuote): ProvenanceRow[] {
   }
 
   const seen = new Set<string>(derivation ? [derivation[0]] : []);
+
+  /*
+   * The regulated floor is not an addition either.
+   *
+   * The engine records `tlc_driver_minimum` only when it *bound* — when the
+   * metered fare was raised to meet it — so the amount is already inside the
+   * subtotal above. Falling through to the generic loop below, it rendered as
+   * a money row: a $53 UberX itemised with a $36.97 "charge" that is in fact
+   * most of its fare, under a sheet whose whole claim is that the lines
+   * reconcile to the figure on the card. It is a note about the subtotal, and
+   * a reader can check it against the published tariff either way.
+   */
+  const floor = num(fees.tlc_driver_minimum);
+  if (floor !== null && floor !== 0) {
+    seen.add("tlc_driver_minimum");
+    rows.push({
+      label: "Regulated driver-pay minimum",
+      value: `$${floor.toFixed(2)} — the subtotal was raised to meet it`,
+      kind: "note",
+      detail:
+        "TLC minimum per-trip driver pay for high-volume for-hire service. Not added to the " +
+        "fare: the metered fare came in under it, so the floor became the fare.",
+    });
+  }
   for (const [key, label, detail] of FEE_LABELS) {
     if (seen.has(key)) continue;
     const value = num(fees[key]);
