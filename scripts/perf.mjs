@@ -31,7 +31,16 @@ const BUDGET = {
   medianFrameMs: 12, // ~83 fps. Currently 8.3.
   p95FrameMs: 18, // Currently 9.3.
   framesOver33msShare: 0.02, // Currently ~0.
-  cls: 0.02, // Currently 0.0053.
+  /*
+   * Currently 0.0019, down from 0.0053 once the console's loading placeholder
+   * was made the same height as the row it stands in for.
+   *
+   * The headroom stays, and it is not slack: a cold load occasionally sees a
+   * ~0.02 transient when the fallback face wraps the modeled-estimate banner
+   * to a third line and the web font unwraps it 15 ms later. Three runs and a
+   * median is what keeps that out of the number below.
+   */
+  cls: 0.02,
 };
 
 const RUNS = 3;

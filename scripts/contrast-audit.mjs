@@ -172,6 +172,36 @@ for (const os of ["light", "dark"]) {
       }
       await page.waitForTimeout(url === URL ? 3500 : 900);
       fails = fails.concat(await page.evaluate(AUDIT));
+
+      /*
+       * Five of the six deck panels are behind a tab, and a surface nobody
+       * opens is a surface nobody audits. This whole page used to be one
+       * column: every panel was measured by simply loading it. Behind tabs
+       * they have to be asked for, or the report silently shrinks to the one
+       * panel that happens to open first.
+       */
+      if (url === URL) {
+        const tabs = await page.$$("[role=tab]");
+        for (const tab of tabs) {
+          await tab.click();
+          const id = await tab.getAttribute("id");
+          const panel = id ? `#deck-panel-${id.replace("deck-tab-", "")}` : null;
+          if (panel) {
+            await page
+              .waitForFunction(
+                (sel) => {
+                  const el = document.querySelector(sel);
+                  return el && !el.hidden && el.innerText.trim().length > 20;
+                },
+                panel,
+                { timeout: 15000 },
+              )
+              .catch(() => {});
+            seen.add("[role=tabpanel]");
+          }
+          fails = fails.concat(await page.evaluate(AUDIT));
+        }
+      }
     }
 
     total += fails.length;
@@ -186,7 +216,14 @@ for (const os of ["light", "dark"]) {
 
 await browser.close();
 
-const EXPECTED = [".quote-card", ".recent-trip", ".route-standing", ".cmdk-item", ".trip-row"];
+const EXPECTED = [
+  ".quote-card",
+  ".recent-trip",
+  ".route-standing",
+  ".cmdk-item",
+  ".trip-row",
+  "[role=tabpanel]",
+];
 const missing = EXPECTED.filter((sel) => !seen.has(sel));
 if (missing.length > 0) {
   console.error(

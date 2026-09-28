@@ -24,6 +24,11 @@
  *   3. No property is defined in terms of itself. --btn-1: var(--btn-1) is
  *      what a careless find-and-replace leaves behind, and it silently
  *      removes the background from every button that reads it.
+ *   4. No rule outside the palette hardcodes a colour the palette owns. The
+ *      dashed line between From and To was `rgba(28, 51, 38, 0.2)` — a dark
+ *      green dash, on the dark green card, invisible every night since it was
+ *      written. The skeletons shimmered dark-on-dark for the same reason.
+ *      Tokens only invert if they are used.
  */
 
 import { readFileSync } from "node:fs";
@@ -31,6 +36,19 @@ import { globSync } from "node:fs";
 
 const CSS = ["src/app/globals.css", "src/app/labs-glass.css"];
 const JS_GLOBS = ["src/**/*.{ts,tsx,js,jsx}"];
+
+/**
+ * The two inks the palette flips between, as raw channels.
+ *
+ * Only these. White on the green button is white in both schemes and is not
+ * a mistake; `rgba(15, 42, 29, …)` sits under elements that are dark green in
+ * both. These two are the light ground's ink and the dark ground's ink, and
+ * writing either one straight into a rule pins that rule to one scheme.
+ */
+const SCHEME_INKS = [
+  { rgb: "28, 51, 38", of: "the light palette's forest ink" },
+  { rgb: "190, 226, 205", of: "the dark palette's ash" },
+];
 
 /** Rules, flattened, each carrying the at-rules it sits inside. */
 function parseRules(text) {
@@ -75,6 +93,34 @@ function parseRules(text) {
     }
   }
   return rules;
+}
+
+/**
+ * Blank out every `var(--x, …)` fallback, keeping the rest of the text.
+ *
+ * A regex cannot do this: the fallbacks here contain nested parentheses —
+ * rgba(), blur(), whole box-shadow lists — and `[^)]*` stops at the first of
+ * them. This walks the parens instead.
+ */
+function stripFallbacks(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const m = /^var\(\s*--[A-Za-z0-9_-]+\s*,/.exec(text.slice(i));
+    if (!m) {
+      out += text[i];
+      continue;
+    }
+    let depth = 1;
+    let j = i + m[0].length;
+    while (j < text.length && depth > 0) {
+      if (text[j] === "(") depth++;
+      else if (text[j] === ")") depth--;
+      j++;
+    }
+    out += m[0];
+    i = j - 1;
+  }
+  return out;
 }
 
 /* Two blocks saying the same thing may be indented differently — one of them
@@ -131,6 +177,25 @@ for (const file of CSS) {
 
       if (inDarkMedia && rootish) viaMedia.set(prop, value);
       else if (!inDarkMedia && attrDark && rootish) viaAttr.set(prop, value);
+    }
+
+    /* 4. A palette colour written into a rule instead of read from a token.
+       Custom-property declarations are where these belong and are skipped, as
+       are var() fallbacks — a fallback only applies when its token is unset,
+       and the scheme blocks are exactly what set it. labs-glass.css writes its
+       light rim that way on purpose. */
+    const ordinary = stripFallbacks(rule.body.replace(/--[A-Za-z0-9_-]+\s*:[^;]*/g, ""));
+    for (const ink of SCHEME_INKS) {
+      const at = ordinary.indexOf(`rgba(${ink.rgb}`);
+      if (at === -1) continue;
+      problems.push({
+        file,
+        line: rule.line,
+        kind: "pinned colour",
+        detail:
+          `${rule.selector.slice(0, 44)} hardcodes ${ink.of} — rgba(${ink.rgb}, …).\n` +
+          `                   It will not invert. Use the token that already holds it.`,
+      });
     }
   }
 
