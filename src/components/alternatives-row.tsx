@@ -37,7 +37,21 @@ function minutes(seconds: number): string {
   return `${m} min`;
 }
 
-export function AlternativesRow({ sessionId }: { sessionId: string | null }) {
+export function AlternativesRow({
+  sessionId,
+  embedded,
+}: {
+  sessionId: string | null;
+  /**
+   * Rendered inside the insights deck, behind a tab.
+   *
+   * Which changes what "no alternative" has to look like. Stacked on the
+   * page, rendering nothing was right — an absent section is quieter than an
+   * empty one. Behind a tab somebody just chose, nothing is a broken panel,
+   * so the states become visible and the heading goes to the deck.
+   */
+  embedded?: boolean;
+}) {
   const [data, setData] = useState<State>({ state: "idle" });
   const askedFor = useRef<string | null>(null);
 
@@ -61,19 +75,35 @@ export function AlternativesRow({ sessionId }: { sessionId: string | null }) {
   }, [sessionId]);
 
   /*
-   * No visibility gate: until this has data it renders nothing, and an empty
-   * element never intersects, so waiting to be seen would mean never running.
-   * Still waits for the page to be still — nobody is blocked on it.
+   * No visibility gate: until this has data it renders nothing taller than a
+   * line, and an empty element never intersects, so waiting to be seen would
+   * mean never running. Still waits for the page to be still — nobody is
+   * blocked on it, and inside the deck it does not mount until a reader has
+   * asked for it, which is a better gate than either.
    */
   useWhenStill(null, Boolean(sessionId), load, { deadlineMs: Infinity });
 
   if (!sessionId) return null;
 
+  if (data.state !== "ready") {
+    if (!embedded) return null;
+    return data.state === "none" ? (
+      <p className="deck-empty muted">
+        Nothing here gets you there without a car — no transit alternative is modeled for this
+        route.
+      </p>
+    ) : (
+      <p className="deck-empty muted" aria-live="polite">
+        Checking what runs on this route…
+      </p>
+    );
+  }
+
   return (
     <>
       {data.state === "ready" ? (
         <section className="alternatives" aria-labelledby="alternatives-heading">
-          <h2 id="alternatives-heading" className="section-label">
+          <h2 id="alternatives-heading" className={embedded ? "sr-only" : "section-label"}>
             Without a car
           </h2>
           <ul className="alternatives-list">

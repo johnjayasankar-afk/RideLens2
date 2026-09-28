@@ -20,6 +20,39 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 Default location search uses **Photon** (no API key). Routing uses public **OSRM**. Fare math uses published rate cards when `RATE_CARD_SOURCE_ENABLED=true`, plus a marketplace model (~55s ticks). Auto-refresh arms after your first successful compare.
 
+## Look closer
+
+Under the comparison is one strip of tabs. Each answers a question the list of
+prices cannot, and each one mounts the first time you pick it — the forecast
+alone re-runs the fare engine a few hundred times, and that is not work to do
+on the way to a price.
+
+- **Spread** — every band on one ruler. Bars that share ground are not
+  separated by anything this model can measure, and it says so.
+- **Breakdown** — where the money goes, for every option on one scale. Three
+  slices that sum to the modelled centre exactly: the ride, the statutory
+  stack, and what corridor calibration moved it by. Usually the difference
+  between the cheap option and the dear one is the ride, not the fees, and
+  that is worth being able to see.
+- **Trade-offs** — what paying more actually buys, as dollars per hour of
+  time saved. It refuses to divide when the gap is under two minutes, because
+  both durations are modelled to the minute and $32 for "one minute faster"
+  is $1,899 an hour of pure noise. Most of the time the honest finding is
+  that nothing here buys you time.
+- **Timing** — the next hour as widening bands. A later window is only ever
+  called cheaper when its range clears today's entirely.
+- **Split** — cost per head once there is more than one of you, with the
+  crossover where a bigger car starts winning, and a tip you can add. The tip
+  is your arithmetic on an estimate: it is off by default, it changes no
+  ranking, and the line under it says so.
+- **Return** — the way back, which is not the same trip backwards. Tolls are
+  charged on one crossing and not the other, the congestion zone is entered
+  one way, and the model applies a directional adjustment between the outer
+  boroughs and Manhattan. Priced now and at the same product, so the
+  comparison is like for like; the figure will have moved by the time you
+  book, and the asymmetry will not.
+- **No car** — transit, where a published fare exists for it.
+
 ## Your own record
 
 Every completed comparison is kept on your device, and nowhere else — the

@@ -39,11 +39,8 @@ import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
-import { AlternativesRow } from "./alternatives-row";
-import { PriceAxis } from "./price-axis";
+import { InsightsDeck } from "./insights-deck";
 import { WalkSuggestionCard } from "./walk-suggestion";
-import { PartyPanel } from "./party-panel";
-import { DepartureStrip } from "./departure-strip";
 import { useCountUpRange } from "./use-count-up";
 import { RouteMap, type MapRoute } from "@/components/route-map";
 import type { PlaceValue } from "@/components/place-field";
@@ -939,44 +936,10 @@ export function QuoteResults({
         </div>
       ) : null}
 
-      {hero ? (
-        /*
-         * Not a live region, deliberately. This contains a countdown driven
-         * by `now`, which re-renders every second, so role="status" made a
-         * screen reader announce the whole strip — tone, multiplier, weather
-         * and all — once per second for as long as the page was open. The
-         * information here is ambient and repeated on the cards; the
-         * meaningful summary is announced by the sr-only region below.
-         */
-        <div className="market-pulse">
-          <span className={marketTone(hero.metadata?.demandCenter as number | undefined).className}>
-            {marketTone(hero.metadata?.demandCenter as number | undefined).label}
-          </span>
-          {hero.metadata?.demandCenter != null ? (
-            <span className="muted mono">×{Number(hero.metadata.demandCenter).toFixed(2)}</span>
-          ) : null}
-          {hero.metadata?.weather && !String(hero.metadata.weather).startsWith("dry") ? (
-            <span className="market-chip is-rain">Weather active</span>
-          ) : (
-            <span className="muted">Clear conditions</span>
-          )}
-          {tickLeft != null && tickLeft > 0 ? (
-            <span className="market-tick muted">
-              Prices reshape in <strong>{tickLeft}s</strong>
-            </span>
-          ) : tickLeft === 0 ? (
-            <button
-              type="button"
-              className="market-tick market-tick-btn ghost"
-              onClick={onRefresh}
-              disabled={loading}
-            >
-              Market tick due · refresh now
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
+      {/*
+        An alert is not a reading, so it sits above the console rather than
+        inside it. Both of these are asking for an action.
+      */}
       {agingQuotes ? (
         <div className="banner warn banner-with-action" role="status">
           <p>Estimates are aging: refresh for a sharper read.</p>
@@ -1012,15 +975,150 @@ export function QuoteResults({
         </div>
       ) : null}
 
-      {takeaway ? (
-        <div className="insight-banner" role="status">
-          <p className="insight-kicker">Takeaway</p>
-          <p className="insight-text">{takeaway}</p>
-        </div>
-      ) : insight ? (
-        <div className="insight-banner" role="status">
-          <p className="insight-kicker">Takeaway</p>
-          <p className="insight-text">{insight.text}</p>
+      {/*
+        One console, not three bands.
+        ─────────────────────────────
+        The market strip, the takeaway and the trip stats were three separate
+        cards stacked between the toolbar and the first price — three borders,
+        three backgrounds, three of the five full-width bands a reader had to
+        cross before reaching a number. They are one instrument cluster: what
+        the market is doing, what that means, and the figures it produced. So
+        they are drawn as one, divided by hairlines rather than by gaps.
+
+        The loading placeholders live inside it, for the reason they were
+        written in the first place: the strip, the takeaway and the stats all
+        arrive with the quotes, so ~246px on desktop and ~410px on a phone used
+        to appear at once and shove the whole comparison down. It was the
+        largest thing moving on the page.
+
+        They are built from the real classes rather than a reserved pixel
+        height — these rewrap at narrow widths, and any number hard-coded here
+        would be wrong on one side of that. Sharing the classes makes the
+        placeholder the right size at every width by construction, and keeps it
+        right when the layout changes.
+      */}
+      {hero || loading ? (
+        <div className="console">
+          {hero ? (
+            /*
+             * Not a live region, deliberately. This contains a countdown driven
+             * by `now`, which re-renders every second, so role="status" made a
+             * screen reader announce the whole strip — tone, multiplier, weather
+             * and all — once per second for as long as the page was open. The
+             * information here is ambient and repeated on the cards; the
+             * meaningful summary is announced by the sr-only region below.
+             */
+            <div className="market-pulse">
+              <span
+                className={marketTone(hero.metadata?.demandCenter as number | undefined).className}
+              >
+                {marketTone(hero.metadata?.demandCenter as number | undefined).label}
+              </span>
+              {hero.metadata?.demandCenter != null ? (
+                <span className="muted mono">×{Number(hero.metadata.demandCenter).toFixed(2)}</span>
+              ) : null}
+              {hero.metadata?.weather && !String(hero.metadata.weather).startsWith("dry") ? (
+                <span className="market-chip is-rain">Weather active</span>
+              ) : (
+                <span className="muted">Clear conditions</span>
+              )}
+              {tickLeft != null && tickLeft > 0 ? (
+                <span className="market-tick muted">
+                  Prices reshape in <strong>{tickLeft}s</strong>
+                </span>
+              ) : tickLeft === 0 ? (
+                <button
+                  type="button"
+                  className="market-tick market-tick-btn ghost"
+                  onClick={onRefresh}
+                  disabled={loading}
+                >
+                  Market tick due · refresh now
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="market-pulse" aria-hidden>
+              <span className="sk-line w30" />
+              <span className="sk-line w20" />
+            </div>
+          )}
+
+          {takeaway || insight ? (
+            <div className="insight-banner" role="status">
+              <p className="insight-kicker">Takeaway</p>
+              <p className="insight-text">{takeaway ?? insight!.text}</p>
+            </div>
+          ) : loading ? (
+            <div className="insight-banner" aria-hidden>
+              <p className="insight-kicker">Takeaway</p>
+              <p className="insight-text">
+                <span className="sk-line w60" />
+              </p>
+            </div>
+          ) : null}
+
+          {/*
+            Every cell, every time, once there is a row at all.
+            ───────────────────────────────────────────────────
+            Miles and drive time come from the route; wait, best estimate and
+            the saving come from the quotes, which land later. Rendering only
+            the cells that had data meant the row appeared with two and grew to
+            five, moving the comparison under it. A cell with nothing in it yet
+            holds its own place.
+          */}
+          <div className="trip-stats">
+            <div>
+              <span className="stat-value">
+                {tripStats?.miles != null ? (
+                  tripStats.miles.toFixed(1)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
+              <span className="stat-label">Miles</span>
+            </div>
+            <div>
+              <span className="stat-value">
+                {tripStats?.minWait != null ? (
+                  formatTripMins(tripStats.minWait).replace("~", "")
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
+              <span className="stat-label">Min wait</span>
+            </div>
+            <div className="trip-stat-desktop">
+              <span className="stat-value">
+                {tripStats?.minDrive != null ? (
+                  formatTripMins(tripStats.minDrive).replace("~", "")
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
+              <span className="stat-label">Min drive</span>
+            </div>
+            <div>
+              <span className="stat-value">
+                {tripStats?.bestMid != null ? (
+                  formatMoneyMinor(tripStats.bestMid)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
+              <span className="stat-label">Best estimate</span>
+            </div>
+            <div className="trip-stat-desktop">
+              <span className="stat-value">
+                {tripStats?.versusNext != null ? (
+                  formatMoneyMinor(tripStats.versusNext)
+                ) : (
+                  <span className="sk-line w60" />
+                )}
+              </span>
+              <span className="stat-label">Saves vs next</span>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -1038,158 +1136,63 @@ export function QuoteResults({
         </p>
       ) : null}
 
-      {/*
-        Every cell, every time, once there is a row at all.
-        ───────────────────────────────────────────────────
-        Miles and drive time come from the route; wait, best estimate and
-        the saving come from the quotes, which land later. Rendering only
-        the cells that had data meant the row appeared with two and grew to
-        five, moving the comparison under it. A cell with nothing in it yet
-        holds its own place.
-      */}
-      {(tripStats &&
-        (tripStats.miles != null || tripStats.minWait != null || tripStats.bestMid != null)) ||
-      loading ? (
-        <div className="trip-stats">
-          {tripStats?.miles != null || loading ? (
-            <div>
-              <span className="stat-value">
-                {tripStats?.miles != null ? (
-                  tripStats.miles.toFixed(1)
-                ) : (
-                  <span className="sk-line w60" />
-                )}
-              </span>
-              <span className="stat-label">Miles</span>
-            </div>
-          ) : null}
-          {tripStats?.minWait != null || loading ? (
-            <div>
-              <span className="stat-value">
-                {tripStats?.minWait != null ? (
-                  formatTripMins(tripStats.minWait).replace("~", "")
-                ) : (
-                  <span className="sk-line w60" />
-                )}
-              </span>
-              <span className="stat-label">Min wait</span>
-            </div>
-          ) : null}
-          {tripStats?.minDrive != null || loading ? (
-            <div className="trip-stat-desktop">
-              <span className="stat-value">
-                {tripStats?.minDrive != null ? (
-                  formatTripMins(tripStats.minDrive).replace("~", "")
-                ) : (
-                  <span className="sk-line w60" />
-                )}
-              </span>
-              <span className="stat-label">Min drive</span>
-            </div>
-          ) : null}
-          {tripStats?.bestMid != null || loading ? (
-            <div>
-              <span className="stat-value">
-                {tripStats?.bestMid != null ? (
-                  formatMoneyMinor(tripStats.bestMid)
-                ) : (
-                  <span className="sk-line w60" />
-                )}
-              </span>
-              <span className="stat-label">Best estimate</span>
-            </div>
-          ) : null}
-          {tripStats?.versusNext != null || loading ? (
-            <div className="trip-stat-desktop">
-              <span className="stat-value">
-                {tripStats?.versusNext != null ? (
-                  formatMoneyMinor(tripStats.versusNext)
-                ) : (
-                  <span className="sk-line w60" />
-                )}
-              </span>
-              <span className="stat-label">Saves vs next</span>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/*
-        The summary that is not there yet.
-        ──────────────────────────────────
-        The market strip, the takeaway and the trip stats all render only
-        once quotes exist, so ~246px on desktop and ~410px on a phone
-        appeared at once and shoved the filters and the whole comparison
-        down. It was the largest thing moving on the page.
-
-        Built from the same classes as the real blocks rather than a
-        reserved pixel height: these rewrap at narrow widths, and any number
-        hard-coded here would be wrong on one side of that. Sharing the
-        classes makes the placeholder the right size at every width by
-        construction, and keeps it right when the layout changes.
-
-        The trip stats are not here. That row appears during loading anyway,
-        because miles and drive time come from the route rather than the
-        quotes, so it fills its own empty cells instead — a duplicate
-        skeleton sat underneath the real row and showed both at once.
-      */}
-      {loading && !hero ? (
-        <div className="summary-skeleton" aria-hidden>
-          <div className="market-pulse">
-            <span className="sk-line w30" />
-            <span className="sk-line w20" />
-          </div>
-          <div className="insight-banner">
-            <p className="insight-kicker">Takeaway</p>
-            <p className="insight-text">
-              <span className="sk-line w60" />
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       {/* Actionable before choosing a provider, so it goes above the board —
           it is worthless once somebody has tapped through to an app. */}
       {hero ? <WalkSuggestionCard sessionId={session?.id ?? null} /> : null}
 
+      {/*
+        Two choices, drawn as two choices.
+        ──────────────────────────────────
+        Eight loose pills in a row do not say that picking Soonest and picking
+        XL are unrelated decisions, or that each is one-of-a-set. Enclosing
+        each set says both without a word, and it is the same object as the
+        deck's tab strip — which is the same kind of decision again.
+
+        Still buttons with aria-pressed rather than a radiogroup: they are not
+        a form control, they take effect immediately, and a radio group would
+        promise arrow-key semantics that the rest of this toolbar does not have.
+      */}
       <div className="filters" role="toolbar" aria-label="Ranking and category">
-        {(
-          [
-            ["cheapest", "Price"],
-            ["fastest", "Soonest"],
-            ["best_value", "Value"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={mode === id ? "chip active" : "chip"}
-            aria-pressed={mode === id}
-            onClick={() => withTransition(() => onModeChange(id))}
-          >
-            {label}
-          </button>
-        ))}
-        <span className="sep" aria-hidden />
-        {(
-          [
-            ["standard", "Standard"],
-            ["TAXI", "Taxi"],
-            ["XL", "XL"],
-            ["PREMIUM", "Premium"],
-            ["ALL", "All"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "chip active" : "chip"}
-            aria-pressed={filter === id}
-            onClick={() => withTransition(() => onFilterChange(id))}
-          >
-            {label}
-          </button>
-        ))}
+        <div className="segmented" role="group" aria-label="Rank by">
+          {(
+            [
+              ["cheapest", "Price"],
+              ["fastest", "Soonest"],
+              ["best_value", "Value"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={mode === id ? "chip active" : "chip"}
+              aria-pressed={mode === id}
+              onClick={() => withTransition(() => onModeChange(id))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="segmented" role="group" aria-label="Vehicle class">
+          {(
+            [
+              ["standard", "Standard"],
+              ["TAXI", "Taxi"],
+              ["XL", "XL"],
+              ["PREMIUM", "Premium"],
+              ["ALL", "All"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={filter === id ? "chip active" : "chip"}
+              aria-pressed={filter === id}
+              onClick={() => withTransition(() => onFilterChange(id))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading && !hero ? (
@@ -1363,23 +1366,15 @@ export function QuoteResults({
       ) : null}
 
       {/*
-        Below the comparison, deliberately. It answers a different question —
-        whether waiting helps — and the answer is usually "no", which is not
-        a thing to lead with. It also fetches itself only when scrolled to;
-        projecting every provider across the hour is a few hundred runs of
-        the fare engine.
+        Everything that is not the comparison itself, behind one strip of
+        tabs. These were six stacked sections running to 3371px, and the four
+        best of them started below 2200 — which is to say nobody read them.
+        See insights-deck.tsx for why a deck rather than a column.
       */}
-      {/* The visual form of comparePrices: overlap you can see. */}
-      {hero ? <PriceAxis quotes={ranked} /> : null}
-
-      {/* Before the forecast: whether to take a car at all comes before when. */}
-      {hero ? <AlternativesRow sessionId={session?.id ?? null} /> : null}
-
-      {hero ? <PartyPanel quotes={ranked} /> : null}
-
       {hero ? (
-        <DepartureStrip
-          sessionId={session?.id ?? null}
+        <InsightsDeck
+          quotes={ranked}
+          session={session ?? null}
           /* One pass: filtering first would shift the index away from the
              quote it came from, and pair a provider with someone else's
              product. */

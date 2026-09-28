@@ -70,8 +70,17 @@ function providerName(f: ProviderForecast): string {
 export function DepartureStrip({
   sessionId,
   showProducts,
+  embedded,
 }: {
   sessionId: string | null;
+  /**
+   * Rendered inside the insights deck, which supplies the heading.
+   *
+   * The heading stays in the accessibility tree rather than being deleted —
+   * `aria-labelledby` points at it, and a section that loses its name is a
+   * worse trade than a duplicated one.
+   */
+  embedded?: boolean;
   /**
    * The `provider:product` pairs currently on screen above.
    *
@@ -123,7 +132,9 @@ export function DepartureStrip({
   return (
     <section className="departure" ref={hostRef} aria-labelledby="departure-heading">
       <div className="departure-head">
-        <h2 id="departure-heading">Does waiting help?</h2>
+        <h2 id="departure-heading" className={embedded ? "sr-only" : undefined}>
+          Does waiting help?
+        </h2>
         {/*
           Not a caption anyone can miss. The strip below is the only thing in
           the product that describes a time that has not happened, and it has

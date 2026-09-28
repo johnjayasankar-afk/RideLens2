@@ -51,6 +51,10 @@
 
   --radius: 20px;
   --radius-sm: 14px;
+  /* The market strip's chip height, shared with the placeholder that stands
+     in for it. Two literals 400 lines apart drifted by 14px, and the console
+     jumped by exactly that as the quotes landed — see .console .sk-line. */
+  --pulse-chip-h: 26px;
   --sh-1: 0 1px 2px rgba(28, 51, 38, 0.05);
   --sh-2: 0 1px 2px rgba(28, 51, 38, 0.05), 0 14px 32px -14px rgba(28, 51, 38, 0.22);
   --sh-3: 0 1px 2px rgba(28, 51, 38, 0.05), 0 30px 64px -28px rgba(28, 51, 38, 0.32);
@@ -69,7 +73,7 @@
   --btn-1: #2c5a42;
   --btn-2: #1a3a2a;
   --dot: rgba(28, 51, 38, 0.06);
-  --dot-size: 22px;
+  --dot-size: 24px;
   /* The hero card's lift, and the translucent panels that float on the map. */
   --paper-lift: #f4fbf7;
   /* A translucent tint of the page itself, for panels that float over
@@ -82,6 +86,11 @@
   /* Selected text is text somebody is reading. Mint at half alpha clears
      14:1 over the light ground; over the dark one it fell to 4.18:1. */
   --selection: rgba(110, 231, 183, 0.5);
+  /* The top edge of a raised surface catching light. One pixel of inset
+     highlight is the difference between a rectangle and an object; on the
+     dark ground it has to come from the accent, because white reads as a
+     seam. */
+  --edge-hi: rgba(255, 255, 255, 0.72);
   --map-style: "positron";
   color-scheme: light;
 }
@@ -143,6 +152,7 @@
     --scrim: rgba(18, 28, 22, 0.92);
     --scrim-rgb: 18, 28, 22;
     --selection: rgba(19, 96, 62, 0.8);
+    --edge-hi: rgba(190, 226, 205, 0.055);
     --map-style: "dark-matter";
 
     /* Shadow does almost nothing on a dark ground; depth comes from the
@@ -197,6 +207,7 @@
   --scrim: rgba(18, 28, 22, 0.92);
   --scrim-rgb: 18, 28, 22;
   --selection: rgba(19, 96, 62, 0.8);
+  --edge-hi: rgba(190, 226, 205, 0.055);
   --map-style: "dark-matter";
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -230,12 +241,40 @@ body {
   padding: 0;
   color: var(--ink);
   background-color: var(--ground);
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(28, 51, 38, 0.06) 1px,
-    transparent 1.2px
-  );
-  background-size: 24px 24px;
+  /*
+   * Three layers on one opaque ground: two washes over the first screen, and
+   * the dot grid everywhere.
+   *
+   * They are `background-image` on the body rather than a fixed pseudo-
+   * element, which is what the first attempt used — a layer behind the body
+   * paints behind the body's own `background-color` and is never seen. Here
+   * they composite over it, and the audit that walks up for the first opaque
+   * background still finds `--ground` and measures against the right thing.
+   *
+   * Not `background-attachment: fixed`: a viewport-anchored wash repaints the
+   * whole page on every scroll frame, and this page is 2,000px of scrolling.
+   * Sized to the first screen instead, which is where an atmosphere belongs.
+   *
+   * `--dot` exists so the grid inverts. It was written as the light literal
+   * and stayed a dark-green dot on a dark-green ground every night session.
+   */
+  background-image:
+    radial-gradient(
+      1100px 620px at 10% -12%,
+      color-mix(in srgb, var(--mint-3) 13%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      840px 520px at 102% -6%,
+      color-mix(in srgb, var(--sky) 9%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.2px);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size:
+    100% 940px,
+    100% 700px,
+    var(--dot-size, 24px) var(--dot-size, 24px);
   font: 400 16px/1.55 var(--font-body);
   letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
@@ -391,7 +430,8 @@ code {
 }
 .topnav a:hover {
   color: var(--ink);
-  background: rgba(28, 51, 38, 0.06);
+  /* `--soft` is this exact value in light, and the inverse of it in dark. */
+  background: var(--soft);
 }
 
 .site-footer {
@@ -494,7 +534,7 @@ code {
 .primary:disabled {
   cursor: not-allowed;
   color: var(--ink-3);
-  background: rgba(28, 51, 38, 0.08);
+  background: var(--soft);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .primary.is-ready {
@@ -510,13 +550,15 @@ code {
   background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line-2),
-    0 1px 2px rgba(28, 51, 38, 0.06);
+    var(--sh-1);
 }
 .ghost:hover:not(:disabled) {
   transform: translateY(-1px);
+  /* The hover ring was a forest literal, which on the dark ground drew a ring
+     darker than the button it was meant to lift off the page. */
   box-shadow:
-    0 0 0 1px rgba(28, 51, 38, 0.28),
-    0 10px 22px -12px rgba(28, 51, 38, 0.32);
+    0 0 0 1px var(--forest-2),
+    var(--sh-2);
 }
 .ghost:disabled {
   cursor: not-allowed;
@@ -718,7 +760,9 @@ h1.brand {
   width: 0;
   min-height: 1.5rem;
   margin: 6px 0;
-  border-left: 2px dashed rgba(28, 51, 38, 0.2);
+  /* `--line-2`, not the forest literal it was: a dark dash on the dark card
+     was invisible, on the one control everybody uses. */
+  border-left: 2px dashed var(--line-2);
 }
 
 .place-field {
@@ -932,9 +976,7 @@ h1.brand {
 .quick-target .chip.active {
   color: var(--ink);
   background: var(--paper);
-  box-shadow:
-    0 1px 2px rgba(28, 51, 38, 0.1),
-    0 6px 14px -8px rgba(28, 51, 38, 0.35);
+  box-shadow: var(--sh-2);
 }
 .quick-picks-row {
   display: flex;
@@ -999,17 +1041,28 @@ h1.brand {
  * never changed, which is why this hid until the shift report named
  * span.stat-label as the thing that moved.
  */
-.summary-skeleton .sk-line,
+.console .sk-line,
 .trip-stats .stat-value .sk-line {
   display: inline-block;
   vertical-align: middle;
 }
-.trip-stats .stat-value .sk-line,
-.summary-skeleton .stat-value .sk-line {
+/*
+ * Chip-shaped, because it is standing in for chips.
+ *
+ * At the base 12px it was 14px shorter than the row it replaced, so the whole
+ * console — and the filters and the comparison under it — dropped 14px the
+ * moment the quotes landed. 0.0118 of layout shift at 220ms, which is exactly
+ * when somebody starts reading.
+ */
+.console .market-pulse .sk-line {
+  height: var(--pulse-chip-h);
+  border-radius: 999px;
+}
+.trip-stats .stat-value .sk-line {
   width: 100%;
   height: 1em;
 }
-.summary-skeleton .insight-text .sk-line {
+.console .insight-text .sk-line {
   height: 1em;
 }
 
@@ -1131,8 +1184,12 @@ h1.brand {
   border-radius: 24px;
   background-color: var(--paper);
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(28, 51, 38, 0.08) 1px, transparent 1.3px),
-    radial-gradient(560px 280px at 18% 0%, rgba(167, 243, 208, 0.42), transparent 70%);
+    radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.3px),
+    radial-gradient(
+      560px 280px at 18% 0%,
+      color-mix(in srgb, var(--mint) 42%, transparent),
+      transparent 70%
+    );
   background-size:
     18px 18px,
     auto;
@@ -1204,6 +1261,23 @@ h1.brand {
   box-shadow:
     0 0 0 1px var(--line),
     var(--sh-2);
+}
+/*
+ * The map is a photograph of a city and the page is paper. Without an inner
+ * edge the tile layer runs straight into the rounded corner and the whole
+ * slot reads as a hole cut in the page rather than a panel set into it.
+ */
+.map-slot::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  pointer-events: none;
+}
+.map-slot {
+  position: relative;
 }
 .route-map-shell {
   position: relative;
@@ -1393,7 +1467,7 @@ h1.brand {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 26px;
+  min-height: var(--pulse-chip-h);
   padding: 0 10px;
   border-radius: 999px;
   font: 500 12px/1 var(--font-body);
@@ -1463,7 +1537,9 @@ h1.brand {
   padding: 13px 14px 12px;
   border-radius: 16px;
   background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    inset 0 1px 0 var(--edge-hi);
 }
 .stat-value {
   overflow: hidden;
@@ -1520,12 +1596,10 @@ h1.brand {
 .sk-line {
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    rgba(28, 51, 38, 0.05),
-    rgba(28, 51, 38, 0.1),
-    rgba(28, 51, 38, 0.05)
-  );
+  /* Tokens, so the sweep is dark-on-light and light-on-dark. Written as
+     forest literals it was a dark shimmer on a dark ground — every loading
+     state in dark mode was a blank space. */
+  background: linear-gradient(90deg, var(--soft), var(--line-2), var(--soft));
   background-size: 200% 100%;
   animation: 1.2s linear infinite shimmer;
 }
@@ -1589,8 +1663,11 @@ h1.brand {
   padding: 16px 18px;
   border-radius: var(--radius);
   background: var(--paper);
+  /* Hairline, caught light, cast shadow — in that order, which is the order
+     a real edge produces them. */
   box-shadow:
     0 0 0 1px var(--line),
+    inset 0 1px 0 var(--edge-hi),
     var(--sh-1);
   transition:
     box-shadow 0.35s var(--ease),
@@ -1600,6 +1677,7 @@ h1.brand {
   transform: translateY(-1px);
   box-shadow:
     0 0 0 1px var(--line-2),
+    inset 0 1px 0 var(--edge-hi),
     var(--sh-2);
 }
 /*
@@ -1878,7 +1956,7 @@ h1.brand {
   background: var(--paper);
   box-shadow:
     0 0 0 1px var(--line-2),
-    0 1px 2px rgba(28, 51, 38, 0.06);
+    var(--sh-1);
 }
 .book.book-secondary .provider-mark-img {
   box-shadow: 0 0 0 1px var(--line);
@@ -4485,4 +4563,506 @@ details[open] > summary::before {
   font: 400 10px/1 var(--font-mono);
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
+}
+
+/* ── The console ───────────────────────────────────────────────────────────
+   What the market is doing, what that means, and the figures it produced —
+   one object with hairlines through it. These were three stacked cards, and
+   three borders between the toolbar and the first price is three too many.
+
+   The parts keep their own class names and give up their own chrome, the
+   same bargain the deck strikes with its panels. */
+.console {
+  display: grid;
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow:
+    inset 0 1px 0 var(--edge-hi),
+    var(--sh-1);
+}
+.console > * + * {
+  border-top: 1px solid var(--line);
+}
+.console .market-pulse {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.console .insight-banner {
+  border-radius: 0;
+  box-shadow: none;
+  /* The one row that keeps a fill: it is the sentence worth reading first. */
+  background: var(--mint-bg);
+}
+/*
+ * Cells, not tiles. Inside the console each stat is a column of one object,
+ * so the divider is a hairline and the raised box is gone.
+ *
+ * The rules are drawn as a 1px gap over the container's own colour rather
+ * than as a border on each cell: the row is `auto-fit`, so it wraps on a
+ * phone, and a per-cell border leaves a stray rule down the left of every
+ * wrapped row while a gap cannot.
+ */
+.console .trip-stats {
+  gap: 1px;
+  background: var(--line);
+  animation: none;
+}
+.console .trip-stats > div {
+  padding: 12px 14px;
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: none;
+}
+
+/* ── The insights deck ─────────────────────────────────────────────────────
+   Six panels in the footprint of one. The tab strip is the only chrome; the
+   panels inside it give up their own borders and backgrounds, because a card
+   inside a card reads as a mistake.
+
+   The indicator moves rather than the panels fading: a moving object tells
+   the eye where it went, and a crossfade tells it nothing. */
+.deck {
+  display: grid;
+  gap: 14px;
+  margin-top: var(--space-3, 20px);
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--ground-2);
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+.deck-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.deck-head .section-label {
+  margin: 0;
+}
+.deck-question {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.deck-tabstrip {
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.deck-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+.deck-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--deck-n, 7), minmax(68px, 1fr));
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+}
+.deck-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--deck-n, 7));
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--sh-1);
+  transform: translateX(calc(var(--deck-i, 0) * 100%));
+  transition: transform 0.36s var(--ease);
+}
+.deck-tab {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 8px 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s var(--ease);
+}
+.deck-tab:hover {
+  color: var(--ink-2);
+}
+.deck-tab[aria-selected="true"] {
+  color: var(--ink);
+}
+.deck-panel {
+  min-width: 0;
+  animation: deck-in 0.28s var(--ease) both;
+}
+.deck-panel:focus-visible {
+  outline: 2px solid var(--forest-2);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+@keyframes deck-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+/* Panels drop their own chrome: the deck is already the card. */
+.deck-panel > .axis,
+.deck-panel > .party,
+.deck-panel > .departure,
+.deck-panel > .alternatives {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.deck-panel .axis-head {
+  justify-content: flex-end;
+}
+.party-head .party-dials {
+  margin-right: auto;
+}
+/* The one label in here that is a warning rather than a verdict. It belongs
+   over the thing it warns about, not tucked into the far corner. */
+.deck-panel .departure-head {
+  justify-content: flex-start;
+}
+.deck-panel .axis-head:empty,
+.deck-panel .departure-head:empty {
+  display: none;
+}
+.deck-empty,
+.deck-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.deck-foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .deck-indicator {
+    transition: none;
+  }
+  .deck-panel {
+    animation: none;
+  }
+}
+
+/*
+ * Narrow: content-width tabs that scroll, and the selection drawn on the tab
+ * itself.
+ *
+ * The sliding indicator is arithmetic — one seventh of the row, moved by its
+ * own width — which is exact while the columns are equal and wrong the moment
+ * they are not. On a phone seven equal columns are each 68px and "Breakdown"
+ * is wider than that, so the labels ran over each other and the pill sat two
+ * tabs away from the tab it was marking.
+ *
+ * Measuring the tabs instead would mean a layout read and a resize observer
+ * for a pill. Below this width there is no pill: each tab carries its own
+ * selected state, which is what a scrolling strip should look like anyway.
+ */
+@media (max-width: 760px) {
+  .deck-tabs {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: max-content;
+  }
+  .deck-indicator {
+    display: none;
+  }
+  .deck-tab {
+    padding: 8px 14px;
+  }
+  .deck-tab[aria-selected="true"] {
+    background: var(--paper);
+    box-shadow:
+      0 0 0 1px var(--line),
+      var(--sh-1);
+  }
+}
+
+/* ── Where the money goes ──────────────────────────────────────────────────
+   Every option on one scale, so a wide fee slice is a large number and not
+   just a row that happened to be drawn wider. The three slices always sum to
+   the modeled centre — see fare-composition.ts, which defines the last of
+   them as the residual precisely so they do. */
+.comp-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.comp-row {
+  display: grid;
+  gap: 6px;
+}
+.comp-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comp-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.comp-figure {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.comp-bar {
+  display: flex;
+  overflow: hidden;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.comp-seg {
+  height: 100%;
+  transition: width 0.4s var(--ease);
+}
+.comp-seg[data-slice="metered"],
+.comp-dot[data-slice="metered"] {
+  background: var(--forest-2);
+}
+.comp-seg[data-slice="fees"],
+.comp-dot[data-slice="fees"] {
+  background: var(--amber);
+}
+.comp-seg[data-slice="calibration"],
+.comp-dot[data-slice="calibration"] {
+  background: var(--sky);
+}
+.comp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.comp-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.comp-key strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.comp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+.comp-more {
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+.comp-more:hover {
+  color: var(--ink);
+  border-color: var(--forest-2);
+}
+.comp-items {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--soft);
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+.comp-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.comp-item-amount {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── What the extra buys ───────────────────────────────────────────────────
+   A rate, or a refusal. The refusals are the point: paying more usually buys
+   nothing, and a table that only knew how to divide would never say so. */
+.ledger {
+  display: grid;
+  gap: 10px;
+}
+.ledger-headline {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.ledger-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ledger-row:last-child {
+  border-bottom: 0;
+}
+.ledger-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ledger-extra {
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.ledger-verdict {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.ledger-row[data-kind="BUYS_TIME"] .ledger-verdict strong {
+  color: var(--mint-t);
+  font-variant-numeric: tabular-nums;
+}
+.ledger-row[data-kind="BUYS_NOTHING"] .ledger-extra {
+  color: var(--ink-3);
+}
+
+/* ── The way back ──────────────────────────────────────────────────────────
+   Two legs, stacked, with the return marked. The asymmetry is the finding —
+   tolls on one crossing, a congestion zone entered one way — so the two
+   rows are deliberately identical in every respect except their prices. */
+.ret {
+  display: grid;
+  gap: 10px;
+}
+.ret-headline {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.ret-headline strong {
+  font-variant-numeric: tabular-nums;
+}
+.ret-legs {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ret-leg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--soft);
+  font-size: 13px;
+}
+.ret-leg.is-return {
+  background: var(--mint-bg);
+  color: var(--mint-t);
+}
+.ret-dir {
+  min-width: 0;
+  font-weight: 500;
+}
+.ret-price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ret-leg.is-return .muted {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* ── Tip ───────────────────────────────────────────────────────────────────
+   Off by default, and never folded into anything that ranks. A tip is the
+   rider's arithmetic on an estimate; the note under it says so whenever one
+   is on. */
+.party-dials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.party-tips-label {
+  margin-right: 2px;
+  font: 500 10.5px/1.2 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.party-dials .chip {
+  min-height: 28px;
+  padding: 0 11px;
+  font-size: 12.5px;
+}
+
+/* ── Segmented groups ──────────────────────────────────────────────────────
+   One-of-a-set, enclosed. The chips keep their own class so nothing else
+   about them changes; the container supplies the edge and takes away their
+   individual outlines, which is what makes the set read as one control. */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+}
+/*
+ * `:not(.active)`, and the reason is worth the extra selector.
+ *
+ * Written as a blanket `.segmented .chip { background: transparent }` it beat
+ * `.chip.active`'s own background on source order alone — same specificity,
+ * later in the file — so the selected chip lost its dark fill and kept its
+ * white text. 1.08:1, on the primary control of the page, in three of the six
+ * scheme combinations. The contrast audit caught it the first time it was run
+ * against the tabs; nothing else would have.
+ */
+.segmented .chip {
+  box-shadow: none;
+}
+.segmented .chip:not(.active) {
+  background: transparent;
+}
+.segmented .chip:not(.active):hover {
+  background: var(--paper);
 }

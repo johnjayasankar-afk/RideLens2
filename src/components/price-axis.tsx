@@ -16,7 +16,20 @@ import { formatMoneyMinor } from "@/lib/domain/money";
 import { buildPriceAxis } from "@/lib/domain/price-axis";
 import type { NormalizedQuote } from "@/lib/domain/types";
 
-export function PriceAxis({ quotes }: { quotes: readonly NormalizedQuote[] }) {
+export function PriceAxis({
+  quotes,
+  embedded,
+}: {
+  quotes: readonly NormalizedQuote[];
+  /**
+   * Rendered inside the insights deck, which supplies the heading.
+   *
+   * The heading stays in the accessibility tree rather than being deleted —
+   * `aria-labelledby` points at it, and a section that loses its name is a
+   * worse trade than a duplicated one.
+   */
+  embedded?: boolean;
+}) {
   const axis = buildPriceAxis(quotes);
   if (!axis) return null;
 
@@ -25,7 +38,7 @@ export function PriceAxis({ quotes }: { quotes: readonly NormalizedQuote[] }) {
   return (
     <section className="axis" aria-labelledby="axis-heading">
       <div className="axis-head">
-        <h2 id="axis-heading" className="section-label">
+        <h2 id="axis-heading" className={embedded ? "sr-only" : "section-label"}>
           Side by side
         </h2>
         {overlapping > 1 ? (
