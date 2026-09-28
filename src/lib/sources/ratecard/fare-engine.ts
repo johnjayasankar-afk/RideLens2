@@ -33,6 +33,16 @@ export type ComputedFare = {
   band: number;
   rateCardDollars: number;
   feesDollars: number;
+  /**
+   * Whether `feesDollars` is already inside `rateCardDollars`.
+   *
+   * The two paths below mean different things by the subtotal: the metered
+   * path stores metered + fees, the TLC flat-fare path stores the bare flat
+   * fare and adds the stack afterwards. Anything that decomposes a fare has
+   * to know which, and deriving it from the shape of `feeBreakdown` is a
+   * guess that reconciles either way while being silently wrong one way.
+   */
+  feesInsideRateCard: boolean;
   trafficMinutes: number;
   demandCenter: number;
   demandLabel: string;
@@ -520,6 +530,8 @@ export function computeProductFare(input: {
       band: 0.01,
       rateCardDollars: fees.nycJfkFlatTaxi,
       feesDollars: Math.round(flatExtras * 100) / 100,
+      /* The published flat fare, with the stack added on top of it. */
+      feesInsideRateCard: false,
       trafficMinutes,
       demandCenter: marketplace.multiplier,
       demandLabel: `flat_fare+${marketplace.label}`,
@@ -685,6 +697,8 @@ export function computeProductFare(input: {
     band: liveBand + stopAndGo,
     rateCardDollars: Math.round(rateCardTotal * 100) / 100,
     feesDollars: Math.round(feesDollars * 100) / 100,
+    /* `rateCardTotal` is metered + feesDollars — see its definition above. */
+    feesInsideRateCard: true,
     trafficMinutes,
     demandCenter: marketplace.multiplier,
     demandLabel: `${marketplace.label}+${traffic.label}+ctx${ctx.toFixed(2)}`,

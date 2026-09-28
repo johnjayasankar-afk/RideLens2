@@ -278,6 +278,9 @@ export class PublicRateCardQuoteSource implements QuoteSource {
         centerFare: fare.center,
         rateCardDollars: fare.rateCardDollars,
         feesDollars: fare.feesDollars,
+        /* Which of the two subtotal conventions this fare used, so a
+           decomposition does not have to infer it. See ComputedFare. */
+        feesInsideRateCard: fare.feesInsideRateCard,
         feeBreakdown: fare.feeBreakdown,
         anchorId: fare.anchorId,
         anchorWeight: fare.anchorWeight,
