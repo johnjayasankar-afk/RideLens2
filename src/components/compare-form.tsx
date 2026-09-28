@@ -13,6 +13,8 @@ import { RecentTrips } from "@/components/recent-trips";
 import { ReportOutcome } from "@/components/report-outcome";
 import { reportedTrips, tripAwaitingReport } from "@/lib/history/outcome";
 import { CommandPalette, useCommandPalette, type Command } from "@/components/command-palette";
+import { openPanel } from "@/components/use-panel";
+import { PANELS } from "@/lib/domain/panels";
 import { applyTheme } from "@/components/theme-toggle";
 import { useTripLog } from "@/components/use-trip-log";
 import { usePriceWatches } from "@/components/use-price-watch";
@@ -821,6 +823,32 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
         keywords: "filter category class",
         run: () => setFilter(id),
       });
+    }
+
+    /*
+     * The deck, from the keyboard.
+     *
+     * Eight analyses behind a tab strip are eight analyses a pointer can
+     * reach and a keyboard could not. `openPanel` puts the choice in the URL,
+     * which is where the deck reads it from — so this needs no handle on the
+     * deck and works the same whether one is on screen yet or not.
+     */
+    if (activeSession) {
+      for (const panel of PANELS) {
+        commands.push({
+          id: `panel-${panel.id}`,
+          group: "Look closer",
+          label: panel.label,
+          hint: panel.question,
+          keywords: panel.keywords,
+          run: () => {
+            openPanel(panel.id);
+            window.requestAnimationFrame(() => {
+              document.querySelector(".deck")?.scrollIntoView({ block: "center" });
+            });
+          },
+        });
+      }
     }
 
     for (const [id, label] of [

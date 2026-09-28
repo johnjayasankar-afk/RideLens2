@@ -40,6 +40,7 @@ import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
 import { InsightsDeck } from "./insights-deck";
+import { openPanel } from "./use-panel";
 import { WalkSuggestionCard } from "./walk-suggestion";
 import { useCountUpRange } from "./use-count-up";
 import { RouteMap, type MapRoute } from "@/components/route-map";
@@ -666,6 +667,18 @@ export function QuoteResults({
           priceWatches.set(
             makeWatch(watchContext.from, watchContext.to, Math.round(action.threshold * 100)),
           );
+          return;
+        }
+        case "panel": {
+          /*
+           * The same path the palette takes: into the URL, where the deck
+           * reads it from. The assistant sits above the deck in the tree and
+           * could not reach its state even if it were allowed to.
+           */
+          openPanel(action.panel);
+          window.requestAnimationFrame(() => {
+            document.querySelector(".deck")?.scrollIntoView({ block: "center" });
+          });
           return;
         }
       }

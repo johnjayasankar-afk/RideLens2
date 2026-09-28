@@ -22,6 +22,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
+import { PANELS, PANEL_IDS, panelById } from "@/lib/domain/panels";
+
 /** Ranking modes the rider can already choose. */
 export const RANKING_MODES = ["cheapest", "fastest", "best_value"] as const;
 
@@ -54,6 +56,10 @@ export const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("watch"),
     /** Dollars, as the rider would type them. Converted to minor units here. */
     threshold: z.number().positive().max(1000),
+  }),
+  z.object({
+    action: z.literal("panel"),
+    panel: z.enum(PANEL_IDS),
   }),
 ]);
 
@@ -106,6 +112,26 @@ export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
     strict: true,
   },
   {
+    /*
+     * The one action that answers rather than changes. Asked "why is Lyft
+     * dearer", the honest reply names the ride and the fees — and the panel
+     * that draws them is one tap away and behind a tab most riders never
+     * open. Opening it is worth more than another paragraph.
+     */
+    name: "open_panel",
+    description:
+      "Open one of the panels under the comparison, so the rider can see what you are describing. " +
+      PANELS.map((p) => `'${p.id}' — ${p.brief}.`).join(" ") +
+      " Use it alongside an answer, not instead of one.",
+    input_schema: {
+      type: "object",
+      properties: { panel: { type: "string", enum: [...PANEL_IDS] } },
+      required: ["panel"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
     name: "watch_price",
     description:
       "Set a price watch on this route, checked the next time the rider opens RideLens. It does not notify them — nothing runs in the background. threshold is in dollars.",
@@ -133,7 +159,9 @@ export function toAction(name: string, input: unknown): AssistantAction | null {
             ? { action: "filter", category: raw.category }
             : name === "watch_price"
               ? { action: "watch", threshold: raw.threshold }
-              : null;
+              : name === "open_panel"
+                ? { action: "panel", panel: raw.panel }
+                : null;
   if (!candidate) return null;
   const parsed = actionSchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
@@ -158,5 +186,9 @@ export function describeAction(action: AssistantAction): string {
         : `Showing ${action.category === "standard" ? "standard" : action.category} rides only.`;
     case "watch":
       return `Watching this trip for $${action.threshold.toFixed(2)} or less — checked when you next open RideLens.`;
+    case "panel": {
+      const panel = panelById(action.panel);
+      return `Opened ${panel?.label ?? action.panel} below — ${panel?.question ?? ""}`.trim();
+    }
   }
 }

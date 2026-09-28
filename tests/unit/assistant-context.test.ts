@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ASSISTANT_SYSTEM_PROMPT, buildBrief, renderBrief } from "@/lib/assistant/context";
 import { ASSISTANT_TOOLS, describeAction, toAction } from "@/lib/assistant/actions";
+import { PANELS, PANEL_IDS } from "@/lib/domain/panels";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
 
 let seq = 0;
@@ -197,6 +198,7 @@ describe("what the assistant can do", () => {
   it("offers only actions the interface already has", () => {
     const names = ASSISTANT_TOOLS.map((t) => t.name).sort();
     expect(names).toEqual([
+      "open_panel",
       "refresh_comparison",
       "set_filter",
       "set_ranking",
@@ -379,5 +381,46 @@ describe("what the dearer options buy, in the brief", () => {
     const prompt = ASSISTANT_SYSTEM_PROMPT.toLowerCase();
     expect(prompt).toContain("do not redo the arithmetic");
     expect(prompt).toContain("do not supply a rate where one of them declined to");
+  });
+});
+
+describe("opening a panel", () => {
+  /*
+   * The one action that answers rather than changes anything. Asked why one
+   * option is dearer, the honest reply names the ride and the fees — and the
+   * panel that draws them is behind a tab most riders never open.
+   */
+  it("validates the panel against the deck's own list", () => {
+    expect(toAction("open_panel", { panel: "whatif" })).toEqual({
+      action: "panel",
+      panel: "whatif",
+    });
+    expect(toAction("open_panel", { panel: "nonsense" })).toBeNull();
+    expect(toAction("open_panel", {})).toBeNull();
+    expect(toAction("open_panel", { panel: 3 })).toBeNull();
+  });
+
+  /* One list, so a panel cannot exist that the assistant may not name. */
+  it("offers exactly the panels the deck has", () => {
+    const tool = ASSISTANT_TOOLS.find((t) => t.name === "open_panel")!;
+    const schema = tool.input_schema as {
+      properties: { panel: { enum: string[] } };
+    };
+    expect(schema.properties.panel.enum).toEqual([...PANEL_IDS]);
+    for (const panel of PANELS) {
+      expect(toAction("open_panel", { panel: panel.id })).not.toBeNull();
+    }
+  });
+
+  it("says which one it opened, and what it answers", () => {
+    const said = describeAction({ action: "panel", panel: "breakdown" });
+    expect(said).toContain("Breakdown");
+    expect(said).toContain("Where does the money go?");
+  });
+
+  /* Opening a panel changes nothing a rider would have to undo. */
+  it("is not a capability the rider lacks", () => {
+    const tool = ASSISTANT_TOOLS.find((t) => t.name === "open_panel")!;
+    expect(String(tool.description)).toMatch(/alongside an answer, not instead of one/);
   });
 });

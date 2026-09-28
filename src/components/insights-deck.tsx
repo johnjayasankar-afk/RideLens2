@@ -30,7 +30,7 @@
  * this long meant most readers never saw it at all.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { AlternativesRow } from "./alternatives-row";
 import { DepartureStrip } from "./departure-strip";
@@ -40,36 +40,10 @@ import { PriceAxis } from "./price-axis";
 import { ReturnLeg } from "./return-leg";
 import { SensitivityStrip } from "./sensitivity-panel";
 import { TradeoffLedger } from "./tradeoff-ledger";
+import { openPanel, usePanel } from "./use-panel";
 
+import { PANELS as TABS, type PanelId as TabId } from "@/lib/domain/panels";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
-
-type TabId =
-  "spread" | "breakdown" | "whatif" | "tradeoffs" | "timing" | "split" | "return" | "transit";
-
-interface Tab {
-  id: TabId;
-  /** One word where possible: these sit in a single row, seven wide. */
-  label: string;
-  /** The question the panel answers, in the reader's words. */
-  question: string;
-}
-
-/*
- * Ordered as a reader would ask them: what it costs, what it is made of, how
- * much of that to believe, what the alternatives buy, and then the questions
- * that are not about this trip as priced — when, who with, coming back, and
- * whether to take a car at all.
- */
-const TABS: readonly Tab[] = [
-  { id: "spread", label: "Spread", question: "Is the cheapest actually cheaper?" },
-  { id: "breakdown", label: "Breakdown", question: "Where does the money go?" },
-  { id: "whatif", label: "What if", question: "How much rests on the model being right?" },
-  { id: "tradeoffs", label: "Trade-offs", question: "What does paying more buy?" },
-  { id: "timing", label: "Timing", question: "Does waiting help?" },
-  { id: "split", label: "Split", question: "What is it each, out the door?" },
-  { id: "return", label: "Return", question: "What does coming back cost?" },
-  { id: "transit", label: "No car", question: "Is there a way without one?" },
-];
 
 export function InsightsDeck({
   quotes,
@@ -80,14 +54,20 @@ export function InsightsDeck({
   session: QuoteSession | null;
   showProducts?: ReadonlySet<string>;
 }) {
-  const [active, setActive] = useState<TabId>("spread");
-  /* Every tab ever opened, so switching back neither refetches nor reflows. */
-  const [mounted, setMounted] = useState<ReadonlySet<TabId>>(() => new Set<TabId>(["spread"]));
-
-  const choose = useCallback((id: TabId) => {
-    setActive(id);
-    setMounted((seen) => (seen.has(id) ? seen : new Set(seen).add(id)));
-  }, []);
+  /*
+   * The open panel lives in the URL, not here.
+   *
+   * Three other things want to open one — the command palette, the assistant,
+   * and a link somebody was sent — and only one of them could be served by a
+   * setter passed down from the deck's parent. See use-panel.ts.
+   *
+   * `opened` is every panel opened this page load, so switching back neither
+   * refetches nor reflows. It is module-level for the same reason the active
+   * panel is: a panel the palette opened counts as opened.
+   */
+  const { active: activeId, opened } = usePanel("spread");
+  const active = (TABS.find((t) => t.id === activeId)?.id ?? "spread") as TabId;
+  const choose = useCallback((id: TabId) => openPanel(id), []);
 
   /*
    * Roving focus without an array of refs.
@@ -182,7 +162,7 @@ export function InsightsDeck({
       </div>
 
       {TABS.map((tab) =>
-        mounted.has(tab.id) ? (
+        tab.id === active || opened.has(tab.id) ? (
           <div
             key={tab.id}
             className="deck-panel"

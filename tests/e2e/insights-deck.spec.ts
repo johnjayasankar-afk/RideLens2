@@ -185,6 +185,63 @@ test.describe("the insights deck", () => {
     expect(await page.locator('[role=tab][tabindex="-1"]').count()).toBe(TABS.length - 1);
   });
 
+  /*
+   * The panel lives in the URL so three things can open one: the deck's own
+   * tabs, the command palette, and a link somebody was sent. All three go
+   * through the same parameter, which is also what makes a reload keep your
+   * place.
+   */
+  test("carries the open panel in the URL, and opens on it", async ({ page }) => {
+    await page.goto(`${DEEP_LINK}&panel=whatif`);
+    await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("tab", { name: "What if" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.locator(".deck-panel:not([hidden])")).toHaveAttribute(
+      "aria-labelledby",
+      "deck-tab-whatif",
+    );
+  });
+
+  test("writes the panel to the URL when a tab is chosen", async ({ page }) => {
+    await openComparison(page);
+    await page.getByRole("tab", { name: "Return" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("panel")).toBe("return");
+
+    /* And a reload lands back on it rather than on the first tab. */
+    await page.reload();
+    await expect(page.getByRole("tab", { name: "Return" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+      { timeout: 30_000 },
+    );
+  });
+
+  test("ignores a panel name that is not one", async ({ page }) => {
+    await page.goto(`${DEEP_LINK}&panel=../etc/passwd`);
+    await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("tab", { name: "Spread" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.locator(".deck-panel:not([hidden])")).toHaveCount(1);
+  });
+
+  test("is reachable from the command palette", async ({ page }) => {
+    await openComparison(page);
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(page.locator(".cmdk-item").first()).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.type("sensitivity");
+    const hit = page.locator(".cmdk-item", { hasText: "What if" }).first();
+    await expect(hit).toBeVisible();
+    await hit.click();
+    await expect(page.getByRole("tab", { name: "What if" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   test("fits a phone without pushing the page sideways", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openComparison(page);
