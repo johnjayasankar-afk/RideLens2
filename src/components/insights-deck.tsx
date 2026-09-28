@@ -38,11 +38,13 @@ import { FareCompositionPanel } from "./fare-composition";
 import { PartyPanel } from "./party-panel";
 import { PriceAxis } from "./price-axis";
 import { ReturnLeg } from "./return-leg";
+import { SensitivityStrip } from "./sensitivity-panel";
 import { TradeoffLedger } from "./tradeoff-ledger";
 
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
 
-type TabId = "spread" | "breakdown" | "tradeoffs" | "timing" | "split" | "return" | "transit";
+type TabId =
+  "spread" | "breakdown" | "whatif" | "tradeoffs" | "timing" | "split" | "return" | "transit";
 
 interface Tab {
   id: TabId;
@@ -52,9 +54,16 @@ interface Tab {
   question: string;
 }
 
+/*
+ * Ordered as a reader would ask them: what it costs, what it is made of, how
+ * much of that to believe, what the alternatives buy, and then the questions
+ * that are not about this trip as priced — when, who with, coming back, and
+ * whether to take a car at all.
+ */
 const TABS: readonly Tab[] = [
   { id: "spread", label: "Spread", question: "Is the cheapest actually cheaper?" },
   { id: "breakdown", label: "Breakdown", question: "Where does the money go?" },
+  { id: "whatif", label: "What if", question: "How much rests on the model being right?" },
   { id: "tradeoffs", label: "Trade-offs", question: "What does paying more buy?" },
   { id: "timing", label: "Timing", question: "Does waiting help?" },
   { id: "split", label: "Split", question: "What is it each, out the door?" },
@@ -187,6 +196,9 @@ export function InsightsDeck({
           >
             {tab.id === "spread" ? <PriceAxis quotes={quotes} embedded /> : null}
             {tab.id === "breakdown" ? <FareCompositionPanel quotes={quotes} /> : null}
+            {tab.id === "whatif" ? (
+              <SensitivityStrip sessionId={sessionId} quoteIds={quotes.map((q) => q.id)} />
+            ) : null}
             {tab.id === "tradeoffs" ? <TradeoffLedger quotes={quotes} /> : null}
             {tab.id === "timing" ? (
               <DepartureStrip sessionId={sessionId} showProducts={showProducts} embedded />

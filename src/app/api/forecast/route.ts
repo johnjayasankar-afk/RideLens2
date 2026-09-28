@@ -16,50 +16,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildDepartureWindow, type ForecastInput } from "@/lib/domain/departure-window";
 import { getSession } from "@/lib/quotes/orchestrator";
 import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
-import type { NormalizedQuote } from "@/lib/domain/types";
-import type {
-  MarketplaceProduct,
-  MarketplaceProvider,
-} from "@/lib/sources/ratecard/marketplace-dynamics";
+import { replayableProducts } from "@/lib/quotes/replayable";
+import type { MarketplaceProduct } from "@/lib/sources/ratecard/marketplace-dynamics";
 import type { WaitCategory } from "@/lib/sources/ratecard/wait-eta";
 
 export const dynamic = "force-dynamic";
-
-const MARKETPLACE_PROVIDERS = new Set<MarketplaceProvider>(["uber", "lyft", "empower", "curb"]);
-const FARE_PRODUCTS = new Set<MarketplaceProduct>([
-  "uberx",
-  "comfort",
-  "uberxl",
-  "lyft",
-  "lyft_xl",
-  "taxi",
-  "empower",
-]);
-
-/** Only quotes this model produced can be run forward by this model. */
-function projectable(quote: NormalizedQuote): ForecastInput | null {
-  if (quote.source !== "public_rate_card") return null;
-  const provider = quote.provider as MarketplaceProvider;
-  if (!MARKETPLACE_PROVIDERS.has(provider)) return null;
-
-  const product = quote.metadata?.fareProduct as MarketplaceProduct | undefined;
-  if (!product || !FARE_PRODUCTS.has(product)) return null;
-
-  const meters = quote.distanceMeters;
-  const seconds = quote.tripDurationSeconds;
-  if (!meters || !seconds) return null;
-
-  return {
-    provider,
-    product,
-    waitCategory: quote.normalizedCategory as WaitCategory,
-    pickup: { lat: 0, lng: 0 }, // replaced by the caller, which has the session
-    destination: { lat: 0, lng: 0 },
-    miles: meters / 1609.344,
-    osrmMinutes: seconds / 60,
-    weatherSurgeLift: quote.metadata?.weatherSurgeLift as number | undefined,
-  };
-}
 
 export async function GET(req: NextRequest) {
   /*
@@ -92,24 +53,23 @@ export async function GET(req: NextRequest) {
   const destination = { lat: session.destination.lat, lng: session.destination.lng };
 
   /*
-   * One forecast per product, not per quote. Two quotes for the same product
-   * would produce identical curves and double the work.
+   * One forecast per product, not per quote — `replayableProducts` does the
+   * de-duplication, and the same filter decides what /api/sensitivity may
+   * re-run. Two definitions of "this model may recompute that" would
+   * eventually disagree about a partner quote, and one of them would be the
+   * one that extrapolated it.
    */
-  const seen = new Set<string>();
-  const inputs: ForecastInput[] = [];
-  let skipped = 0;
-
-  for (const quote of session.quotes) {
-    const base = projectable(quote);
-    if (!base) {
-      skipped += 1;
-      continue;
-    }
-    const key = `${base.provider}:${base.product}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    inputs.push({ ...base, pickup, destination });
-  }
+  const { items, skipped } = replayableProducts(session.quotes);
+  const inputs: ForecastInput[] = items.map((item) => ({
+    provider: item.provider,
+    product: item.product as MarketplaceProduct,
+    waitCategory: item.category as WaitCategory,
+    pickup,
+    destination,
+    miles: item.miles,
+    osrmMinutes: item.osrmMinutes,
+    weatherSurgeLift: item.weatherSurgeLift,
+  }));
 
   if (inputs.length === 0) {
     return NextResponse.json({

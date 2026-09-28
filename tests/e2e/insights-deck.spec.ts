@@ -21,7 +21,16 @@ const DEEP_LINK =
   `/?from=${PICKUP.lat},${PICKUP.lng},${encodeURIComponent(PICKUP.formattedAddress)}` +
   `&to=${DESTINATION.lat},${DESTINATION.lng},${encodeURIComponent(DESTINATION.formattedAddress)}`;
 
-const TABS = ["Spread", "Breakdown", "Trade-offs", "Timing", "Split", "Return", "No car"] as const;
+const TABS = [
+  "Spread",
+  "Breakdown",
+  "What if",
+  "Trade-offs",
+  "Timing",
+  "Split",
+  "Return",
+  "No car",
+] as const;
 
 async function openComparison(page: Page) {
   await page.goto(DEEP_LINK);
@@ -100,6 +109,49 @@ test.describe("the insights deck", () => {
     await page.getByRole("tab", { name: "Timing" }).click();
     await page.waitForTimeout(1500);
     expect(asked).toHaveLength(1);
+  });
+
+  /*
+   * The fetching panels have a loading line long enough to satisfy the
+   * "something on screen" check above, so that test would pass on a panel that
+   * never resolved. This one watches it settle.
+   *
+   * What it settles into here is a refusal, and deliberately so: the suite
+   * runs on the fixture source with the rate card off (see
+   * playwright.config.ts), and the sensitivity endpoint will only re-run fares
+   * this engine computed. That is the behaviour under test — the plumbing
+   * reaches the endpoint, the endpoint declines, and the panel says why rather
+   * than spinning. The chart itself is held to the engine, arm by arm, in
+   * tests/unit/sensitivity.test.ts, where no network is involved.
+   */
+  test("the scenarios settle, and say so when there is nothing to run", async ({ page }) => {
+    await openComparison(page);
+    await page.getByRole("tab", { name: "What if" }).click();
+    const panel = page.locator("#deck-panel-whatif");
+
+    await expect
+      .poll(async () => (await panel.innerText()).includes("Re-running"), { timeout: 20_000 })
+      .toBe(false);
+
+    const chart = panel.locator(".tor-rows");
+    if ((await chart.count()) > 0) {
+      await expect(panel.locator(".tor-row")).toHaveCount(4);
+      /* The strip it draws has to contain the baseline it draws against —
+         the two come from the same clock, or the chart is nonsense. */
+      const inside = await panel
+        .locator(".tor-band")
+        .first()
+        .evaluate((band) => {
+          const zero = band.parentElement!.querySelector(".tor-zero")!;
+          const b = band.getBoundingClientRect();
+          const z = zero.getBoundingClientRect();
+          return z.left >= b.left - 1 && z.right <= b.right + 1;
+        });
+      expect(inside, "the card's band did not contain the baseline").toBe(true);
+    } else {
+      await expect(panel).toContainText(/nothing here is a modeled estimate/i);
+    }
+    await expect(panel).not.toContainText("NaN");
   });
 
   test("moves with the arrow keys and keeps focus on the tab it moved to", async ({ page }) => {
