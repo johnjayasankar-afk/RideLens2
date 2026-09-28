@@ -289,3 +289,67 @@ describe("a fee stack that comes out negative", () => {
     for (const slice of c.slices) expect(slice.dollars).toBeGreaterThan(0);
   });
 });
+
+describe("what the last slice is called", () => {
+  /*
+   * Two unrelated things land in this slice and they are rarely both present.
+   * "Corridor calibration" was printed over a Brooklyn → Manhattan taxi with
+   * no corridor anchor at all — the cause was the 0.9 directional adjustment,
+   * which the slice's own detail line said correctly while its label did not.
+   */
+  const brooklynToManhattan = {
+    product: "taxi" as const,
+    provider: "curb" as const,
+    pickup: { lat: 40.6782, lng: -73.9442 },
+    destination: { lat: 40.758, lng: -73.9855 },
+    miles: 10.8,
+    osrmMinutes: 29,
+    now: new Date("2026-09-28T23:12:00Z"),
+    weatherSurgeLift: 1,
+  };
+
+  it("names the direction when that is what moved it", () => {
+    const fare = computeProductFare(brooklynToManhattan);
+    expect(fare.anchorId, "this route must have no corridor anchor").toBeNull();
+    expect(fare.feeBreakdown.directional_asymmetry).toBe(0.9);
+
+    const slice = composeFare(quoteFrom(fare, "curb", "taxi"))!.slices.find(
+      (s) => s.id === "calibration",
+    )!;
+    expect(slice.label).toBe("Direction of travel");
+    expect(slice.dollars).toBeLessThan(0);
+    expect(slice.detail).toContain("into Manhattan");
+  });
+
+  it("names the corridor when a corridor is what moved it", () => {
+    /* Manhattan below 96th to JFK: a published anchor, and no directional
+       adjustment, because both ends are inside the same box. */
+    const fare = computeProductFare({
+      ...brooklynToManhattan,
+      product: "uberx",
+      provider: "uber",
+      pickup: { lat: 40.7549, lng: -73.984 },
+      destination: { lat: 40.6413, lng: -73.7781 },
+      miles: 17.4,
+      osrmMinutes: 38,
+    });
+    expect(fare.anchorId).toBe("manhattan_to_jfk");
+    const slice = composeFare(quoteFrom(fare, "uber", "uberx"))!.slices.find(
+      (s) => s.id === "calibration",
+    );
+    expect(slice?.label).toMatch(/^Corridor/);
+    expect(slice?.detail).toContain("corridor averages");
+  });
+
+  /* A label that says "corridor" has to have a corridor behind it. */
+  it("never claims a corridor when the anchor did not apply", () => {
+    for (const c of cases.slice(0, 400)) {
+      const fare = computeProductFare(c);
+      if (fare.anchorWeight > 0) continue;
+      const slice = composeFare(quoteFrom(fare, c.provider, c.product))!.slices.find(
+        (s) => s.id === "calibration",
+      );
+      expect(slice?.label ?? "", `${c.provider}/${c.product}`).not.toMatch(/corridor/i);
+    }
+  });
+});

@@ -4829,12 +4829,24 @@ details[open] > summary::before {
   font-variant-numeric: tabular-nums;
 }
 .comp-bar {
+  position: relative;
   display: flex;
   overflow: hidden;
   height: 14px;
   border-radius: 7px;
   background: var(--soft);
   box-shadow: inset 0 0 0 1px var(--line);
+}
+/* The amount struck back off the end. Hatched rather than tinted, because a
+   tint reads as another category and this is the same money, removed. */
+.comp-taken {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background:
+    repeating-linear-gradient(-45deg, var(--ink-3) 0 1.5px, transparent 1.5px 4.5px), var(--soft);
+  opacity: 0.55;
+  border-left: 1px solid var(--ink-3);
 }
 .comp-seg {
   height: 100%;
@@ -5065,4 +5077,38 @@ details[open] > summary::before {
 }
 .segmented .chip:not(.active):hover {
   background: var(--paper);
+}
+
+/* What each slice is, in words, under the row it belongs to. */
+.comp-why {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--soft);
+}
+.comp-defs {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  font-size: 11.5px;
+}
+.comp-defs dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.comp-defs dd {
+  margin: 1px 0 0 14px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.comp-why .comp-items {
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
 }

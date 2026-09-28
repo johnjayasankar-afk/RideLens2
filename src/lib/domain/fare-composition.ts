@@ -255,18 +255,47 @@ export function composeFare(quote: NormalizedQuote): FareComposition | null {
     });
   }
   if (worthNaming || slices.length === 0) {
+    /*
+     * The label has to name what actually moved it.
+     *
+     * Two different things land in this slice and they are not both present
+     * on most trips. A corridor anchor blends the card price toward published
+     * averages for that specific route; the directional adjustment is 0.9 into
+     * Manhattan and 1.08 out of it and applies far more widely. Calling both
+     * "corridor calibration" printed that phrase over a Brooklyn → Manhattan
+     * taxi with no anchor at all, under a detail line that correctly said the
+     * cause was the direction of travel. The label and its own explanation
+     * disagreed, which is worse than either being vague.
+     */
     const anchorWeight = num(m.anchorWeight) ?? 0;
+    const direction = num((breakdown as Record<string, unknown>).directional_asymmetry);
+    const hasDirection = direction !== null && direction !== 1;
+    const label =
+      anchorWeight > 0 && hasDirection
+        ? "Corridor and direction"
+        : anchorWeight > 0
+          ? "Corridor calibration"
+          : hasDirection
+            ? "Direction of travel"
+            : "Rounding";
+    const detail = [
+      anchorWeight > 0
+        ? `${Math.round(anchorWeight * 100)}% of the centre comes from published corridor averages for this route rather than from the rate card.`
+        : null,
+      hasDirection
+        ? direction! < 1
+          ? "Trips into Manhattan price below the reverse; the card price is scaled down to match."
+          : "Trips out of Manhattan price above the reverse; the card price is scaled up to match."
+        : null,
+    ].filter(Boolean);
     slices.push({
       id: "calibration",
       /* One marker for the direction, not two: with "(down)" in the label the
          brief rendered "corridor calibration (down) -$4.75", and the card
          legend printed a minus beside a word that already said minus. */
-      label: "Corridor calibration",
+      label,
       dollars: worthNaming ? calibration : round2(centerR - ride - feesShown),
-      detail:
-        anchorWeight > 0
-          ? `What published corridor averages and the direction of travel move the card price by. ${Math.round(anchorWeight * 100)}% of the centre comes from corridor data.`
-          : "What the direction of travel moves the card price by.",
+      detail: detail.length > 0 ? detail.join(" ") : "What is left after the fare is rounded.",
       items: [],
     });
   }

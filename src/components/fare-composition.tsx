@@ -52,8 +52,21 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
     );
   }
 
-  /* One scale for every bar, so a wide slice is a large number. */
-  const scale = Math.max(...priced.map((r) => r.composition!.centerDollars));
+  /*
+   * One scale for every bar, so a wide slice is a large number.
+   *
+   * Taken from the longest *drawn* bar rather than the largest centre. A
+   * negative slice is struck back off the end, so a bar is as long as its
+   * positive parts; scaled to centres, the dearest option's bar saturated at
+   * 100% and its strike-back fell off the right edge, which is the one row
+   * where it is most worth seeing. The solid part of every bar still ends at
+   * its own centre over the same scale, which is the comparison that matters.
+   */
+  const scale = Math.max(
+    ...priced.map((r) =>
+      r.composition!.slices.reduce((t, s) => (s.dollars > 0 ? t + s.dollars : t), 0),
+    ),
+  );
 
   return (
     <div className="comp">
@@ -61,6 +74,11 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
         {rows.map(({ quote, composition }) => {
           const open = openId === quote.id;
           const feeItems = composition?.slices.find((s) => s.id === "fees")?.items ?? [];
+          /* What the negative slices take back off the end of the bar. */
+          const taken = (composition?.slices ?? []).reduce(
+            (t, s) => (s.dollars < 0 ? t - s.dollars : t),
+            0,
+          );
           return (
             <li className="comp-row" key={quote.id}>
               <div className="comp-top">
@@ -83,11 +101,27 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
 
               {composition ? (
                 <>
+                  {/*
+                    A slice can be negative, and a stacked bar cannot draw a
+                    negative width. Drawn as positives alone the bar ended at
+                    the parts' sum rather than at the centre — a $42.90 fare
+                    filling to $47.66 on a scale shared with options whose
+                    bars were honest.
+
+                    So the positives run at true scale and the negative is
+                    struck back off the end of them: the solid bar stops
+                    exactly at the centre, and the hatched tail is the amount
+                    that was taken off. The arithmetic is the same either way;
+                    only this version is legible.
+                  */}
                   <div
                     className="comp-bar"
                     role="img"
                     aria-label={`${quote.providerProductName}: ${composition.slices
-                      .map((s) => `${s.label} ${dollars(s.dollars)}`)
+                      .map(
+                        (s) =>
+                          `${s.label} ${s.dollars < 0 ? "minus " : ""}${dollars(Math.abs(s.dollars))}`,
+                      )
                       .join(", ")}. Modeled centre ${dollars(composition.centerDollars)}.`}
                   >
                     {composition.slices.map((slice) =>
@@ -100,6 +134,16 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
                         />
                       ) : null,
                     )}
+                    {taken > 0 ? (
+                      <span
+                        className="comp-taken"
+                        aria-hidden
+                        style={{
+                          left: `${(composition.centerDollars / scale) * 100}%`,
+                          width: `${(taken / scale) * 100}%`,
+                        }}
+                      />
+                    ) : null}
                   </div>
 
                   <div className="comp-legend">
@@ -113,32 +157,51 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
                         </strong>
                       </span>
                     ))}
-                    {feeItems.length > 0 ? (
-                      <button
-                        type="button"
-                        className="comp-more"
-                        aria-expanded={open}
-                        onClick={() => setOpenId(open ? null : quote.id)}
-                      >
-                        {open
-                          ? "Hide"
-                          : `${feeItems.length} line${feeItems.length === 1 ? "" : "s"}`}
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="comp-more"
+                      aria-expanded={open}
+                      onClick={() => setOpenId(open ? null : quote.id)}
+                    >
+                      {open ? "Hide" : "Explain"}
+                    </button>
                   </div>
 
+                  {/*
+                    Every slice says what it is, then the fees are itemised.
+                    The disclosure used to appear only where there were fee
+                    lines to show, which meant the one slice a reader is most
+                    likely to query — a signed corridor or directional
+                    adjustment that moves the price and names no charge — was
+                    the one with nothing to open.
+                  */}
                   {open ? (
-                    <ul className="comp-items">
-                      {feeItems.map((item) => (
-                        <li key={item.label}>
-                          <span>{item.label}</span>
-                          <span className="comp-item-amount">
-                            {item.dollars < 0 ? "−" : ""}
-                            {dollars(Math.abs(item.dollars))}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="comp-why">
+                      <dl className="comp-defs">
+                        {composition.slices.map((slice) => (
+                          <div key={slice.id}>
+                            <dt>
+                              <span className="comp-dot" data-slice={slice.id} aria-hidden />
+                              {slice.label}
+                            </dt>
+                            <dd>{slice.detail}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {feeItems.length > 0 ? (
+                        <ul className="comp-items">
+                          {feeItems.map((item) => (
+                            <li key={item.label}>
+                              <span>{item.label}</span>
+                              <span className="comp-item-amount">
+                                {item.dollars < 0 ? "−" : ""}
+                                {dollars(Math.abs(item.dollars))}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
                   ) : null}
                 </>
               ) : null}
