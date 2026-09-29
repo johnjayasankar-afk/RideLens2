@@ -67,6 +67,14 @@ const LADDERS = {
     ["--s-10", 40],
     ["--s-11", 48],
   ],
+  "min-height": [
+    ["--ctl-xs", 26],
+    ["--ctl-sm", 32],
+    ["--ctl-md", 36],
+    ["--ctl-lg", 40],
+    ["--ctl-xl", 44],
+    ["--ctl-2xl", 52],
+  ],
   duration: [
     ["--dur-1", 120],
     ["--dur-2", 200],
@@ -185,6 +193,17 @@ lines.forEach((line, i) => {
     }
     moved.push({ line: i + 1, prop: "font(shorthand)", from: `${num}px`, to: name, gap });
     return `${head}var(${name})${slash}`;
+  });
+
+  next = next.replace(/(min-height:\s*)(-?[\d.]+)px/g, (all, head, num) => {
+    const value = parseFloat(num);
+    const { name, gap } = nearest(LADDERS["min-height"], value);
+    if (gap > tolerance("min-height", value)) {
+      kept.push({ line: i + 1, prop: "min-height", value: `${num}px`, gap });
+      return all;
+    }
+    moved.push({ line: i + 1, prop: "min-height", from: `${num}px`, to: name, gap });
+    return `${head}var(${name})`;
   });
 
   next = next.replace(/(border-radius:\s*)([^;]+)/g, (all, head, rest) => {

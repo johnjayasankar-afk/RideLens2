@@ -42,6 +42,11 @@ const CEILINGS = {
   "border-radius": 1,
   padding: 8,
   gap: 1,
+  /* Control heights. Fourteen distinct values were reachable on one screen —
+     24, 26, 28, 30, 32, 34, 36, 38, 40, 44, 46, 48, 50, 52 — for pills that
+     all do the same job. Four genuine layout minimums remain (a map canvas,
+     an empty-state card); a fifth would be a control that missed the ladder. */
+  "min-height": 6,
   /* Durations, however they are written: `transition`, `animation`, or the
      longhand. A motion system is a handful of speeds, not a hundred. */
   duration: 1,
@@ -116,6 +121,11 @@ lines.forEach((line, i) => {
         : new RegExp(`(?:^|[;{\\s])${prop}(?:-[a-z]+)?\\s*:([^;{}]+)`, "g");
     for (const match of line.matchAll(re)) {
       const raw = match[1].trim();
+      /* A whole declaration built from a calc() is reaching for the ladder,
+         whatever bare numbers the expression contains — the reserve under the
+         filter row is `calc(var(--ctl-md) + 2 * var(--s-2) + 2px)`, and the
+         first version of this counted its `2` as a stray. */
+      if (raw.includes("calc(")) continue;
       /* A var() reference IS reaching for the ladder. A shorthand of several
          values contributes each of them. */
       for (const value of raw.replace(/,/g, " ").split(/\s+/)) {

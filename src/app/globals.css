@@ -185,6 +185,17 @@
    * column starts. 92px holds "$41.34–$44.36" in mono at --t-2; measure
    * before narrowing it.
    */
+  /* ── Controls ───────────────────────────────────────────────────────────
+     Six heights, from fourteen. xs in-card metadata · sm secondary · md chips
+     and nav · lg actions and the coarse-pointer minimum · xl the primary
+     call to action. A row's own reserve is derived from these, not typed. */
+  --ctl-xs: 26px;
+  --ctl-sm: 32px;
+  --ctl-md: 36px;
+  --ctl-lg: 40px;
+  --ctl-xl: 44px;
+  --ctl-2xl: 52px;
+
   /* The status strip's height, fixed so a chip arriving cannot change it. */
   --status-h: 32px;
   /* One register cell, fixed for the same reason. */
@@ -688,7 +699,7 @@ code {
 }
 .primary {
   width: 100%;
-  min-height: 52px;
+  min-height: var(--ctl-2xl);
   margin-top: 4px;
   padding: 0 var(--s-8);
   font: 500 var(--t-6)/1 var(--font-body);
@@ -733,7 +744,7 @@ code {
 }
 
 .ghost {
-  min-height: 38px;
+  min-height: var(--ctl-lg);
   padding: 0 var(--s-6);
   font: 500 var(--t-4)/1 var(--font-body);
   letter-spacing: -0.01em;
@@ -761,7 +772,7 @@ code {
   align-items: center;
   justify-content: center;
   gap: var(--s-3);
-  min-height: 36px;
+  min-height: var(--ctl-md);
   padding: 0 var(--s-6);
   border: 0;
   border-radius: 999px;
@@ -1022,7 +1033,7 @@ h1.brand {
 }
 .place-clear {
   min-width: 44px;
-  min-height: 32px;
+  min-height: var(--ctl-sm);
   padding: var(--s-3) var(--s-5);
   border: 0;
   border-radius: 999px;
@@ -1192,7 +1203,7 @@ h1.brand {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .quick-target .chip {
-  min-height: 30px;
+  min-height: var(--ctl-sm);
   padding: 0 var(--s-5);
   background: transparent;
   box-shadow: none;
@@ -1201,7 +1212,7 @@ h1.brand {
   /* Higher specificity than the blanket rule at the foot of this file, so
      it has to opt in by name. */
   .quick-target .chip {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
   .quick-target {
     padding: var(--s-1);
@@ -1218,7 +1229,7 @@ h1.brand {
   gap: var(--s-4);
 }
 .quick-chip {
-  min-height: 34px;
+  min-height: var(--ctl-md);
   padding: 0 var(--s-5);
 }
 
@@ -1229,12 +1240,12 @@ h1.brand {
 }
 .route-actions .ghost {
   flex: 1 1 9rem;
-  min-height: 40px;
+  min-height: var(--ctl-lg);
 }
 @media (pointer: coarse) {
   /* Names itself for the same specificity reason as .quick-target .chip. */
   .route-actions .ghost {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
 }
 .route-actions .ghost.is-swapping {
@@ -1319,7 +1330,7 @@ h1.brand {
    * Reserving the height is better than rendering disabled buttons, which
    * would put controls that do nothing into the tab order.
    */
-  min-height: 38px;
+  min-height: var(--ctl-lg);
 }
 .route-tools {
   justify-content: space-between;
@@ -1339,7 +1350,7 @@ h1.brand {
    * looks the size it did. The user-agent exception does not apply here
    * because the size below is authored rather than inherited.
    */
-  min-height: 24px;
+  min-height: var(--ctl-xs);
   font-size: var(--t-4);
   color: var(--ink-2);
   cursor: pointer;
@@ -1755,7 +1766,7 @@ h1.brand {
   background: var(--sky-bg);
 }
 .market-tick-btn {
-  min-height: 30px;
+  min-height: var(--ctl-sm);
   margin-left: auto;
   padding: 0 var(--s-5);
   font-size: var(--t-3);
@@ -1832,7 +1843,7 @@ h1.brand {
    * moment the comparison arrives, under everything a reader is about to
    * read. CLS went 0.002 to 0.013 on the commit that added the enclosures.
    */
-  min-height: 46px;
+  min-height: calc(var(--ctl-md) + 2 * var(--s-2) + 2px);
 }
 .sep {
   width: 1px;
@@ -1923,7 +1934,7 @@ h1.brand {
   margin: 0;
 }
 .reverse-chip {
-  min-height: 32px;
+  min-height: var(--ctl-sm);
   padding: 0 var(--s-5);
   font-size: var(--t-3);
 }
@@ -2102,7 +2113,7 @@ h1.brand {
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  min-height: 26px;
+  min-height: var(--ctl-xs);
   padding: 0 var(--s-5);
   border-radius: 999px;
   font: 500 var(--t-3)/1 var(--font-body);
@@ -2226,7 +2237,7 @@ h1.brand {
 }
 
 .book {
-  min-height: 48px;
+  min-height: var(--ctl-2xl);
   padding: 0 var(--s-7);
   font: 500 var(--t-5)/1 var(--font-body);
   letter-spacing: -0.012em;
@@ -2364,7 +2375,7 @@ h1.admin-title {
 .status-actions .primary,
 .status-actions .ghost {
   width: auto;
-  min-height: 46px;
+  min-height: var(--ctl-xl);
   margin: 0;
   padding: 0 var(--s-7);
   font-size: var(--t-5);
@@ -2406,11 +2417,11 @@ h1.admin-title {
 }
 .book-continue {
   width: 100%;
-  min-height: 50px;
+  min-height: var(--ctl-2xl);
 }
 .book-back {
   justify-self: start;
-  min-height: 40px;
+  min-height: var(--ctl-lg);
 }
 .book-shell .book-continue + .book-continue,
 .book-shell .book-continue + .book-secondary {
@@ -2714,12 +2725,12 @@ h1.admin-title {
     width: 100%;
   }
   .book {
-    min-height: 50px;
+    min-height: var(--ctl-2xl);
   }
   .ghost,
   .chip {
     /* 44, not 40: see the pointer-coarse block at the foot of this file. */
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
 }
 @media (max-width: 639px) {
@@ -2790,7 +2801,7 @@ h1.admin-title {
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  min-height: 32px;
+  min-height: var(--ctl-sm);
   padding: var(--s-3) var(--s-5);
   border: 1px solid transparent;
   border-radius: 999px;
@@ -3408,7 +3419,7 @@ h1.admin-title {
 }
 .party-stepper .ghost {
   min-width: 44px;
-  min-height: 44px;
+  min-height: var(--ctl-xl);
   font-size: var(--t-6);
   line-height: 1;
 }
@@ -3629,7 +3640,7 @@ h1.admin-title {
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  min-height: 44px;
+  min-height: var(--ctl-xl);
   padding: 0 var(--s-5);
 }
 .theme-glyph {
@@ -3657,7 +3668,7 @@ h1.admin-title {
  * target. The marker is drawn here instead, which also lets it turn.
  */
 summary {
-  min-height: 24px;
+  min-height: var(--ctl-xs);
   display: flex;
   align-items: center;
   gap: var(--s-4);
@@ -3703,7 +3714,7 @@ details[open] > summary::before {
   .skip-link,
   .party-stepper .ghost,
   .theme-toggle {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
   /* The label is hidden under 720px, leaving a glyph in a 34px-wide button. */
   .theme-toggle {
@@ -3712,13 +3723,13 @@ details[open] > summary::before {
   /* The brand mark is a link too, and it is the one people hit by accident
      on the way to the nav. */
   .topbar-brand {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
     display: inline-flex;
     align-items: center;
   }
   /* A 16px checkbox with a 24px row cleared AA but is still a poor tap. */
   .auto-refresh {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
   /* Short labels — "To", "XL", "All" — cleared 44 tall and not wide. */
   .chip,
@@ -3728,11 +3739,11 @@ details[open] > summary::before {
   /* Opens the provenance sheet, which is the most important thing on a
      card to be able to hit. */
   .prov-chip {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
   /* No combinator: the disclosures are not all direct children. */
   summary {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
   /*
    * MapLibre ships 29px controls. They are in our DOM and on our map, so
@@ -3932,7 +3943,7 @@ details[open] > summary::before {
   flex: 1;
   display: grid;
   gap: var(--s-1);
-  min-height: 44px;
+  min-height: var(--ctl-xl);
   padding: var(--s-4) var(--s-5);
   text-align: left;
   border: 0;
@@ -3965,7 +3976,7 @@ details[open] > summary::before {
 .recent-trip-forget {
   flex-shrink: 0;
   width: 32px;
-  min-height: 44px;
+  min-height: var(--ctl-xl);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -4092,7 +4103,7 @@ details[open] > summary::before {
 .cmdk-input {
   flex-shrink: 0;
   width: 100%;
-  min-height: 52px;
+  min-height: var(--ctl-2xl);
   padding: 0 var(--s-7);
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -4119,7 +4130,7 @@ details[open] > summary::before {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--s-5);
-  min-height: 40px;
+  min-height: var(--ctl-lg);
   padding: var(--s-4) var(--s-5);
   border-radius: var(--radius-sm);
   font-size: var(--t-4);
@@ -4221,7 +4232,7 @@ details[open] > summary::before {
 }
 .watch-input {
   width: 92px;
-  min-height: 36px;
+  min-height: var(--ctl-md);
   padding: 0 var(--s-5);
   border: 0;
   border-radius: var(--radius-sm);
@@ -4232,7 +4243,7 @@ details[open] > summary::before {
 }
 @media (pointer: coarse) {
   .watch-input {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
 }
 
@@ -4489,7 +4500,7 @@ details[open] > summary::before {
 }
 .report-outcome-input {
   width: 104px;
-  min-height: 36px;
+  min-height: var(--ctl-md);
   padding: 0 var(--s-5);
   border: 0;
   border-radius: var(--radius-sm);
@@ -4500,7 +4511,7 @@ details[open] > summary::before {
 }
 @media (pointer: coarse) {
   .report-outcome-input {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
 }
 
@@ -4590,7 +4601,7 @@ details[open] > summary::before {
   display: inline-flex;
   align-items: center;
   gap: var(--s-4);
-  min-height: 40px;
+  min-height: var(--ctl-lg);
   margin-top: 12px;
   padding: 0 var(--s-6);
   border: 0;
@@ -4748,7 +4759,7 @@ details[open] > summary::before {
   flex: 1;
   /* Without this a long value makes the flex item refuse to shrink. */
   min-width: 0;
-  min-height: 38px;
+  min-height: var(--ctl-lg);
   padding: 0 var(--s-5);
   border: 0;
   border-radius: var(--radius-sm);
@@ -4762,7 +4773,7 @@ details[open] > summary::before {
 }
 @media (pointer: coarse) {
   .ask-input {
-    min-height: 44px;
+    min-height: var(--ctl-xl);
   }
 }
 .ask-foot {
@@ -5308,7 +5319,7 @@ details[open] > summary::before {
   color: var(--ink-3);
 }
 .party-dials .chip {
-  min-height: 28px;
+  min-height: var(--ctl-xs);
   padding: 0 var(--s-5);
   font-size: var(--t-3);
 }
