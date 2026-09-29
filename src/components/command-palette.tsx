@@ -54,7 +54,26 @@ export interface Command {
 }
 
 /** Groups appear in this order; anything unlisted sorts after. */
-const GROUP_ORDER = ["Your trips", "Go", "Rank by", "Show", "Appearance", "Actions"];
+const GROUP_ORDER = ["Your trips", "Go", "Rank by", "Show", "Look closer", "Appearance", "Actions"];
+
+/**
+ * One mark per group, in the leading column.
+ *
+ * Fourteen rows of plain left-aligned text is a `<datalist>`. A gutter gives
+ * the eye something to sort by before it reads a word, and a glyph that says
+ * what *kind* of thing a row is costs one column and no words. Deliberately
+ * drawn from the same handful of marks the rest of the product uses rather
+ * than an icon set — there is no icon dependency here and there should not be.
+ */
+const GROUP_GLYPH: Record<string, string> = {
+  "Your trips": "↺",
+  Go: "→",
+  "Rank by": "↕",
+  Show: "⊙",
+  "Look closer": "▤",
+  Appearance: "◐",
+  Actions: "▸",
+};
 
 function groupRank(group: string): number {
   const i = GROUP_ORDER.indexOf(group);
@@ -254,24 +273,30 @@ export function CommandPalette({
       }}
     >
       <div className="cmdk" role="dialog" aria-modal="true" aria-label="Commands">
-        <input
-          ref={inputRef}
-          className="cmdk-input"
-          type="text"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="cmdk-list"
-          aria-activedescendant={activeId}
-          aria-autocomplete="list"
-          aria-label="Type a command"
-          placeholder="Search trips, filters and actions…"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
-          onKeyDown={onKeyDown}
-        />
+        <div className="cmdk-field">
+          <input
+            ref={inputRef}
+            className="cmdk-input"
+            type="text"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="cmdk-list"
+            aria-activedescendant={activeId}
+            aria-autocomplete="list"
+            aria-label="Type a command"
+            placeholder="Search trips, filters and actions…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onKeyDown}
+          />
+          {/* What the query has left, without having to count the rows. */}
+          <span className="cmdk-count" aria-hidden>
+            {matches.length}
+          </span>
+        </div>
         <ul className="cmdk-list" id="cmdk-list" role="listbox" aria-label="Commands" ref={listRef}>
           {matches.map((c, i) => {
             /* Derived from the row above rather than carried in a variable
@@ -295,6 +320,9 @@ export function CommandPalette({
                   onMouseMove={() => setActive(i)}
                   onClick={() => choose(c)}
                 >
+                  <span className="cmdk-gutter" aria-hidden>
+                    {GROUP_GLYPH[c.group] ?? "·"}
+                  </span>
                   <span className="cmdk-label">{c.label}</span>
                   {c.hint ? <span className="cmdk-hint muted">{c.hint}</span> : null}
                 </li>

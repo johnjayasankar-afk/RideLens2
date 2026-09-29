@@ -4173,40 +4173,103 @@ details[open] > summary::before {
   color: var(--ink);
   font-size: var(--t-6);
 }
+/* An input with `outline: none` and nothing in its place is an input that
+   does not say it has focus. It is also the first thing focused when the
+   palette opens, so this is the app's answer to "am I typing into it". */
 .cmdk-input:focus {
   outline: none;
+  box-shadow: inset 0 -2px 0 var(--forest-2);
+}
+/* The field owns the count's corner. */
+.cmdk-field {
+  position: relative;
+  flex-shrink: 0;
+}
+.cmdk-count {
+  position: absolute;
+  top: 0;
+  right: var(--s-7);
+  display: inline-flex;
+  align-items: center;
+  height: var(--ctl-2xl);
+  color: var(--ink-3);
+  font: 500 var(--t-2) / 1 var(--font-mono);
+  letter-spacing: var(--key-track);
+  pointer-events: none;
 }
 .cmdk-list {
   flex: 1;
   overflow-y: auto;
+  /* The list continues. Say so — it was clipped mid-row at the bottom with no
+     fade, no shadow and no scrollbar, so there was no signal there was more. */
+  mask-image: linear-gradient(to bottom, #000 0 calc(100% - 22px), transparent 100%);
   margin: 0;
   padding: var(--s-3);
   list-style: none;
   /* The palette scrolls, the page behind it must not. */
   overscroll-behavior: contain;
 }
+/*
+ * A gutter, so fourteen rows of left-aligned text stop reading as a
+ * `<datalist>`. One mark per group, in a column the eye can sort by before it
+ * reads a word.
+ */
 .cmdk-item {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--s-5);
-  min-height: var(--ctl-lg);
-  padding: var(--s-4) var(--s-5);
-  border-radius: var(--radius-sm);
+  min-height: var(--ctl-sm);
+  margin-inline: var(--s-2);
+  padding: var(--s-3) var(--s-5);
+  border-radius: var(--r-2);
   font-size: var(--t-4);
   cursor: pointer;
 }
+.cmdk-gutter {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+/*
+ * A selection, not a highlighted table row.
+ *
+ * Edge to edge, the active row read as a row of a table that happened to be
+ * tinted. Inset from the list's edge with a bar down its left side, it reads
+ * as the thing Enter will run.
+ */
 .cmdk-item.is-active {
   background: var(--mint-bg);
   color: var(--mint-t);
+}
+.cmdk-item.is-active::before {
+  content: "";
+  position: absolute;
+  top: var(--s-3);
+  bottom: var(--s-3);
+  left: 0;
+  width: 2px;
+  background: var(--forest-2);
+}
+.cmdk-item.is-active .cmdk-gutter {
+  color: inherit;
+}
+.cmdk-item:active {
+  transform: none;
+  filter: brightness(0.96);
 }
 .cmdk-item.is-active .cmdk-hint {
   color: inherit;
   opacity: 0.75;
 }
+/* Headers stay put while their group scrolls past, so a long list never
+   leaves you looking at rows whose heading has gone. */
 .cmdk-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   padding: var(--s-5) var(--s-5) var(--s-2);
+  background: var(--paper);
   color: var(--ink-3);
 }
 /* The first group in the list does not need the gap above it. */
