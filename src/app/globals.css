@@ -5337,7 +5337,21 @@ details[open] > summary::before {
 .deck-tabs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--deck-n, 7), minmax(68px, 1fr));
+  /*
+   * Columns that fit their labels.
+   *
+   * `minmax(68px, 1fr)` is eight equal eighths, and the eight labels are not
+   * equal: "TRADE-OFFS" is 84px of tracked mono and "SPLIT" is 42px. The tab
+   * has `white-space: nowrap` and `min-width: 0`, so the long ones simply
+   * overflowed their column and printed their last letters underneath the
+   * keyboard hint — BREAKDOWN2, TRADE-OFFS4, on every load, in both schemes.
+   *
+   * `max-content` as the floor sizes each column to its own label and `1fr`
+   * shares what is left equally, which at 638px of content in a 720px strip
+   * is 10px a column. The indicator is measured rather than computed now,
+   * because the arithmetic it used was arithmetic about equal columns.
+   */
+  grid-template-columns: repeat(var(--deck-n, 7), minmax(max-content, 1fr));
   /*
    * A rail, not a capsule.
    *
@@ -5369,12 +5383,16 @@ details[open] > summary::before {
   bottom: -1px;
   left: 0;
   height: 2px;
-  width: calc(100% / var(--deck-n, 7));
+  /* The fallbacks are the old arithmetic, which is what server-rendered HTML
+     gets for one frame before the layout effect measures the real tab. */
+  width: var(--deck-w, calc(100% / var(--deck-n, 7)));
   border-radius: 0;
   background: var(--forest-2);
   box-shadow: none;
-  transform: translateX(calc(var(--deck-i, 0) * 100%));
-  transition: transform var(--dur-3) var(--ease);
+  transform: translateX(var(--deck-x, calc(var(--deck-i, 0) * 100%)));
+  transition:
+    transform var(--dur-3) var(--ease),
+    width var(--dur-3) var(--ease);
 }
 .deck-tab {
   position: relative;
@@ -5422,9 +5440,17 @@ details[open] > summary::before {
 .deck-tabs:focus-within .deck-tab[data-key]::after {
   opacity: 1;
 }
-/* The space the hint sits in, reserved whether or not it is showing. */
+/*
+ * The space the hint sits in, reserved whether or not it is showing.
+ *
+ * 1.4ch was the digit's own width and nothing else, so on the two tabs with
+ * no slack in their column — the longest labels — the hint sat 1px from the
+ * last letter and read as part of the word. 2.4ch is the digit plus a clear
+ * 8px: `right` is --s-3 from the padding edge and the digit is about 1.2ch
+ * wide, so the gap is what is left.
+ */
 .deck-tab[data-key] {
-  padding-right: calc(var(--s-3) + 1.4ch);
+  padding-right: calc(var(--s-3) + 2.4ch);
 }
 .deck-tab:hover {
   color: var(--ink-2);
@@ -5616,6 +5642,15 @@ details[open] > summary::before {
   width: 8px;
   height: 8px;
   border-radius: var(--r-1);
+}
+/* The same hatch as .comp-taken, because that is what the bar draws for a
+   slice that is subtracted. `data-slice` still decides the hue for the same
+   category when it comes out positive on another route; the sign decides
+   whether the bar drew a segment at all. */
+.comp-dot[data-sign="minus"] {
+  background:
+    repeating-linear-gradient(-45deg, var(--ink-3) 0 1.5px, transparent 1.5px 4.5px), var(--soft);
+  box-shadow: inset 0 0 0 1px var(--ink-3);
 }
 .comp-more {
   /* It had no min-height at all and computed to about 19px — under the 24px

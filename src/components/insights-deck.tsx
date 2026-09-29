@@ -30,7 +30,7 @@
  * this long meant most readers never saw it at all.
  */
 
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 
 import { AlternativesRow } from "./alternatives-row";
 import { DepartureStrip } from "./departure-strip";
@@ -111,6 +111,37 @@ export function InsightsDeck({
     [active, choose],
   );
 
+  /*
+   * The indicator, measured.
+   *
+   * It used to be `width: 100%/n` and `translateX(i * 100%)`, which is exact
+   * arithmetic about a grid whose columns were equal — and they stopped being
+   * equal the moment the columns were told to fit their labels instead of
+   * overlapping them. "TRADE-OFFS" needs 84px of mono and an equal eighth of
+   * this strip gives it 68, so its last letters were printed underneath the
+   * keyboard hint.
+   *
+   * A layout effect rather than a render-time read, and a ResizeObserver
+   * rather than a window listener, because the strip changes width when the
+   * results column does and when the mono face finishes loading, neither of
+   * which is a resize of the window.
+   */
+  const tablist = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const strip = tablist.current;
+    if (!strip) return;
+    const place = () => {
+      const tab = strip.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (!tab) return;
+      strip.style.setProperty("--deck-w", `${tab.offsetWidth}px`);
+      strip.style.setProperty("--deck-x", `${tab.offsetLeft}px`);
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(strip);
+    return () => ro.disconnect();
+  }, [active]);
+
   if (quotes.length === 0) return null;
   const current = TABS.find((t) => t.id === active)!;
   const sessionId = session?.id ?? null;
@@ -139,12 +170,19 @@ export function InsightsDeck({
       */}
       <div className="deck-tabstrip">
         <div
+          ref={tablist}
           className="deck-tabs"
           role="tablist"
           aria-label="Ways to look at this comparison"
           onKeyDown={onKeyDown}
-          /* Position as arithmetic rather than measurement: no layout read,
-             no resize listener, and it is correct on the first frame. */
+          /*
+           * --deck-i and --deck-n place the indicator by arithmetic, which is
+           * correct on the first frame and correct while the columns are
+           * equal. They are no longer equal — see .deck-tabs in globals.css —
+           * so the effect above overwrites both with measured pixels as soon
+           * as there is a layout to measure. Server-rendered HTML keeps the
+           * arithmetic, which is close, rather than a bar of zero width.
+           */
           style={
             {
               "--deck-i": TABS.findIndex((t) => t.id === active),

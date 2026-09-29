@@ -149,7 +149,19 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
                   <div className="comp-legend">
                     {composition.slices.map((slice) => (
                       <span className="comp-key" key={slice.id}>
-                        <span className="comp-dot" data-slice={slice.id} aria-hidden />
+                        {/*
+                          The sign, not just the category. A negative slice is
+                          not drawn as a segment — it is struck off the end as
+                          the hatched tail — so a solid blue square beside
+                          "Direction of travel −$4.65" was a key to a colour
+                          that appears nowhere in the bar it explains.
+                        */}
+                        <span
+                          className="comp-dot"
+                          data-slice={slice.id}
+                          data-sign={slice.dollars < 0 ? "minus" : "plus"}
+                          aria-hidden
+                        />
                         {slice.label}
                         <strong>
                           {slice.dollars < 0 ? "−" : ""}
@@ -181,7 +193,12 @@ export function FareCompositionPanel({ quotes }: { quotes: readonly NormalizedQu
                         {composition.slices.map((slice) => (
                           <div key={slice.id}>
                             <dt>
-                              <span className="comp-dot" data-slice={slice.id} aria-hidden />
+                              <span
+                                className="comp-dot"
+                                data-slice={slice.id}
+                                data-sign={slice.dollars < 0 ? "minus" : "plus"}
+                                aria-hidden
+                              />
                               {slice.label}
                             </dt>
                             <dd>{slice.detail}</dd>
