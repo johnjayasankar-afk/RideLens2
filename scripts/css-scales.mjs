@@ -40,7 +40,9 @@ const CEILINGS = {
      output. There is no room here for a new stray, which is the point. */
   "font-size": 2,
   "border-radius": 1,
-  padding: 8,
+  /* Five after the multi-line fix below showed the line scanner had been
+     counting three values that were not there. */
+  padding: 5,
   gap: 1,
   /* Control heights. Fourteen distinct values were reachable on one screen —
      24, 26, 28, 30, 32, 34, 36, 38, 40, 44, 46, 48, 50, 52 — for pills that
@@ -101,13 +103,45 @@ const inTokens = (line) => ranges.some(([a, b]) => line >= a && line <= b);
 
 /** Strip comments, keeping line numbers, so a value in prose is not counted. */
 const clean = source.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "));
-const lines = clean.split("\n");
+
+/**
+ * Declarations, not lines.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This scanned line by line, and prettier breaks any multi-value shorthand │
+ * │ across lines. So every `transition:` with more than one property in it   │
+ * │ was invisible to the check: `transition:` sat on one line and            │
+ * │ `background-color 0.16s var(--ease),` on the next, and the value regex   │
+ * │ never saw a value. The duration ladder reported "1 distinct" while the   │
+ * │ file carried eight — 0.16s, 0.18s, 0.2s, 0.3s, 0.35s, 160ms — in the     │
+ * │ hover transitions of the nav, the footer, .primary, .chip, .place-field, │
+ * │ .prov-chip, .recent-trip-run and .ask-open. A guard that reads one line  │
+ * │ of a declaration is a guard that passes on the declarations that matter  │
+ * │ most, because the long ones are the ones prettier wraps.                 │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * So the source is scanned whole and the line is recovered from the match
+ * offset. `[^;{}]*` crosses newlines; `\s` in the prefix matches one too.
+ */
+const newlines = [];
+for (let i = 0; i < clean.length; i += 1) if (clean[i] === "\n") newlines.push(i);
+/** 0-based line index containing `offset`. */
+const lineOf = (offset) => {
+  let lo = 0;
+  let hi = newlines.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (newlines[mid] < offset) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+};
 
 const found = {};
 for (const prop of Object.keys(CEILINGS)) found[prop] = new Map();
 
-lines.forEach((line, i) => {
-  if (inTokens(i)) return;
+{
+  const line = clean;
   for (const prop of Object.keys(CEILINGS)) {
     /*
      * `padding` matches padding-left too, which is the same decision. The
@@ -120,6 +154,8 @@ lines.forEach((line, i) => {
         ? /(?:^|[;{\s])(?:transition|animation)(?:-duration)?\s*:([^;{}]+)/g
         : new RegExp(`(?:^|[;{\\s])${prop}(?:-[a-z]+)?\\s*:([^;{}]+)`, "g");
     for (const match of line.matchAll(re)) {
+      const at = lineOf(match.index);
+      if (inTokens(at)) continue;
       const raw = match[1].trim();
       /* A whole declaration built from a calc() is reaching for the ladder,
          whatever bare numbers the expression contains — the reserve under the
@@ -137,12 +173,12 @@ lines.forEach((line, i) => {
           if (!/^[\d.]+m?s$/.test(value)) continue;
         } else if (!/^-?[\d.]+(px|rem|em|%)?$/.test(value)) continue;
         const seen = found[prop].get(value) ?? [];
-        seen.push(i + 1);
+        seen.push(at + 1);
         found[prop].set(value, seen);
       }
     }
   }
-});
+}
 
 let over = 0;
 console.log(`\nCSS scales in ${FILE} (values outside the token blocks)\n`);

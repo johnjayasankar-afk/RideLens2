@@ -672,8 +672,8 @@ code {
   letter-spacing: -0.01em;
   color: var(--ink-2);
   transition:
-    color 0.2s,
-    background-color 0.2s;
+    color var(--dur-2),
+    background-color var(--dur-2);
 }
 .topnav a:hover {
   color: var(--ink);
@@ -716,8 +716,8 @@ code {
   text-decoration-color: var(--line-2);
   text-underline-offset: 3px;
   transition:
-    color 0.2s,
-    text-decoration-color 0.2s;
+    color var(--dur-2),
+    text-decoration-color var(--dur-2);
 }
 .footer-labs a:hover,
 .footer-links a:hover {
@@ -744,12 +744,15 @@ code {
   white-space: nowrap;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  /* Two speeds, not five. 0.35 / 0.35 / 0.3 / 0.3 / 0.2 on one declaration is
+     five stopwatches for one button: the lift and the shadow are the slower
+     pair and everything else is the house hover speed. */
   transition:
-    transform 0.35s var(--ease),
-    box-shadow 0.35s var(--ease),
-    background-color 0.3s,
-    color 0.3s,
-    opacity 0.2s;
+    transform var(--dur-3) var(--ease),
+    box-shadow var(--dur-3) var(--ease),
+    background-color var(--dur-2),
+    color var(--dur-2),
+    opacity var(--dur-2);
 }
 .primary {
   width: 100%;
@@ -838,10 +841,10 @@ code {
   box-shadow: inset 0 0 0 1px var(--line);
   cursor: pointer;
   transition:
-    color 0.2s,
-    background-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.3s var(--ease);
+    color var(--dur-2),
+    background-color var(--dur-2),
+    box-shadow var(--dur-2),
+    transform var(--dur-3) var(--ease);
 }
 .chip:hover {
   color: var(--ink);
@@ -1100,8 +1103,8 @@ h1.brand {
   background: transparent;
   cursor: pointer;
   transition:
-    color 0.2s,
-    background-color 0.2s;
+    color var(--dur-2),
+    background-color var(--dur-2);
 }
 .place-clear:hover {
   color: var(--ink);
@@ -1121,8 +1124,8 @@ h1.brand {
   background: var(--ground);
   box-shadow: inset 0 0 0 1px var(--line);
   transition:
-    box-shadow 0.2s,
-    background-color 0.2s;
+    box-shadow var(--dur-2),
+    background-color var(--dur-2);
 }
 .place-field input::placeholder {
   color: #737c76;
@@ -3095,9 +3098,9 @@ h1.admin-title {
   letter-spacing: 0.012em;
   cursor: pointer;
   transition:
-    background 160ms var(--ease),
-    border-color 160ms var(--ease),
-    transform 160ms var(--ease);
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease);
 }
 .prov-chip:hover {
   border-color: currentColor;
@@ -4221,17 +4224,34 @@ details[open] > summary::before {
 }
 .recent-trips-head > .muted:first-child {
 }
+/*
+ * The record, built like the cards that show what was computed.
+ *
+ * Each row was a flat --soft slab with an inset hairline — no paper, no
+ * caught light, no elevation — which made the one object on the front door
+ * holding the reader's own history the only card-shaped thing in the app not
+ * built as a card. On a page of white pills and a white form it read as
+ * disabled. Same bargain the option list strikes: one enclosure, a hairline
+ * between entries, and the rows give up their own radius and shadow.
+ */
 .recent-trips-list {
   display: grid;
-  gap: var(--s-3);
+  gap: 0;
   margin: 0;
   padding: 0;
+  overflow: clip;
+  border-radius: var(--radius);
+  box-shadow: var(--surface-1);
   list-style: none;
 }
 .recent-trip {
   display: flex;
   align-items: stretch;
   gap: var(--s-2);
+  background: var(--paper);
+}
+.recent-trip + .recent-trip {
+  border-top: 1px solid var(--line);
 }
 .recent-trip-run {
   flex: 1;
@@ -4241,17 +4261,18 @@ details[open] > summary::before {
   padding: var(--s-4) var(--s-5);
   text-align: left;
   border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--soft);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
   transition:
-    background-color 0.16s var(--ease),
-    transform 0.16s var(--ease);
+    background-color var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease);
 }
-.recent-trip-run:hover {
-  background: var(--mint-bg);
+@media (hover: hover) and (pointer: fine) {
+  .recent-trip-run:hover {
+    background: var(--mint-bg);
+  }
 }
 .recent-trip-run:active {
   transform: scale(0.995);
@@ -4975,9 +4996,9 @@ details[open] > summary::before {
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.18s var(--ease),
-    box-shadow 0.18s var(--ease),
-    transform 0.18s var(--ease);
+    background-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease);
 }
 .ask-open:hover {
   background: var(--mint-bg);
@@ -6479,10 +6500,7 @@ details[open] > summary::before {
   gap: 0;
   overflow: clip;
   border-radius: var(--radius);
-  box-shadow:
-    0 0 0 1px var(--line),
-    inset 0 1px 0 var(--edge-hi),
-    var(--sh-1);
+  box-shadow: var(--surface-1);
 }
 .trip-row {
   border-radius: 0;
@@ -6492,19 +6510,17 @@ details[open] > summary::before {
 .trip-row + .trip-row {
   border-top: 1px solid var(--line);
 }
-/* The only money in the product that was set in proportional figures. */
+/* The only money in the product that was set in proportional figures. No
+   --fig-col here: this is a sentence, not a column, and a min-width on a
+   full-width <p> was claiming an alignment that does not exist on this page. */
 .trip-range {
-  min-width: var(--fig-col);
   font-variant-numeric: tabular-nums;
 }
 .trips-empty {
   padding: var(--s-9) var(--s-8);
   border-radius: var(--radius);
   background: var(--paper);
-  box-shadow:
-    0 0 0 1px var(--line),
-    inset 0 1px 0 var(--edge-hi),
-    var(--sh-1);
+  box-shadow: var(--surface-1);
 }
 .trips-empty .primary {
   width: auto;
