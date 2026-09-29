@@ -76,6 +76,26 @@ export const envSchema = z.object({
     .optional()
     .transform((v) => (v == null ? true : v !== "false")),
   OSRM_BASE_URL: z.string().default("https://router.project-osrm.org"),
+
+  /*
+   * A journey time for the transit row, from an engine that reads a schedule.
+   *
+   * Two variables, because there are two ways to have one and only one of
+   * them needs a credential. `TRANSIT_ROUTING_BASE_URL` points at an
+   * OpenTripPlanner-compatible `/plan` endpoint — a hosted one today, an OTP
+   * you run yourself later, with no code change either way.
+   * `TRANSIT_ROUTING_API_KEY` is sent only when it is set, because a
+   * self-hosted engine has none and gating on a credential that does not
+   * exist would keep the most honest configuration switched off.
+   *
+   * Unset, the adapter never reaches the network and every transit row keeps
+   * saying its journey time is not modeled — which is exactly what it says
+   * now. Same shape as ANTHROPIC_API_KEY above: the feature is built, it
+   * reports which mode it is in, and without the key it degrades to
+   * something honest rather than to something missing.
+   */
+  TRANSIT_ROUTING_BASE_URL: optionalUrl,
+  TRANSIT_ROUTING_API_KEY: optionalString,
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -124,6 +144,21 @@ export function supabaseConfigured(env: AppEnv = getEnv()): boolean {
 
 export function rateCardConfigured(env: AppEnv = getEnv()): boolean {
   return env.RATE_CARD_SOURCE_ENABLED !== false;
+}
+
+/**
+ * A schedule source is wired up.
+ *
+ * The base URL alone, never the key: an OpenTripPlanner you host yourself
+ * answers without one.
+ *
+ * Deliberately absent from `isProductionLiveCapable` below. That predicate
+ * asks whether a legitimate live *quote* path exists, and a journey time is
+ * not a quote — folding this in would let a transit router make the app
+ * claim it can price a ride.
+ */
+export function transitRoutingConfigured(env: AppEnv = getEnv()): boolean {
+  return Boolean(env.TRANSIT_ROUTING_BASE_URL);
 }
 
 /** At least one legitimate live quote path is configured. */

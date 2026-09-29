@@ -5,6 +5,7 @@ import {
   subwayServed,
   transitAlternativeFor,
   walkAlternative,
+  withJourneyTime,
   WALKABLE_MAX_SECONDS,
 } from "@/lib/transit/alternatives";
 import { SUBWAY_LEG, TARIFFS, tariffTotalMinor } from "@/lib/transit/tariffs";
@@ -242,5 +243,54 @@ describe("a trip that stays on the network", () => {
     const la = { lat: 34.0407, lng: -118.2468 };
     const hollywood = { lat: 34.0928, lng: -118.3287 };
     expect(transitAlternativeFor(la, hollywood)).toBeNull();
+  });
+});
+
+describe("folding in a measured journey time", () => {
+  const measured = {
+    seconds: 3720,
+    measuredAt: "2026-09-29T18:32:00.000Z",
+    label: "Transitland routing",
+    url: "https://www.transit.land/terms",
+  };
+
+  it("leaves the absence and its reason alone when nobody measured one", () => {
+    const alt = transitAlternativeFor(MIDTOWN, JFK)!;
+    expect(withJourneyTime(alt, null)).toEqual(alt);
+    expect(withJourneyTime(alt, null).durationNote).toMatch(/not modeled/i);
+  });
+
+  it("replaces the note with the figure and its provenance", () => {
+    const alt = withJourneyTime(transitAlternativeFor(MIDTOWN, JFK)!, measured);
+    expect(alt.durationSeconds).toBe(3720);
+    /* The note explained an absence. There is no longer one to explain. */
+    expect(alt.durationNote).toBeNull();
+    expect(alt.durationSource).toEqual({
+      label: "Transitland routing",
+      url: "https://www.transit.land/terms",
+      measuredAt: "2026-09-29T18:32:00.000Z",
+    });
+  });
+
+  it("does not mutate what it was given", () => {
+    const alt = transitAlternativeFor(MIDTOWN, JFK)!;
+    const before = structuredClone(alt);
+    withJourneyTime(alt, measured);
+    expect(alt).toEqual(before);
+  });
+
+  /* The invariant the whole change rests on. */
+  it("never lets a duration exist without a source, or the reverse", () => {
+    const alt = transitAlternativeFor(MIDTOWN, JFK)!;
+    for (const m of [null, measured]) {
+      const out = withJourneyTime(alt, m);
+      expect(out.durationSeconds == null).toBe(out.durationSource == null);
+    }
+    const walk = walkAlternative(480)!;
+    expect(walk.durationSeconds == null).toBe(walk.durationSource == null);
+  });
+
+  it("cites the router that measured a walk", () => {
+    expect(walkAlternative(480)!.durationSource?.label).toMatch(/OSRM/i);
   });
 });

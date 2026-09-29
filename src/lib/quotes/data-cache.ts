@@ -30,13 +30,22 @@
 
 import { MemoryTtlStore } from "@/lib/quotes/store";
 
-export type DataClass = "route" | "weather" | "geocode" | "quote";
+export type DataClass = "route" | "transit" | "weather" | "geocode" | "quote";
 
 /** How long an answer is simply correct. */
 export const TTL_SECONDS: Record<DataClass, number> = {
   /* Roads do not move. Bounded by tolls and closures changing, not traffic —
      traffic lives in the marketplace model, not in the route. */
   route: 6 * 60 * 60,
+  /*
+   * A schedule is not a road.
+   *
+   * Headways and running times are a function of the hour, so the six a.m.
+   * answer is not the six p.m. one. This expires while it is still true
+   * rather than while it is still useful — the opposite trade from the line
+   * above it.
+   */
+  transit: 15 * 60,
   /* Precipitation is the only weather signal used and it turns over fast. */
   weather: 10 * 60,
   /* An address resolves to the same point tomorrow. */
@@ -51,6 +60,8 @@ export const TTL_SECONDS: Record<DataClass, number> = {
  */
 export const STALE_WHILE_REVALIDATE_SECONDS: Record<DataClass, number> = {
   route: 24 * 60 * 60,
+  /* Never. A stale journey time is a stale price, not a stale distance. */
+  transit: 0,
   weather: 0,
   geocode: 7 * 24 * 60 * 60,
   /* Never for a price. See the header. */
@@ -69,6 +80,8 @@ interface Entry<T> {
  */
 const CAPS: Record<DataClass, number> = {
   route: 500,
+  /* Same order as routes; the entry is four fields, not a polyline. */
+  transit: 500,
   weather: 200,
   geocode: 2_000,
   quote: 1_000,

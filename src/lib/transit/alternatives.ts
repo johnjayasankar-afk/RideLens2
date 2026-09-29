@@ -13,6 +13,7 @@
  */
 
 import { TARIFFS, tariffTotalMinor, type TransitTariff } from "./tariffs";
+import type { MeasuredJourney } from "./journey-time";
 import type { TransitAlternative } from "./types";
 
 export interface Point {
@@ -141,6 +142,7 @@ function toAlternative(tariff: TransitTariff, airportName: string): TransitAlter
     kind: "transit",
     fareMinor: tariffTotalMinor(tariff),
     durationSeconds: null,
+    durationSource: null,
     durationNote: `Fare only. No schedule source is configured, so the journey time from ${airportName} is not modeled here.`,
     unmodeled: tariff.unmodeled,
     tariff,
@@ -210,6 +212,7 @@ function subwayAlternativeFor(pickup: Point, destination: Point): TransitAlterna
     kind: "transit",
     fareMinor: tariffTotalMinor(tariff),
     durationSeconds: null,
+    durationSource: null,
     durationNote:
       "One fare, with free transfers. No schedule source is configured, so whether a " +
       "route connects these two points, and how long it would take, are not modeled here.",
@@ -222,7 +225,10 @@ function subwayAlternativeFor(pickup: Point, destination: Point): TransitAlterna
 /** A walk is worth offering only when it is actually walkable. */
 export const WALKABLE_MAX_SECONDS = 25 * 60;
 
-export function walkAlternative(seconds: number | null): TransitAlternative | null {
+export function walkAlternative(
+  seconds: number | null,
+  measuredAt: string = new Date().toISOString(),
+): TransitAlternative | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null;
   if (seconds > WALKABLE_MAX_SECONDS) return null;
   return {
@@ -232,7 +238,42 @@ export function walkAlternative(seconds: number | null): TransitAlternative | nu
     fareMinor: 0,
     durationSeconds: Math.round(seconds),
     durationNote: null,
+    /*
+     * The walk has always had a measured time and never said who measured it.
+     * It came from the foot router the whole time — see routing/osrm.ts — and
+     * the same rule that makes a transit time cite its engine applies here.
+     */
+    durationSource: {
+      label: "OSRM foot routing (FOSSGIS)",
+      url: "https://routing.openstreetmap.de/",
+      measuredAt,
+    },
     unmodeled: null,
     sources: [],
+  };
+}
+
+/**
+ * A measured journey time, folded into an alternative that did not have one.
+ *
+ * Pure, and null-in means unchanged-out: an alternative whose time nobody
+ * could compute keeps the note explaining why. The note is cleared only when
+ * a figure replaces it, because the note exists to explain an absence and
+ * there is no longer one to explain.
+ */
+export function withJourneyTime(
+  alternative: TransitAlternative,
+  measured: MeasuredJourney | null,
+): TransitAlternative {
+  if (!measured) return alternative;
+  return {
+    ...alternative,
+    durationSeconds: measured.seconds,
+    durationNote: null,
+    durationSource: {
+      label: measured.label,
+      url: measured.url,
+      measuredAt: measured.measuredAt,
+    },
   };
 }

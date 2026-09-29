@@ -37,6 +37,22 @@ function minutes(seconds: number): string {
   return `${m} min`;
 }
 
+/*
+ * Hardcoded to New York because the app is: tariffs.ts prices the MTA and
+ * alternatives.ts knows three airports. A rider in another timezone still
+ * wants the time the journey was measured where the journey is.
+ */
+const MEASURED_AT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function measuredAtLabel(iso: string): string | null {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? null : MEASURED_AT.format(at);
+}
+
 export function AlternativesRow({
   sessionId,
   embedded,
@@ -60,17 +76,23 @@ export function AlternativesRow({
     askedFor.current = sessionId;
     fetch(`/api/alternatives?session=${encodeURIComponent(sessionId)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((body: { alternatives: TransitAlternative[]; carLowMinor: number | null }) => {
-        setData(
-          body.alternatives.length > 0
-            ? {
-                state: "ready",
-                alternatives: body.alternatives,
-                carLowMinor: body.carLowMinor,
-              }
-            : { state: "none" },
-        );
-      })
+      .then(
+        (body: {
+          alternatives: TransitAlternative[];
+          carLowMinor: number | null;
+          journeyTimes?: "measured" | "not-configured";
+        }) => {
+          setData(
+            body.alternatives.length > 0
+              ? {
+                  state: "ready",
+                  alternatives: body.alternatives,
+                  carLowMinor: body.carLowMinor,
+                }
+              : { state: "none" },
+          );
+        },
+      )
       .catch(() => setData({ state: "none" }));
   }, [sessionId]);
 
@@ -136,7 +158,16 @@ export function AlternativesRow({
                   </div>
                   <p className="alternative-meta muted">
                     {alt.durationSeconds != null ? (
-                      <span>{minutes(alt.durationSeconds)}</span>
+                      /*
+                       * The same sentence stem as the absent case, on purpose.
+                       * Both answer "how long does this take", and the
+                       * difference between them should be the figure rather
+                       * than the phrasing — a bare "43 min" beside a "Journey
+                       * time not modeled" on the next row reads as two kinds
+                       * of thing when it is one kind with and without an
+                       * answer.
+                       */
+                      <span>Journey time {minutes(alt.durationSeconds)}</span>
                     ) : (
                       /*
                        * Rendered as absent, not filled in — and now with the
@@ -157,6 +188,36 @@ export function AlternativesRow({
                       </>
                     ) : null}
                   </p>
+                  {/*
+                    Provenance for the time, kept apart from the fare sources
+                    below. A fare was read off a publisher's page on a date; a
+                    journey time was computed by an engine at an instant.
+                    Folding this into the sources sentence would read as though
+                    the routing engine were a source for the price.
+                  */}
+                  {alt.durationSeconds != null && alt.durationSource
+                    ? (() => {
+                        const at = measuredAtLabel(alt.durationSource.measuredAt);
+                        return (
+                          <p className="alternative-sources muted">
+                            Journey time from{" "}
+                            {alt.durationSource.url ? (
+                              <a
+                                href={alt.durationSource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {alt.durationSource.label}
+                              </a>
+                            ) : (
+                              alt.durationSource.label
+                            )}
+                            {at ? ` (measured ${at})` : null}. One itinerary at that moment, not a
+                            timetable guarantee.
+                          </p>
+                        );
+                      })()
+                    : null}
                   {alt.unmodeled ? (
                     <p className="alternative-note">
                       Does not include {alt.unmodeled} — the real total is higher.

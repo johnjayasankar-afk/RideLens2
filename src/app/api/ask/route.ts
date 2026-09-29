@@ -23,6 +23,7 @@ import { ASSISTANT_SYSTEM_PROMPT, buildBrief, renderBrief } from "@/lib/assistan
 import { answerLocally } from "@/lib/assistant/local";
 import { ASSISTANT_TOOLS, describeAction, toAction } from "@/lib/assistant/actions";
 import { getSession } from "@/lib/quotes/orchestrator";
+import { measuredJourneyFor } from "@/lib/transit/journey-time";
 import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import type { TripRecord } from "@/lib/history/trip-log";
@@ -120,7 +121,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const briefData = buildBrief(session, (parsed.trips ?? []) as TripRecord[], MODEL_VERSION);
+  /*
+   * Shares a cache key with /api/alternatives, so the panel has almost always
+   * paid for this already. Null when no source is configured, when the source
+   * declined, or when there is no transit row at all — and then the brief says
+   * the journey time is not modeled, exactly as the panel does.
+   */
+  const journey = await measuredJourneyFor(
+    { lat: session.pickup.lat, lng: session.pickup.lng },
+    { lat: session.destination.lat, lng: session.destination.lng },
+  );
+  const briefData = buildBrief(
+    session,
+    (parsed.trips ?? []) as TripRecord[],
+    MODEL_VERSION,
+    journey,
+  );
   const encoder = new TextEncoder();
 
   /*

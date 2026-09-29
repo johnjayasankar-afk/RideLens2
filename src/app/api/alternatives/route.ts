@@ -7,7 +7,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { transitAlternativeFor, walkAlternative } from "@/lib/transit/alternatives";
+import {
+  transitAlternativeFor,
+  walkAlternative,
+  withJourneyTime,
+} from "@/lib/transit/alternatives";
+import { measuredJourneyFor } from "@/lib/transit/journey-time";
+import { transitRoutingConfigured } from "@/lib/config";
 import type { TransitAlternative } from "@/lib/transit/types";
 import { fetchWalkingSeconds } from "@/lib/routing/osrm";
 import { getSession } from "@/lib/quotes/orchestrator";
@@ -46,7 +52,6 @@ export async function GET(req: NextRequest) {
   const alternatives: TransitAlternative[] = [];
 
   const transit = transitAlternativeFor(pickup, destination);
-  if (transit) alternatives.push(transit);
 
   /*
    * Only ask about walking for a trip that could plausibly be walked. The
@@ -54,10 +59,25 @@ export async function GET(req: NextRequest) {
    * request nobody needed the answer to.
    */
   const straightLineKm = haversineKm(pickup, destination);
-  if (straightLineKm <= 2.5) {
-    const walk = walkAlternative(await fetchWalkingSeconds(pickup, destination));
-    if (walk) alternatives.push(walk);
-  }
+
+  /*
+   * Both outward lookups at once, and neither can fail this route: each
+   * resolves to null rather than throwing, so there is no rejection for
+   * `Promise.all` to propagate. Done in sequence this would be two round
+   * trips on a path nobody is blocked on.
+   *
+   * The journey time is asked for only where a transit row exists. Most trips
+   * produce none, and a routing tier is measured in requests.
+   */
+  const [journey, walkSeconds] = await Promise.all([
+    transit ? measuredJourneyFor(pickup, destination) : Promise.resolve(null),
+    straightLineKm <= 2.5 ? fetchWalkingSeconds(pickup, destination) : Promise.resolve(null),
+  ]);
+
+  if (transit) alternatives.push(withJourneyTime(transit, journey));
+
+  const walk = walkAlternative(walkSeconds);
+  if (walk) alternatives.push(walk);
 
   /*
    * The cheapest car on the board, so the row can say what the alternative
@@ -69,7 +89,18 @@ export async function GET(req: NextRequest) {
     return min == null || q.priceMinMinor < min ? q.priceMinMinor : min;
   }, null);
 
-  return NextResponse.json({ alternatives, carLowMinor });
+  /*
+   * `journeyTimes` says which mode this route is in, the way /api/ask's GET
+   * reports model versus local. "measured" does not promise every row has a
+   * time — a source can be configured and still decline — it says a source
+   * was asked. Without it, "no time" and "no source" look identical from
+   * outside, and an operator cannot tell a spent quota from a missing var.
+   */
+  return NextResponse.json({
+    alternatives,
+    carLowMinor,
+    journeyTimes: transitRoutingConfigured() ? "measured" : "not-configured",
+  });
 }
 
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {

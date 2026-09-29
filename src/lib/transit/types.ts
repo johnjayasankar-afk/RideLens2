@@ -43,6 +43,26 @@ export interface TransitAlternative {
   durationSeconds: number | null;
   /** Why the duration is missing, when it is. */
   durationNote: string | null;
+  /**
+   * Where a journey time came from, when there is one.
+   *
+   * Null exactly when `durationSeconds` is null, and never the other way
+   * round: a duration without a provenance is the unsourced figure the header
+   * of this file exists to forbid.
+   *
+   * The verb differs from a fare's `verifiedOn` on purpose. A fare was read
+   * off a publisher's page on a date and is good until they change it; a
+   * journey time was computed by an engine at an instant and is good for
+   * minutes. The two do not age alike and should not be labelled alike.
+   */
+  durationSource: {
+    /** The engine, named. */
+    label: string;
+    /** Its terms or attribution page, or null for an engine you host. */
+    url: string | null;
+    /** ISO instant it was computed. */
+    measuredAt: string;
+  } | null;
   /** A leg that exists and is not priced here. */
   unmodeled: string | null;
   tariff?: TransitTariff;

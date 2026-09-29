@@ -32,7 +32,8 @@ import { confidenceLabel } from "@/lib/domain/confidence";
 import { formatMoneyMinor, formatQuotePrice } from "@/lib/domain/money";
 import { buildTradeoffs, formatMinutes, RESOLUTION_MINUTES } from "@/lib/domain/tradeoffs";
 import { provenanceOf } from "@/lib/domain/provenance";
-import { transitAlternativeFor } from "@/lib/transit/alternatives";
+import { transitAlternativeFor, withJourneyTime } from "@/lib/transit/alternatives";
+import type { MeasuredJourney } from "@/lib/transit/journey-time";
 import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
 import { historyForRoute, routeKeyFor, type TripRecord } from "@/lib/history/trip-log";
 import { personalAccuracy } from "@/lib/history/outcome";
@@ -188,6 +189,16 @@ export function buildBrief(
   session: QuoteSession,
   records: readonly TripRecord[] = [],
   modelVersion = "",
+  /*
+   * A measured journey time, when a routing source produced one.
+   *
+   * Optional and last so every existing caller keeps its meaning: absent, the
+   * brief says the time is not modeled, which is what it has always said.
+   *
+   * Never taken from the client. This is the only set of figures the model
+   * may state, and a number the browser supplied does not belong in it.
+   */
+  journey: MeasuredJourney | null = null,
 ): AssistantBrief {
   const ranked = rankQuotes(session.quotes, session.rankingMode, "ALL");
   const withRoute = ranked.find((q) => q.distanceMeters != null);
@@ -258,14 +269,16 @@ export function buildBrief(
    * The transit row, as the panel below states it. Fare only unless a routing
    * source is configured, and saying which is the whole point.
    */
-  const alt = transitAlternativeFor(
+  const base = transitAlternativeFor(
     { lat: session.pickup.lat, lng: session.pickup.lng },
     { lat: session.destination.lat, lng: session.destination.lng },
   );
+  const alt = base ? withJourneyTime(base, journey) : null;
   const withoutACar = alt
     ? `${alt.label}: ${alt.fareMinor === 0 ? "free" : formatMoneyMinor(alt.fareMinor)}. ` +
-      (alt.durationSeconds != null
-        ? `Journey time ${minutes(alt.durationSeconds)}.`
+      (alt.durationSeconds != null && alt.durationSource
+        ? `Journey time ${minutes(alt.durationSeconds)}, from ${alt.durationSource.label}. ` +
+          `That is one itinerary computed at a moment, not a timetable guarantee.`
         : "The journey time is not modeled and must not be guessed.") +
       (alt.unmodeled ? ` This does not include ${alt.unmodeled}, so the real total is higher.` : "")
     : null;
