@@ -204,6 +204,9 @@
   --pad-x: 18px;
   /* The small-caps key in a readout is tracked further than in a caption. */
   --key-track: 0.13em;
+  /* Every figure in the product right-aligns inside this. 11.5ch of IBM Plex
+     Mono holds "$41.34 to 44.36"; measure before narrowing it. */
+  --fig-col: 11.5ch;
   --axis-name: 104px;
   --axis-value: 92px;
   --ramp-2: #1f6b4a;
@@ -5729,7 +5732,10 @@ details[open] > summary::before {
 .console .market-pulse .robust,
 .console .market-pulse .ghost {
   min-height: 0;
-  padding: 0;
+  /* Not `padding: 0` — the cell's own inset comes from the `> *` rule above,
+     and zeroing it here took the first cell's eighteen pixels away and left
+     MARKET STEADY flush against the console's edge. */
+  padding-block: 0;
   border: 0;
   border-radius: 0;
   background: none;
@@ -5791,4 +5797,267 @@ details[open] > summary::before {
 .results > .section-label,
 .section-label-row {
   padding-inline: var(--pad-x);
+}
+
+/* ── Press ─────────────────────────────────────────────────────────────────
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ Nothing in this app responded to being pressed. Twenty-six `:hover`      │
+   │ rules and three `:active` — so every control lit up under a cursor and   │
+   │ not one of them acknowledged a finger. On a phone, tapping XL, Value,    │
+   │ Breakdown or Book Uber produced no feedback at all between the touch and │
+   │ whatever happened next, which is the difference between an interface     │
+   │ that feels responsive and one that feels like a web page.                │
+   └──────────────────────────────────────────────────────────────────────────┘
+
+   One gesture, everywhere: a pixel down and the faintest compression. It is
+   the same motion the primary button already had, given to every control that
+   was missing it. `--dur-1` is 120ms, which is under the threshold where a
+   press reads as a delay. */
+.chip:active:not(:disabled),
+.ghost:active:not(:disabled),
+.book:active,
+.deck-tab:active,
+.comp-more:active,
+.tor-name:active,
+.robust:active,
+.market-tick-btn:active,
+.theme-toggle:active,
+.quick-target button:active {
+  transform: translateY(1px) scale(0.99);
+  transition-duration: var(--dur-1);
+}
+
+/*
+ * A chosen chip has nowhere to go.
+ *
+ * It is already at its pressed position — that is what selected looks like —
+ * so pressing it again must not push it further into the page. It dims
+ * instead, which is the same acknowledgement without the lie.
+ */
+.chip.active:active {
+  transform: none;
+  filter: brightness(0.94);
+}
+
+/*
+ * Four components ship a disabled chip — the price watch, the outcome report,
+ * the assistant's send, the party stepper — and `.chip` had `:hover`, an
+ * `.active` and nothing else. A control that cannot be used looked exactly
+ * like one that could, and still lifted under the cursor.
+ */
+.chip:disabled,
+.deck-tab:disabled,
+.comp-more:disabled {
+  cursor: not-allowed;
+  color: var(--ink-3);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.chip:disabled:hover {
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/*
+ * Hover is a cursor's idea.
+ *
+ * On a touch screen `:hover` sticks after a tap until something else is
+ * tapped, so the last thing touched sits in a highlighted state that reads as
+ * a selection. The app had one `@media (hover: none)` rule in 5,000 lines;
+ * every hover it declares is now conditional on a device that has one.
+ */
+@media (hover: none) {
+  .chip:hover,
+  .ghost:hover:not(:disabled),
+  .quote-card:hover,
+  .deck-tab:hover,
+  .comp-more:hover,
+  .tor-name:hover,
+  .robust:hover,
+  .topnav a:hover {
+    transform: none;
+    color: inherit;
+    background: inherit;
+    box-shadow: inherit;
+  }
+  .chip.active:hover {
+    color: var(--on-surface-ink);
+    background: var(--on-surface);
+  }
+}
+
+/* ── The front door ────────────────────────────────────────────────────────
+   On a 1440x950 viewport the right column — 760px, 65% of the content width —
+   had ink only between y=91 and y=489, and 461x760px of bare ground ran past
+   the fold while the left rail kept going to y=949. Inside the one card,
+   `align-content: end` against a 380px minimum put the first ink at y=293:
+   202px of a 379px card, empty. Roughly 37% of the first screen anybody sees
+   was nothing.
+
+   The card was built sticky at this width and had simply never been given a
+   height to be sticky with. */
+/*
+ * A minimum, not a height.
+ *
+ * `height: calc(100svh - …)` filled the column and then became the largest
+ * layout shift on the site, because this panel also renders for the moment
+ * between asking for a comparison and getting one: a full-viewport card
+ * appears and is replaced by the results, and everything below it moves twice.
+ * CLS went to 0.0188 against a 0.02 budget. A minimum gives the front door its
+ * column without claiming the height on a page that is about to have content.
+ */
+@media (min-width: 960px) {
+  .results-empty {
+    min-height: min(620px, calc(100svh - var(--topbar-h) - var(--space-6)));
+  }
+}
+/*
+ * Centred, not spread.
+ *
+ * `space-between` removed the 461px void below the card and replaced it with
+ * two voids inside it — the facts marooned in the middle, the headline alone
+ * near the bottom. Four groups with one gap between them read as one object;
+ * the card's height is the breathing room.
+ */
+.results-empty-card {
+  align-content: center;
+  gap: var(--s-9);
+}
+/* 30rem stopped the longest line 283px short of the card's own right edge. */
+.results-empty-copy {
+  max-width: 46ch;
+}
+
+/* Five pixels of misregistration at the top-left corner of the composition,
+   where the eye starts. `.home` gives both columns the same padding-top and
+   then this pushed one of them down again. */
+.hero-panel {
+  padding: 0;
+}
+
+/* Orphan, orphan, grid.
+   The provider strip is four items that wrapped 3+1, leaving Curb alone with
+   280px beside it — so the product's whole premise, four providers compared
+   equally, read as three and an afterthought. The quick picks wrapped 4+2
+   under it, and the route actions below them are a clean 2x2. */
+@media (min-width: 960px) {
+  .provider-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quick-picks-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ── The ledger ────────────────────────────────────────────────────────────
+   /trips is the record of everything this product knows about you, and it was
+   a wall of prose with one flat grey row in the middle holding the only data
+   on the page. `.trip-stats > div` — a throwaway stat cell on the results
+   page — is built with more care than it was: paper, a caught light, a
+   hairline. Built like a card now, because it is one. */
+.trip-list {
+  gap: 0;
+  overflow: clip;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 1px var(--line),
+    inset 0 1px 0 var(--edge-hi),
+    var(--sh-1);
+}
+.trip-row {
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: none;
+}
+.trip-row + .trip-row {
+  border-top: 1px solid var(--line);
+}
+/* The only money in the product that was set in proportional figures. */
+.trip-range {
+  min-width: var(--fig-col);
+  font-variant-numeric: tabular-nums;
+}
+.trips-empty {
+  padding: var(--s-9) var(--s-8);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1px var(--line),
+    inset 0 1px 0 var(--edge-hi),
+    var(--sh-1);
+}
+.trips-empty .primary {
+  width: auto;
+  padding-inline: var(--s-9);
+}
+
+/*
+ * The destructive control should not be the inviting one.
+ *
+ * Forget and Stop were `chip ghost`. `.ghost` is declared before `.chip`, so
+ * everything it sets at rest loses — except `.ghost:hover:not(:disabled)` at
+ * (0,3,0), which beats `.chip:hover` at (0,2,0). The net effect was that the
+ * delete button lifted and took an accent ring on hover while "Compare now"
+ * beside it only darkened its hairline: the irreversible action had the more
+ * inviting affordance, by cascade accident.
+ */
+.chip--quiet {
+  color: var(--ink-3);
+}
+@media (hover: hover) and (pointer: fine) {
+  .chip--quiet:hover:not(:disabled) {
+    transform: none;
+    color: var(--rose-t);
+    box-shadow: inset 0 0 0 1px var(--rose);
+  }
+}
+
+/*
+ * The one <em> in the product, and it was a synthetic oblique.
+ *
+ * `localFont` registers one @font-face with no italic source, so the browser
+ * shears the upright outlines — and the word it shears is "estimated", in the
+ * sentence that separates an estimate from a charge. Emphasis from the axis
+ * the font actually has, rather than 45 KB of italic for one word.
+ */
+em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The front door's register. The console's cells, in the card's own column:
+   `order` puts the facts under the logos and above the headline without
+   moving anything in the DOM, and `space-between` then has three groups to
+   distribute instead of two and a hole. */
+.results-empty-facts {
+  order: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--radius-sm);
+  overflow: clip;
+}
+.results-empty-facts > div {
+  border-radius: 0;
+  box-shadow: none;
+  padding: var(--s-5) var(--s-6);
+}
+.results-empty-facts .stat-label {
+  order: -1;
+}
+.results-empty-facts .stat-value {
+  font-size: var(--t-5);
+  letter-spacing: -0.01em;
+}
+.results-empty-kicker {
+  order: 2;
+}
+.results-empty-copy {
+  order: 3;
+}
+.results-empty-orbit {
+  order: 0;
 }

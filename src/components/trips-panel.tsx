@@ -102,7 +102,11 @@ function RouteRow({
         <Link href={compareHref(record)} className="chip">
           Compare now
         </Link>
-        <button type="button" className="chip ghost" onClick={() => onForget(record.routeKey)}>
+        <button
+          type="button"
+          className="chip chip--quiet"
+          onClick={() => onForget(record.routeKey)}
+        >
           Forget
         </button>
       </div>
@@ -214,7 +218,7 @@ export function TripsPanel() {
                   </Link>
                   <button
                     type="button"
-                    className="chip ghost"
+                    className="chip chip--quiet"
                     onClick={() => priceWatches.remove(w.routeKey)}
                   >
                     Stop

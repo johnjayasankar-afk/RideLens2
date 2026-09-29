@@ -20,6 +20,8 @@ import { useTripLog } from "@/components/use-trip-log";
 import { usePriceWatches } from "@/components/use-price-watch";
 import { recentTrips } from "@/lib/history/trip-log";
 import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
+import { RATE_CARD_VERIFIED_ON } from "@/lib/sources/ratecard/freshness";
+import { MODELLED_MARKETS } from "@/lib/domain/market-coverage";
 import { describeFailure } from "@/lib/domain/failure-message";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { ProviderId, QuoteSession } from "@/lib/domain/types";
@@ -1242,6 +1244,41 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
               Choose From and To: we’ll map the route and line up Uber, Lyft, Empower, and Curb side
               by side.
             </p>
+            {/*
+              What the machine knows, before it is asked anything.
+              ───────────────────────────────────────────────────
+              This panel held a gradient and three lines, and on a 1440x950
+              viewport about 37% of the first screen anybody sees was nothing.
+              The console's own register says it better: four facts a reader
+              can check, in the vocabulary the rest of the product uses for
+              figures. No new classes — `.trip-stats` is the console's, and
+              reusing it verbatim is the point.
+
+              Every value is a constant, deliberately. `rateCardFreshness()`
+              would read nicer as "verified 27 days ago" and would be computed
+              from `new Date()` on both sides of hydration, which is a
+              mismatch waiting for midnight. A date is a fact; an age is a
+              calculation, and this is the one screen with nothing to
+              calculate from.
+            */}
+            <div className="trip-stats results-empty-facts">
+              <div>
+                <span className="stat-label">Model</span>
+                <span className="stat-value">{MODEL_VERSION}</span>
+              </div>
+              <div>
+                <span className="stat-label">Rate cards</span>
+                <span className="stat-value">{RATE_CARD_VERIFIED_ON}</span>
+              </div>
+              <div>
+                <span className="stat-label">Markets</span>
+                <span className="stat-value">{MODELLED_MARKETS.length}</span>
+              </div>
+              <div>
+                <span className="stat-label">Providers</span>
+                <span className="stat-value">{PROVIDERS.length}</span>
+              </div>
+            </div>
           </div>
           <p className="results-empty-mobile muted">
             Pin From and To above, then Compare to see every ride side by side.
