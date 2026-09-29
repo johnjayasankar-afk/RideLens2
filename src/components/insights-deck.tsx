@@ -89,7 +89,17 @@ export function InsightsDeck({
               : event.key === "End"
                 ? TABS.length
                 : 0;
-      if (delta === 0) return;
+      /* A digit jumps straight to its tab. The strip already has focus for
+         the arrows to work, so this costs one branch and no new listener. */
+      if (delta === 0) {
+        const digit = Number(event.key);
+        if (!Number.isInteger(digit) || digit < 1 || digit > TABS.length) return;
+        event.preventDefault();
+        const tab = TABS[digit - 1]!;
+        choose(tab.id);
+        event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]")[digit - 1]?.focus();
+        return;
+      }
       event.preventDefault();
       const from = TABS.findIndex((t) => t.id === active);
       const next = Math.max(0, Math.min(TABS.length - 1, from + delta));
@@ -143,7 +153,7 @@ export function InsightsDeck({
           }
         >
           <span className="deck-indicator" aria-hidden />
-          {TABS.map((tab) => (
+          {TABS.map((tab, i) => (
             <button
               key={tab.id}
               type="button"
@@ -153,6 +163,8 @@ export function InsightsDeck({
               aria-selected={tab.id === active}
               aria-controls={`deck-panel-${tab.id}`}
               tabIndex={tab.id === active ? 0 : -1}
+              /* The digit that selects it, revealed on hover or focus. */
+              data-key={i + 1}
               onClick={() => choose(tab.id)}
             >
               {tab.label}

@@ -224,6 +224,12 @@
   --surface-2: 0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), var(--sh-2);
 
   --fig-col: 11.5ch;
+  /* The deck's one vertical: row names, and the first character of every
+     caption under a chart, sit on it. */
+  --deck-gutter: 116px;
+  /* A floor under the deck's panel, so switching tabs does not yank the page.
+     The panels measure 303, 328, 416 and 738px. */
+  --panel-min: 420px;
   --axis-name: 104px;
   --axis-value: 92px;
   --ramp-2: #1f6b4a;
@@ -5002,23 +5008,41 @@ details[open] > summary::before {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--deck-n, 7), minmax(68px, 1fr));
-  padding: var(--s-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--soft);
+  /*
+   * A rail, not a capsule.
+   *
+   * Eight panels of instrument-grade content sat behind an iOS segmented
+   * control: a 999px capsule on a tinted ground with a sliding paper pill
+   * carrying its own ring and shadow — the most consumer-looking object on
+   * the page, and the navigation for the most technical part of the product.
+   *
+   * It also did not work. In dark the indicator is --paper on --soft over
+   * --ground-2 and measures 1.09:1 against its own track: which tab was
+   * selected was near-invisible, on the panel whose job is telling you how
+   * much of the answer to distrust. Light was 1.25:1. The accent underline
+   * that replaces it is 7.99:1.
+   *
+   * The moving indicator is the right idea — a moving object tells the eye
+   * where the selection went, where a crossfade tells it nothing — so it is
+   * the one thing kept, arithmetic and transition untouched.
+   */
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
 }
 .deck-indicator {
   position: absolute;
   z-index: 0;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / var(--deck-n, 7));
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow:
-    0 0 0 1px var(--line),
-    var(--sh-1);
+  top: auto;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: calc(100% / var(--deck-n, 7));
+  border-radius: 0;
+  background: var(--forest-2);
+  box-shadow: none;
   transform: translateX(calc(var(--deck-i, 0) * 100%));
   transition: transform var(--dur-3) var(--ease);
 }
@@ -5026,16 +5050,51 @@ details[open] > summary::before {
   position: relative;
   z-index: 1;
   min-width: 0;
-  padding: var(--s-4) var(--s-3);
+  padding: var(--s-5) var(--s-3);
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   color: var(--ink-3);
-  font-size: var(--t-3);
-  font-weight: 600;
+  font: 500 var(--t-2) / 1 var(--font-mono);
+  letter-spacing: var(--key-track);
+  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
   transition: color var(--dur-2) var(--ease);
+}
+/*
+ * The keyboard, made visible.
+ *
+ * One attribute and nine lines, and it is the moment a price comparison
+ * announces it has keyboard depth. Revealed on hover or when the strip has
+ * focus, so it is never chrome anybody has to read past.
+ */
+.deck-tab[data-key]::after {
+  /*
+   * `/ ""` is the alternative-text half of `content`, and it is the whole
+   * reason this can be a pseudo-element at all: generated content joins the
+   * accessible name, so without it every tab was announced as "Spread1",
+   * "Breakdown2" — and the Playwright suite, which selects tabs by their
+   * accessible name, stopped finding any of them. A browser that does not
+   * understand the syntax drops the declaration and shows no digit, which is
+   * the right way for a hint to fail.
+   */
+  content: attr(data-key) / "";
+  /* Absolutely placed into space the tab already reserves, so revealing the
+     hints does not re-flow the labels into each other. */
+  position: absolute;
+  right: var(--s-3);
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity var(--dur-1);
+}
+.deck-tabs:hover .deck-tab[data-key]::after,
+.deck-tabs:focus-within .deck-tab[data-key]::after {
+  opacity: 1;
+}
+/* The space the hint sits in, reserved whether or not it is showing. */
+.deck-tab[data-key] {
+  padding-right: calc(var(--s-3) + 1.4ch);
 }
 .deck-tab:hover {
   color: var(--ink-2);
@@ -5043,8 +5102,19 @@ details[open] > summary::before {
 .deck-tab[aria-selected="true"] {
   color: var(--ink);
 }
+/*
+ * A floor, so switching tabs does not yank the page.
+ *
+ * The panels measure 303px (Spread), 328 (Split), 416 (Breakdown) and 738
+ * (What if) against a strip fixed at the top, so going from What if to Spread
+ * pulled the options list and the footer up by 435px, and Spread read as a
+ * stub hanging off a rail. An interaction-time reflow, so the first-paint
+ * CLS number is unaffected.
+ */
 .deck-panel {
   min-width: 0;
+  min-height: var(--panel-min);
+  align-content: start;
   animation: deck-in var(--dur-3) var(--ease) both;
 }
 .deck-panel:focus-visible {
@@ -5119,13 +5189,12 @@ details[open] > summary::before {
     display: none;
   }
   .deck-tab {
-    padding: var(--s-4) var(--s-6);
+    padding: var(--s-5) var(--s-6);
   }
+  /* The same underline the rail uses at every other width — a pill here and
+     a rule there would be two answers to one question. */
   .deck-tab[aria-selected="true"] {
-    background: var(--paper);
-    box-shadow:
-      0 0 0 1px var(--line),
-      var(--sh-1);
+    box-shadow: inset 0 -2px 0 var(--forest-2);
   }
 }
 
@@ -6108,4 +6177,49 @@ em {
 }
 .results-empty-orbit {
   order: 0;
+}
+
+/* One vertical through the deck: every caption under a chart starts where the
+   row names start, rather than at the panel's edge. */
+.axis-note,
+.tor-legend,
+.deck-foot,
+.comp-note {
+  padding-left: calc(var(--deck-gutter) + var(--s-5));
+}
+@media (max-width: 720px) {
+  .axis-note,
+  .tor-legend,
+  .deck-foot,
+  .comp-note {
+    padding-left: 0;
+  }
+  .deck-panel {
+    min-height: 0;
+  }
+}
+
+/* A rule that is half-applied is worse than no rule.
+   The comment on .deck-panel says the panels give up their own borders and
+   backgrounds, "because a card inside a card reads as a mistake". It was
+   enforced on four selectors and ignored by six — so in What if, WHERE IT CAN
+   LAND was a filled rounded card inside the deck card, while Split next door
+   correctly had none. */
+.deck-panel .tor-verdicts,
+.deck-panel .tor-explain,
+.deck-panel .comp-why,
+.deck-panel .comp-items,
+.deck-panel .party-crossover,
+.deck-panel .ret-leg {
+  border-radius: 0;
+  background: none;
+}
+.deck-panel .tor-verdicts,
+.deck-panel .comp-why {
+  padding-inline: 0;
+  border-top: 1px solid var(--line);
+}
+.deck-panel .ret-leg.is-return {
+  background: var(--mint-bg);
+  border-radius: var(--r-2);
 }

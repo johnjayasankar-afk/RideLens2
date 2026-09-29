@@ -174,6 +174,43 @@ test.describe("the insights deck", () => {
     await expect(page.getByRole("tab", { name: "Spread" })).toBeFocused();
   });
 
+  /*
+   * A digit jumps straight to a panel, and the digit is visible on the tab
+   * that takes it — revealed on hover or focus, so it is a hint rather than
+   * chrome. It lives in a pseudo-element with `content: attr(data-key) / ""`,
+   * and that `/ ""` is load-bearing: generated content joins the accessible
+   * name, so without it every tab announces as "Spread1" and this file's own
+   * name-based selectors stop finding any of them.
+   */
+  test("takes a digit straight to a panel, without renaming the tab", async ({ page }) => {
+    await openComparison(page);
+    await page.getByRole("tab", { name: "Spread", exact: true }).focus();
+    await page.keyboard.press("3");
+    await expect(page.getByRole("tab", { name: "What if", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: "What if", exact: true })).toBeFocused();
+
+    await page.keyboard.press("1");
+    await expect(page.getByRole("tab", { name: "Spread", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    /* A digit past the last tab is not a tab. */
+    await page.keyboard.press("9");
+    await expect(page.getByRole("tab", { name: "Spread", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    /* And every tab is still addressable by the name a reader would use. */
+    for (const name of TABS) {
+      await expect(page.getByRole("tab", { name, exact: true })).toHaveCount(1);
+    }
+  });
+
   /* One stop on the way in, then the arrows. The roving tabindex is what
      stops the strip from costing a keyboard user one press per tab. */
   test("takes one tab stop, not one per tab", async ({ page }) => {
