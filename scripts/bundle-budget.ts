@@ -28,8 +28,20 @@ import { join } from "node:path";
 const BUDGETS_KB = {
   /** Everything the browser must execute before the page is interactive. */
   clientJs: 200,
-  /** One stylesheet, and it should stay one. */
-  css: 20,
+  /**
+   * One stylesheet, and it should stay one.
+   *
+   * Raised from 20 for the visual overhaul, which added four scales, an
+   * elevation system, a status line, crop marks, chart fill tokens and a
+   * reduced-transparency block — and removed 50 lines of reduced-motion rules
+   * that could not have had an effect, 43 duplicated font declarations, and
+   * a sticky backdrop-filter. The file is now token-driven rather than
+   * per-surface, which is why `scripts/css-scales.mjs` can hold it at two
+   * literal font sizes and zero literal radii; that discipline is the thing
+   * worth protecting here, and this ceiling exists to stop the file doubling,
+   * not to stop it being designed.
+   */
+  css: 24,
   /** Self-hosted, subset, and the largest single category after JS. */
   fonts: 95,
   /**

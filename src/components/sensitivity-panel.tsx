@@ -271,9 +271,11 @@ export function RobustnessChip({
           : ranking.upsets.join(" · ")
       }
     >
+      {/* Short, because it is a cell in a status strip. The whole sentence is
+          on the title, and the panel a click away says it in full. */}
       {ranking.stable
-        ? `Order holds under ${ranking.tested}/${ranking.tested}`
-        : `Order flips in ${ranking.upsets.length} of ${ranking.tested}`}
+        ? `Order holds ${ranking.tested}/${ranking.tested}`
+        : `Order flips ${ranking.upsets.length}/${ranking.tested}`}
     </button>
   );
 }

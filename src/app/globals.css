@@ -177,6 +177,24 @@
    * and from the track, and the contrast audit walks text nodes, so nothing
    * in the build could ever have told us.
    */
+  /*
+   * The Spread chart's two fixed columns.
+   *
+   * The value column has to be a number rather than `auto`, because the scale
+   * under the chart is positioned by padding and cannot know where an `auto`
+   * column starts. 92px holds "$41.34–$44.36" in mono at --t-2; measure
+   * before narrowing it.
+   */
+  /* The status strip's height, fixed so a chip arriving cannot change it. */
+  --status-h: 32px;
+  /* One register cell, fixed for the same reason. */
+  --reg-row: 60px;
+  /* One inset for every label and rule in the results column. */
+  --pad-x: 18px;
+  /* The small-caps key in a readout is tracked further than in a caption. */
+  --key-track: 0.13em;
+  --axis-name: 104px;
+  --axis-value: 92px;
   --ramp-2: #1f6b4a;
   --amber-fill: #de8a2e;
   --sky-fill: #3f7fc4;
@@ -3500,7 +3518,7 @@ h1.admin-title {
 }
 .axis-row {
   display: grid;
-  grid-template-columns: 104px 1fr auto;
+  grid-template-columns: var(--axis-name) minmax(0, 1fr) var(--axis-value);
   align-items: center;
   gap: var(--s-5);
   font-size: var(--t-3);
@@ -3552,6 +3570,7 @@ h1.admin-title {
   opacity: 0.55;
 }
 .axis-value {
+  text-align: right;
   font-family: var(--font-mono);
   font-size: var(--t-2);
   color: var(--ink-2);
@@ -3559,10 +3578,30 @@ h1.admin-title {
   /* Figures in a column only read as a column when they align. */
   font-variant-numeric: tabular-nums;
 }
+/*
+ * The scale has to end where the track ends.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ It did not. The row was `104px 1fr auto` and this was `space-between`    │
+ * │ with a hand-counted 114px of left padding, so the low label landed on    │
+ * │ the track's origin and the high label landed at the far edge of the      │
+ * │ *value* column — measured at 1440px, 99px past the end of a 503px        │
+ * │ track. A fifth of the ruler's own length, in the one panel whose entire  │
+ * │ job is to be a shared ruler.                                            │
+ * │                                                                          │
+ * │ Worse than being wrong: it came to rest directly under the per-row price │
+ * │ range, so it read as a stray repeat of that number rather than as the    │
+ * │ axis maximum, which is why nobody noticed.                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Both paddings are now the same expression as the row's own columns, so they
+ * cannot drift apart again.
+ */
 .axis-scale {
   display: flex;
   justify-content: space-between;
-  padding-left: 114px;
+  padding-right: calc(var(--axis-value) + var(--s-5));
+  padding-left: calc(var(--axis-name) + var(--s-5));
   font-family: var(--font-mono);
   font-size: var(--t-2);
   color: var(--ink-3);
@@ -5615,4 +5654,130 @@ details[open] > summary::before {
 }
 .axis-bar {
   border-radius: var(--r-1);
+}
+
+/* The name column gives up room before the ruler does. */
+@media (max-width: 560px) {
+  :root {
+    --axis-name: 72px;
+    --axis-value: 84px;
+  }
+}
+
+/* ── The status line ───────────────────────────────────────────────────────
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ The densest data on the page — the market regime, its multiplier, the    │
+   │ conditions, whether the ordering survives its own assumptions, and how   │
+   │ long the numbers are good for — was dressed as a consumer toolbar. A     │
+   │ grey pill, a bare ×1.01, a plain sentence, an amber pill and a           │
+   │ right-drifted countdown: five shapes, five weights, nothing aligned, and │
+   │ a height that changed with the weather because the row could wrap.       │
+   │                                                                          │
+   │ One strip. Fixed height, cells divided by rules that run its full        │
+   │ height and meet the console's own top edge, one typeface, one size, and  │
+   │ the countdown drawn as a rule retracting along the bottom.               │
+   └──────────────────────────────────────────────────────────────────────────┘ */
+.console .market-pulse {
+  position: relative;
+  flex-wrap: nowrap;
+  gap: 0;
+  height: var(--status-h);
+  padding: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  font: 500 var(--t-2) / 1 var(--font-mono);
+  letter-spacing: var(--key-track);
+  text-transform: uppercase;
+}
+.console .market-pulse::-webkit-scrollbar {
+  display: none;
+}
+.console .market-pulse > * {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  align-self: stretch;
+  padding-inline: var(--pad-x);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+.console .market-pulse > .robust-slot:empty {
+  padding: 0;
+  border-right: 0;
+}
+.console .market-pulse > :last-child {
+  border-right: 0;
+}
+/* Inside the strip a chip is a cell, not a pill. The semantic colours stay —
+   they are the only thing here that carries meaning — and they move from the
+   fill to the text, which raises their contrast in both schemes. */
+/* A button does not inherit its font, and `font: inherit` does not carry
+   `text-transform` — so the one cell that is a control kept the body face and
+   sentence case while every cell beside it was mono caps. */
+.console .market-pulse .market-chip,
+.console .market-pulse .robust,
+.console .market-pulse .ghost {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.console .market-pulse .ghost:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  color: var(--forest-2);
+}
+.console .market-pulse .market-chip.is-calm {
+  color: var(--ink-3);
+}
+.console .market-pulse .market-tick strong {
+  margin-left: 0.5ch;
+}
+/* The countdown as a rule. `--tick-left` is written once a second by the
+   render that already recomputes the numeral beside it, so the two cannot
+   disagree; linear, because a countdown that eases is lying about the rate.
+   Unset when the tick is unknown, and then the bar is simply not drawn. */
+.console .market-pulse::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--forest-2);
+  transform: scaleX(var(--tick-left, 0));
+  transform-origin: left center;
+  transition: transform var(--dur-5) linear;
+}
+
+/* ── The register ──────────────────────────────────────────────────────────
+   Key first, figure below. Value-above-label is backwards for an instrument:
+   you read "10.8" and only then learn it is miles. `order: -1` flips the two
+   in the grid without touching the DOM, so a screen reader still hears the
+   figure and then its name. */
+.console .trip-stats > div {
+  align-content: center;
+  gap: var(--s-3);
+  min-height: var(--reg-row);
+  padding-inline: var(--pad-x);
+}
+.console .trip-stats .stat-label {
+  order: -1;
+}
+.console .stat-value {
+  font-size: var(--t-8);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+/* One inset for the whole results column, so its typographic left edge stops
+   moving six times in the first screen. */
+.console .insight-banner,
+.results > .section-label,
+.section-label-row {
+  padding-inline: var(--pad-x);
 }

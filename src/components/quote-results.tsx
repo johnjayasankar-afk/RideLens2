@@ -1043,7 +1043,26 @@ export function QuoteResults({
              * information here is ambient and repeated on the cards; the
              * meaningful summary is announced by the sr-only region below.
              */
-            <div className="market-pulse">
+            /*
+              The tick, as a rule as well as a numeral.
+              ─────────────────────────────────────────
+              One custom property, written once a second by the render that
+              already recomputes the numeral — so the bar under the strip and
+              the number in it come from the same value and cannot disagree.
+              No per-frame JavaScript, and nothing animated but a transform.
+
+              When `tickLeft` is unknown the property is simply not set and
+              the bar is not drawn. A product built on not overstating does
+              not draw a gauge it cannot vouch for.
+            */
+            <div
+              className="market-pulse"
+              style={
+                tickLeft != null
+                  ? ({ "--tick-left": Math.min(1, tickLeft / 55) } as React.CSSProperties)
+                  : undefined
+              }
+            >
               <span
                 className={marketTone(hero.metadata?.demandCenter as number | undefined).className}
               >
@@ -1071,7 +1090,7 @@ export function QuoteResults({
               </span>
               {tickLeft != null && tickLeft > 0 ? (
                 <span className="market-tick muted">
-                  Prices reshape in <strong>{tickLeft}s</strong>
+                  Next <strong>{tickLeft}s</strong>
                 </span>
               ) : tickLeft === 0 ? (
                 <button
