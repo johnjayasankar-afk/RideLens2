@@ -157,6 +157,10 @@
   --selection: rgba(110, 231, 183, 0.5);
   /* The ring follows the accent, and is named so a rule can say what it is. */
   --focus: var(--forest-2);
+  /* A chosen control. Near-black on porcelain, lifted on forest — see
+     .chip.active for why one value could not do both. */
+  --on-surface: #13241b;
+  --on-surface-ink: #ffffff;
   /* The top edge of a raised surface catching light. One pixel of inset
      highlight is the difference between a rectangle and an object; on the
      dark ground it has to come from the accent, because white reads as a
@@ -704,10 +708,23 @@ code {
   color: var(--ink);
   box-shadow: inset 0 0 0 1px var(--line-2);
 }
+/*
+ * Selected has to be *lifted*, and in dark it was sunk.
+ *
+ * `--forest-3` is #13241b in light — near-black against a porcelain ground, so
+ * the chosen pill is unmistakable. In dark it is #06100a, and the page ground
+ * is #0d1511: the selected chip was 1.04:1 *darker* than the page it sat on,
+ * so choosing something punched a hole in the row instead of raising one. The
+ * drop shadow under it was a light-palette literal that never inverted, which
+ * on a dark ground did nothing at all.
+ *
+ * `--on-surface` now goes the right way in each scheme: down into near-black
+ * on porcelain, up to 2.2:1 above the ground on forest.
+ */
 .chip.active {
-  color: #fff;
-  background: var(--forest-3);
-  box-shadow: 0 8px 16px -10px rgba(15, 42, 29, 0.6);
+  color: var(--on-surface-ink);
+  background: var(--on-surface);
+  box-shadow: var(--sh-2);
 }
 
 .kbd {
@@ -729,13 +746,49 @@ code {
 }
 
 /* keys: the small uppercase labels the Labs stories use */
+/*
+ * The small uppercase mono key, once.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ One visual pattern, written by hand seventeen times, and no two copies   │
+ * │ agreed. Sizes 10.5px and 11.5px. Line-heights 1 and 1.2. Tracking        │
+ * │ 0.09em, 0.08em, 0.06em and 0.055em. Weights 500 and 650. One of them was │
+ * │ not monospace at all. Every one of those was a reasonable choice made in │
+ * │ front of the surface it was for, and together they are what makes an     │
+ * │ interface look like it was assembled by several people who never met.    │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The recipe is the majority of what was already there — 500, 11.5px, 1.2,
+ * 0.09em — so almost nothing moved. Each site keeps its own colour, which is
+ * the one thing they were right to differ about: a kicker over the takeaway is
+ * mint, a label over a figure is muted, and they mean different things.
+ */
+.place-label,
+.section-label,
+.wait-label,
+.stat-label,
+.place-confirmed,
+.quick-picks-head > .muted,
+.insight-kicker,
+.provider,
+.book-meta dt,
+.admin-stat-label,
+.admin-pill,
+.source-meta dt,
+.recent-trips-head > .muted:first-child,
+.cmdk-group,
+.ask-title,
+.party-tips-label,
+.tor-verdicts dt {
+  font: 500 var(--t-2) / 1.2 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .place-label,
 .section-label,
 .wait-label,
 .stat-label {
-  font: 500 var(--t-2)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 .section-label {
@@ -974,9 +1027,6 @@ h1.brand {
   align-items: center;
   gap: var(--s-4);
   margin: 2px 0 0;
-  font: 500 var(--t-1)/1 var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   white-space: nowrap;
   color: var(--ink-3);
 }
@@ -1058,9 +1108,6 @@ h1.brand {
   font-size: var(--t-4);
 }
 .quick-picks-head > .muted {
-  font: 500 var(--t-2)/1 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 .quick-target {
   display: inline-flex;
@@ -1324,7 +1371,15 @@ h1.brand {
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(167, 243, 208, 0.5), transparent 70%);
+  /* `rgba(167, 243, 208, …)` is light --mint frozen into a rule that runs in
+     both schemes: on forest it composited to a grey-green fog at 2.69:1
+     against the card, where on porcelain the same pixel is 1.09:1. A wash
+     meant to be barely there was the loudest thing on the dark home screen. */
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--mint) 50%, transparent),
+    transparent 70%
+  );
   pointer-events: none;
 }
 .results-empty-logos {
@@ -1359,12 +1414,31 @@ h1.brand {
   min-width: 0;
   scroll-margin-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 8px);
 }
+/*
+ * Refreshing no longer fades the thing you are reading.
+ *
+ * Four containers went to `opacity: 0.55`, which takes every text node inside
+ * with it: --ink-2 on --paper composites to about 2.7:1 and --ink to well
+ * under its usual 15:1. The contrast audit cannot see it, because it measures
+ * a settled page — so the one moment the app knowingly dropped below AA was
+ * the one moment nothing was checking.
+ *
+ * It was also the wrong signal. The old prices are still true while the new
+ * ones are on their way, the freshness chips are already counting up, and the
+ * refresh bar is already running along the sticky bar. Softening the border
+ * says "working" without touching a single character.
+ */
 .results.is-loading .quote-list,
 .results.is-loading .hero-quote,
 .results.is-loading .trip-stats,
 .results.is-loading .insight-banner {
-  opacity: 0.55;
-  transition: opacity var(--dur-2);
+  border-color: var(--line);
+  transition: border-color var(--dur-2);
+}
+.results.is-loading .quote-card {
+  box-shadow:
+    0 0 0 1px var(--line),
+    inset 0 1px 0 var(--edge-hi);
 }
 
 .map-slot {
@@ -1624,9 +1698,6 @@ h1.brand {
 }
 .insight-kicker {
   margin: 0;
-  font: 500 var(--t-2)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--mint-t);
 }
 .insight-text {
@@ -1805,9 +1876,13 @@ h1.brand {
  */
 .quote-card.hero {
   background: linear-gradient(180deg, var(--paper-lift) 0%, var(--paper) 62%);
+  /* Both bands were light-palette literals — rgba(31,107,74) is light
+     --forest-2 and rgba(167,243,208) is light --mint — frozen into a rule that
+     runs in both schemes. The halo that reads as a highlight on porcelain
+     composited to a grey-green smear on forest. */
   box-shadow:
-    0 0 0 1px rgba(31, 107, 74, 0.34),
-    0 0 0 5px rgba(167, 243, 208, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--forest-2) 34%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--mint) 32%, transparent),
     var(--sh-3);
 }
 .quote-card.hero .price {
@@ -1845,9 +1920,6 @@ h1.brand {
 }
 .provider {
   margin: 0;
-  font: 500 var(--t-2)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 .product {
@@ -2197,9 +2269,6 @@ h1.admin-title {
 }
 .book-meta dt {
   margin-bottom: 4px;
-  font: 500 var(--t-1)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 .book-meta dd {
   margin: 0;
@@ -2251,9 +2320,6 @@ h1.admin-title {
 }
 .admin-stat-label {
   margin-bottom: 7px;
-  font: 500 var(--t-1)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 .admin-stat-value {
   font: 400 var(--t-8)/1 var(--font-body);
@@ -2309,9 +2375,6 @@ h1.admin-title {
   height: 22px;
   padding: 0 var(--s-4);
   border-radius: 999px;
-  font: 500 var(--t-1)/1 var(--font-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 .admin-pill.is-ok {
   color: var(--mint-t);
@@ -2548,7 +2611,15 @@ h1.admin-title {
   }
 }
 @media (max-width: 639px) {
-  .trip-stat-desktop {
+  /*
+   * `.trip-stats > div` is (0,1,1) and `.trip-stat-desktop` was (0,1,0), so
+   * the base rule won and this has never hidden anything. Two of the five
+   * console cells have been on every phone since the class was written,
+   * wrapping the row to 2+2+1 with the last cell spanning the width — which
+   * is what a mobile capture of the console shows, and why it looked like the
+   * grid was broken rather than like a rule that silently lost.
+   */
+  .trip-stats > .trip-stat-desktop {
     display: none;
   }
 }
@@ -2925,10 +2996,6 @@ h1.admin-title {
 }
 .source-meta dt {
   color: var(--ink-3);
-  font-size: var(--t-2);
-  font-weight: 650;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
 }
 .source-meta dd {
   margin: 2px 0 0;
@@ -3717,9 +3784,6 @@ details[open] > summary::before {
   gap: var(--s-4);
 }
 .recent-trips-head > .muted:first-child {
-  font: 500 var(--t-2)/1 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 .recent-trips-list {
   display: grid;
@@ -3946,9 +4010,6 @@ details[open] > summary::before {
 }
 .cmdk-group {
   padding: var(--s-5) var(--s-5) var(--s-2);
-  font: 500 var(--t-2)/1 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 /* The first group in the list does not need the gap above it. */
@@ -4479,9 +4540,6 @@ details[open] > summary::before {
   display: inline-flex;
   align-items: center;
   gap: var(--s-4);
-  font: 500 var(--t-2)/1 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 .ask-close {
@@ -5152,9 +5210,6 @@ details[open] > summary::before {
 }
 .party-tips-label {
   margin-right: 2px;
-  font: 500 var(--t-1)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 .party-dials .chip {
@@ -5167,13 +5222,28 @@ details[open] > summary::before {
    One-of-a-set, enclosed. The chips keep their own class so nothing else
    about them changes; the container supplies the edge and takes away their
    individual outlines, which is what makes the set read as one control. */
+/*
+ * The radius is a rung, not a pill, and that is the whole fix.
+ *
+ * `border-radius: 999px` on a box that wraps resolves to half the short side.
+ * At 390px the rank group wraps to three rows and measures 142x146 — so the
+ * enclosure rendered as a near-perfect circle with "Price / Soonest / Value"
+ * stacked down the inside of it, and the class group as a lozenge with
+ * "Premium" and "All" outside the enclosure entirely. Four separate audits
+ * of the screenshots reported it independently; it is the worst thing in the
+ * app and it shipped three commits ago, in this session.
+ *
+ * 22px is exactly half of a single row's 44px, so one row is still a true
+ * pill. Two rows is a rounded rectangle, which is what a wrapped group should
+ * have looked like all along.
+ */
 .segmented {
   display: inline-flex;
   flex-wrap: wrap;
   gap: var(--s-1);
   padding: var(--s-2);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-5);
   background: var(--soft);
 }
 /*
@@ -5361,9 +5431,6 @@ details[open] > summary::before {
   background: var(--soft);
 }
 .tor-verdicts dt {
-  font: 500 var(--t-1)/1.2 var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 .tor-verdicts dd {
@@ -5446,5 +5513,24 @@ details[open] > summary::before {
     background: rgba(var(--scrim-rgb), 0.97);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/* ── Filters on a phone ────────────────────────────────────────────────────
+   Two enclosures side by side in a 358px row is two narrow columns of stacked
+   words. They are two separate one-of-a-set decisions and each deserves its
+   own row, with the chips sharing it. */
+@media (max-width: 560px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filters .segmented {
+    display: flex;
+  }
+  .filters .segmented .chip {
+    flex: 1 1 auto;
+    padding-right: var(--s-4);
+    padding-left: var(--s-4);
   }
 }
