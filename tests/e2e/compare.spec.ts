@@ -189,6 +189,48 @@ test.describe("RideLens anonymous flow", () => {
   }
 
   /*
+   * The browser chrome follows the reader's choice, in all six combinations.
+   *
+   * `viewport.themeColor` in layout.tsx is keyed on `prefers-color-scheme`
+   * alone, so a reader on a dark machine who picks Light got a porcelain page
+   * under a #0d1511 chrome band — which, with `appleWebApp.capable`, is the
+   * iOS standalone status bar at the top of every screen. Two of the six
+   * combinations were visibly wrong and only the two *system* ones had ever
+   * been looked at.
+   */
+  for (const os of ["light", "dark"] as const) {
+    for (const choice of [null, "light", "dark"] as const) {
+      test(`the chrome colour matches the page on a ${os} OS set to ${choice ?? "system"}`, async ({
+        browser,
+      }) => {
+        const ctx = await browser.newContext({ colorScheme: os });
+        if (choice) {
+          await ctx.addInitScript((c) => localStorage.setItem("ridelens.theme", c), choice);
+        }
+        const page = await ctx.newPage();
+        await page.goto("/");
+        await expect(page.locator(".theme-toggle")).toBeVisible();
+
+        const { metas, ground } = await page.evaluate(() => ({
+          metas: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => ({
+            media: (m as HTMLMetaElement).media || null,
+            content: (m as HTMLMetaElement).content,
+          })),
+          ground: getComputedStyle(document.documentElement).getPropertyValue("--ground").trim(),
+        }));
+
+        /* One tag, no media attribute, carrying whatever --ground resolved to.
+           A media-keyed tag that matches still beats one without, so the
+           media-keyed pair has to go rather than be added to. */
+        expect(metas).toHaveLength(1);
+        expect(metas[0]!.media).toBeNull();
+        expect(metas[0]!.content.toLowerCase()).toBe(ground.toLowerCase());
+        await ctx.close();
+      });
+    }
+  }
+
+  /*
    * The brand mark is aria-hidden, so the wordmark beside it is the only
    * accessible name the home link has. The narrowest breakpoint clips that
    * text to fit the nav on one line — clipping keeps it, display:none would

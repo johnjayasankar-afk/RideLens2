@@ -22,7 +22,7 @@ import {
   expiryCountdown,
 } from "@/lib/domain/freshness";
 import { categoryLabel } from "@/lib/domain/taxonomy";
-import { rankQuotes } from "@/lib/domain/ranking";
+import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
 import { computeSavings, defaultBaseline, joinSentences } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Assistant } from "@/components/assistant";
@@ -382,7 +382,25 @@ function QuoteCard({
   return (
     <article
       className={`quote-card${hero ? " hero" : ""}${animate ? " reveal-card" : ""}`}
-      style={animate ? { animationDelay: `${Math.min(index, 8) * 45}ms` } : undefined}
+      style={{
+        ...(animate ? { animationDelay: `${Math.min(index, 8) * 45}ms` } : null),
+        /*
+         * The name that makes the re-sort a re-sort.
+         *
+         * `withTransition` has been feature-detected and reduced-motion-gated
+         * since the ranking controls were built, and its comment says "the
+         * same card is visibly the same card in a new place" — but no element
+         * in the app ever carried a `view-transition-name`, so the browser
+         * snapshotted the whole root as one bitmap and crossfaded it. The
+         * mechanism was wired at both ends and connected to nothing.
+         *
+         * One stable name per quote, so when the ranking or the filter moves
+         * a row the browser tweens that row from where it was to where it is
+         * instead of dissolving the page. Costs nothing per frame: a snapshot
+         * is taken once per discrete action, never during a scroll.
+         */
+        viewTransitionName: transitionName(quote),
+      }}
     >
       <header className="quote-card-header">
         <ProviderLogo provider={quote.provider} size={40} priority={Boolean(hero)} />
@@ -479,6 +497,19 @@ function QuoteCard({
       </a>
     </article>
   );
+}
+
+/**
+ * A custom-ident the browser will accept, stable across a re-sort.
+ *
+ * Provider and product rather than `quote.id`: an id is regenerated on every
+ * refresh, and a name that changes between the two snapshots is two different
+ * elements as far as the transition is concerned — which is the crossfade
+ * this exists to replace. Non-ident characters are folded out because
+ * `view-transition-name` is a custom-ident, not a string.
+ */
+function transitionName(quote: Pick<NormalizedQuote, "provider" | "providerProductId">): string {
+  return `q-${`${quote.provider}-${quote.providerProductId}`.replace(/[^A-Za-z0-9_-]+/g, "-")}`;
 }
 
 /**
@@ -772,7 +803,30 @@ export function QuoteResults({
     if (!q && !mapRoute) return null;
     const waits = ranked.map((x) => x.pickupEtaSeconds).filter((n): n is number => n != null);
     const drives = ranked.map((x) => x.tripDurationSeconds).filter((n): n is number => n != null);
-    const versusNext = hero && rest[0] ? rest[0].rankingPriceMinor - hero.rankingPriceMinor : null;
+    /*
+     * The register goes through comparePrices, like everything else.
+     *
+     * ┌──────────────────────────────────────────────────────────────────────┐
+     * │ `bestMid: hero.rankingPriceMinor` printed the MIDPOINT at the        │
+     * │ largest type on the page, labelled "Best estimate", 250px above a    │
+     * │ hero card that states a band and refuses to name a point.            │
+     * │ docs/QUOTE_SEMANTICS.md:23 — "**Never** show a fabricated midpoint   │
+     * │ to users. Midpoint/p50 is ranking-only."                             │
+     * │                                                                      │
+     * │ And `versusNext` was one midpoint minus another, which line 40 of    │
+     * │ the same file forbids by name: "never a false precise '$X cheaper'   │
+     * │ claim from a midpoint alone." It printed "SAVES VS NEXT $1.30" forty │
+     * │ pixels above the app's own sentence saying the two ranges overlap so │
+     * │ treat them as the same price.                                        │
+     * └──────────────────────────────────────────────────────────────────────┘
+     *
+     * `comparePrices` is that contract, already written and already tested,
+     * and the console was the one surface that went around it. A saving is
+     * reported only when the bands are disjoint, where it is the gap between
+     * them and a rider is guaranteed it; otherwise the cell says what the
+     * relation actually is.
+     */
+    const against = hero && rest[0] ? comparePrices(hero, rest[0]) : null;
     return {
       miles: mapRoute?.miles ?? (q?.distanceMeters ? q.distanceMeters / 1609.344 : null),
       minWait: waits.length ? Math.min(...waits) : null,
@@ -782,8 +836,33 @@ export function QuoteResults({
           : drives.length
             ? Math.min(...drives)
             : null,
-      bestMid: hero?.rankingPriceMinor ?? null,
-      versusNext: versusNext != null && versusNext > 0 ? versusNext : null,
+      bestFrom: hero?.priceMinMinor ?? null,
+      versusNext:
+        against?.relation === "cheaper" && against.savingsMinor ? against.savingsMinor : null,
+      /*
+       * One word, and it has to fit on one line.
+       *
+       * comparePrices' own labels — "Similar price", "Likely cheaper", "More
+       * expensive" — are 84 to 110px, and the register cell's inner width is
+       * 115px at 1440 and 94 at 1100. So the cell grew from one line to two
+       * when the relation arrived, taking the whole console with it: measured
+       * CLS went 0.0022 to 0.0146 depending on which relation that run's
+       * prices produced.
+       *
+       * A register is a glance. The sentence underneath already carries the
+       * nuance in full — "Too close to call against UberX, the two ranges
+       * overlap, so treat them as the same price" — so this says which of the
+       * four it is and stops.
+       */
+      versusNextNote: !against
+        ? null
+        : against.relation === "cheaper"
+          ? null
+          : against.relation === "more_expensive"
+            ? "Higher"
+            : against.relation === "unclear"
+              ? "Unclear"
+              : "Similar",
     };
   }, [hero, ranked, rest, mapRoute]);
 
@@ -1166,23 +1245,29 @@ export function QuoteResults({
             </div>
             <div className="trip-stat-wide">
               <span className="stat-value">
-                {tripStats?.bestMid != null ? (
-                  formatMoneyMinor(tripStats.bestMid)
+                {tripStats?.bestFrom != null ? (
+                  formatMoneyMinor(tripStats.bestFrom)
                 ) : (
                   <span className="sk-line w60" />
                 )}
               </span>
-              <span className="stat-label">Best estimate</span>
+              {/* "From", because it is the low end of a band and not a figure
+                  anybody was quoted. The card below prints the whole band. */}
+              <span className="stat-label">Best, from</span>
             </div>
             <div className="trip-stat-desktop">
-              <span className="stat-value">
+              <span className={`stat-value${tripStats?.versusNextNote ? " is-relation" : ""}`}>
                 {tripStats?.versusNext != null ? (
                   formatMoneyMinor(tripStats.versusNext)
+                ) : tripStats?.versusNextNote ? (
+                  tripStats.versusNextNote
                 ) : (
                   <span className="sk-line w60" />
                 )}
               </span>
-              <span className="stat-label">Saves vs next</span>
+              <span className="stat-label">
+                {tripStats?.versusNext != null ? "Saves vs next" : "Vs next"}
+              </span>
             </div>
           </div>
         </div>

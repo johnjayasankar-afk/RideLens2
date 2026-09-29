@@ -344,10 +344,38 @@ for (const pattern of JS_GLOBS) {
   }
 }
 
+/*
+ * Hooks: named, in a vendored stylesheet, on purpose.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This check found --gl-drop the moment a *comment* in labs-ui.tsx stopped │
+ * │ mentioning it — because the producer scan above matches any `--name` in  │
+ * │ a JS file, including one inside a comment. A sentence is not a producer. │
+ * │ The token was never defined; the prose was the only thing keeping the    │
+ * │ check quiet, and it was quiet for the wrong reason.                      │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * labs-glass.css is shared across the Labs family and is vendored here. It
+ * reads a handful of names a host app MAY set and otherwise falls back —
+ * which is an API, not a defect, and only in that file. A name listed here
+ * still fails if our own stylesheet reads it, because then it really is a
+ * value nobody produces.
+ */
+const HOOKS = [
+  {
+    prop: "--gl-drop",
+    file: "src/app/labs-glass.css",
+    why: "labs-glass's drop-shadow hook: eight var() reads, all with a fallback, for a host app that wants a different one. RideLens does not.",
+  },
+];
+const isHook = (use) =>
+  use.hasFallback && HOOKS.some((h) => h.prop === use.prop && use.file.endsWith(h.file));
+
 /* 2. Names that resolve to nothing at all. */
 const reportedMissing = new Set();
 for (const use of usages) {
   if (definedEverywhere.has(use.prop) || setFromJs.has(use.prop)) continue;
+  if (isHook(use)) continue;
   if (reportedMissing.has(use.prop)) continue;
   reportedMissing.add(use.prop);
   problems.push({

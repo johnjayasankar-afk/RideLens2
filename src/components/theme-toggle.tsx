@@ -14,7 +14,7 @@
  * one thing dark mode exists to prevent.
  */
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
@@ -42,10 +42,45 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
+/*
+ * The browser chrome follows the choice, not only the OS.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ `viewport.themeColor` in layout.tsx is keyed on                          │
+ * │ `prefers-color-scheme` alone, and this function never touched the meta   │
+ * │ tag. So a reader on a dark machine who picks **Light** got a porcelain   │
+ * │ page under a #0d1511 chrome band — and with `appleWebApp.capable` that   │
+ * │ band is the iOS standalone status bar, at the top of every screen. Two   │
+ * │ of the six OS x choice combinations were visibly broken, and the         │
+ * │ screenshot corpus only ever held the two *system* ones, so nothing could │
+ * │ have caught it.                                                          │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Read from the page rather than from a table: --ground is the thing the
+ * chrome is supposed to match, so asking the computed style for it cannot
+ * drift from whatever the stylesheet currently says. Applied by removing the
+ * media-keyed tags, because a `<meta name="theme-color">` with a `media`
+ * attribute that matches still wins over one without.
+ */
+function syncThemeColor(): void {
+  const ground = getComputedStyle(document.documentElement).getPropertyValue("--ground").trim();
+  if (!ground) return;
+  const head = document.head;
+  for (const tag of head.querySelectorAll('meta[name="theme-color"][media]')) tag.remove();
+  let tag = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]:not([media])');
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.name = "theme-color";
+    head.appendChild(tag);
+  }
+  tag.content = ground;
+}
+
 export function applyTheme(choice: ThemeChoice): void {
   const root = document.documentElement;
   if (choice === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", choice);
+  syncThemeColor();
   try {
     if (choice === "system") localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, choice);
@@ -66,6 +101,21 @@ const ORDER: ThemeChoice[] = ["system", "light", "dark"];
 export function ThemeToggle() {
   /* Server snapshot is "system": it is what an unstyled first paint gets. */
   const choice = useSyncExternalStore(subscribe, readStored, () => "system" as ThemeChoice);
+
+  /*
+   * On mount, and whenever the OS flips under a reader who chose "system".
+   *
+   * applyTheme only runs on a click, so a stored choice restored at load —
+   * the common case — never reached the meta tag, and neither did the OS
+   * changing at sunset while the toggle says Match system.
+   */
+  useEffect(() => {
+    syncThemeColor();
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onFlip = () => syncThemeColor();
+    mq.addEventListener("change", onFlip);
+    return () => mq.removeEventListener("change", onFlip);
+  }, [choice]);
 
   const cycle = useCallback(() => {
     const next = ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length]!;

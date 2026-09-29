@@ -148,14 +148,53 @@
      in for it. Two literals 400 lines apart drifted by 14px, and the console
      jumped by exactly that as the quotes landed — see .console .sk-line. */
   --pulse-chip-h: 26px;
-  --sh-1: 0 1px 2px rgba(28, 51, 38, 0.05);
-  --sh-2: 0 1px 2px rgba(28, 51, 38, 0.05), 0 14px 32px -14px rgba(28, 51, 38, 0.22);
-  --sh-3: 0 1px 2px rgba(28, 51, 38, 0.05), 0 30px 64px -28px rgba(28, 51, 38, 0.32);
+  /*
+   * Elevation, at a strength a person can see.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ --sh-1 was `0 1px 2px` at 5% alpha, and it is the shadow in          │
+   * │ --surface-1, which ten of the app's major enclosures wear: the quote │
+   * │ list, the skeletons, the console, the deck, the trips list. Five per │
+   * │ cent of a 2px blur is below the threshold at which a human perceives │
+   * │ elevation at all, so --surface-1 was, visually, a 1px box — and ten  │
+   * │ enclosures shared one indistinguishable tier. The tokens for depth   │
+   * │ existed and were spent on nothing.                                   │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * Two layers rather than one, because that is how a real object sits on
+   * paper: a tight contact shadow that says it is touching, and a wide soft
+   * one that says how far above. Still transform-free and still static —
+   * nothing here animates, so nothing here costs a frame.
+   */
+  --sh-1: 0 1px 1px rgba(28, 51, 38, 0.04), 0 3px 6px -4px rgba(28, 51, 38, 0.1);
+  --sh-2:
+    0 1px 1px rgba(28, 51, 38, 0.05), 0 6px 12px -6px rgba(28, 51, 38, 0.1),
+    0 22px 40px -26px rgba(28, 51, 38, 0.3);
+  --sh-3:
+    0 1px 1px rgba(28, 51, 38, 0.06), 0 10px 20px -8px rgba(28, 51, 38, 0.12),
+    0 36px 64px -30px rgba(28, 51, 38, 0.4);
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   /* A softer landing for things that arrive, and a symmetric one for things
      that go out and come back. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /*
+   * The one spring in the product, and it is only ever for a press.
+   *
+   * A control goes down fast and comes back with a little overshoot, which
+   * is what a physical button does and what separates a interface that feels
+   * machined from one that feels like a web page. Twelve stops is enough for
+   * a one-pixel travel; a fifty-stop curve compresses badly and buys nothing
+   * anybody can see.
+   *
+   * Nowhere near a price, a band or a bar. Overshoot is a confidence
+   * gesture — the interface landing past the target and settling reads as
+   * certainty — and this product's argument is that it does not have any
+   * about a number. A fare that bounces into place is asserting precision
+   * the model does not have. `linear()` is a timing function, not a time, so
+   * it costs nothing against the duration ladder.
+   */
+  --ease-spring: linear(0, 0.14, 0.44, 0.76, 0.96, 1.06, 1.08, 1.06, 1.03, 1.005, 0.998, 1);
 
   --font-body:
     var(--font-sans-loaded), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -248,8 +287,50 @@
    * A spread shadow rather than a border, deliberately: a border grows the
    * box by two pixels and a hairline should not change what it encloses.
    */
-  --surface-1: 0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), var(--sh-1);
-  --surface-2: 0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), var(--sh-2);
+  --surface-1:
+    0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), inset 0 -1px 0 var(--edge-lo), var(--sh-1);
+  --surface-2:
+    0 0 0 1px var(--line-2), inset 0 1px 0 var(--edge-hi), inset 0 -1px 0 var(--edge-lo),
+    var(--sh-2);
+  /*
+   * The third rung, and the only one that is allowed to look expensive.
+   *
+   * Light falls from above, so the top of an object is lit and its foot is
+   * not. --surface-1 and --surface-2 say that with two inset rules; this
+   * says it with a border whose brightness falls off around the perimeter,
+   * which is what a machined edge actually does and what a box-shadow ring
+   * cannot express. It costs one pseudo-element and nothing per frame.
+   *
+   * Reserved for the surfaces that carry the answer — the hero, the console,
+   * the deck, the palette — because if everything is the top rung there is
+   * no top rung.
+   */
+  --edge-grad: linear-gradient(180deg, var(--edge-1) 0%, var(--edge-2) 26%, var(--edge-3) 100%);
+  /*
+   * A body lit from the top, over a short falloff.
+   *
+   * 140px, not 100%: the option list is one enclosure holding several rows,
+   * and a gradient run over the whole box makes the third row visibly dimmer
+   * than the first for no reason a reader could name. Resolving inside the
+   * first row means every row below it is uniform.
+   */
+  /*
+   * A body lit from the top, over a short falloff.
+   *
+   * 140px, not 100%: the option list is one enclosure holding several rows,
+   * and a gradient run over the whole box makes the third row visibly dimmer
+   * than the first for no reason a reader could name. Resolving inside one
+   * row's height means every row catches light at its own top edge and every
+   * row below the first is uniform.
+   */
+  --paper-grad: linear-gradient(180deg, var(--paper-hi) 0, var(--paper-lo) 140px);
+  /* A lit control at rest, and the same control under a pointer. */
+  --lit-1:
+    inset 0 1px 0 var(--lit-edge), 0 0 0 1px var(--lit-ring), 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 10px 24px -12px var(--lit-cast);
+  --lit-2:
+    inset 0 1px 0 var(--lit-edge), 0 0 0 1px var(--lit-ring), 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 18px 38px -14px var(--lit-cast);
 
   --fig-col: 11.5ch;
   /* The deck's one vertical: row names, and the first character of every
@@ -284,6 +365,40 @@
      dark ground it has to come from the accent, because white reads as a
      seam. */
   --edge-hi: rgba(255, 255, 255, 0.72);
+  /* The foot of a lit object, where the light does not reach. */
+  --edge-lo: rgba(28, 51, 38, 0.05);
+  /* The perimeter, top to bottom. In light the top of a white card is the
+     part nearest the light, so its border is faintest there and the foot is
+     where the edge reads. Dark inverts this exactly — see the dark blocks. */
+  --edge-1: rgba(28, 51, 38, 0.05);
+  --edge-2: rgba(28, 51, 38, 0.12);
+  --edge-3: rgba(28, 51, 38, 0.16);
+  --paper-hi: #ffffff;
+  /* How much of the mint wash the ground takes. Light already has range
+     between porcelain and white, so it needs a whisper; dark has ten L*
+     points for five surfaces and needs the light to do real work. */
+  --amb: 11%;
+  /*
+   * The accent, firing.
+   *
+   * ┌────────────────────────────────────────────────────────────────────┐
+   * │ Sampled in dark, .primary is L*36 — the app's single most          │
+   * │ important control is a murky mid-forest slab 42 L* points below    │
+   * │ the mint it is supposedly made of, and less luminous than the      │
+   * │ address input above it. --mint-3 at L*78 appears at size nowhere   │
+   * │ in the product; the entire glow budget is a 7px freshness dot.     │
+   * └────────────────────────────────────────────────────────────────────┘
+   *
+   * The fill cannot simply be brightened: --on-accent is a light label and
+   * a mint button would drop it under 4.5:1. So the accent fires at the
+   * edge instead — a lit top rim, an accent ring, and a tinted cast — which
+   * is how a dark UI says "this one" without touching the label contrast.
+   * All three are static; nothing here costs a frame.
+   */
+  --lit-edge: rgba(255, 255, 255, 0.26);
+  --lit-ring: rgba(31, 107, 74, 0.5);
+  --lit-cast: rgba(19, 36, 27, 0.5);
+  --paper-lo: #fcfbf8;
   --map-style: "positron";
   --map-glyph: none;
   color-scheme: light;
@@ -364,12 +479,30 @@
     --hairline: #24312a;
     --btn-1: #2f6b52;
     --btn-2: #22503c;
-    --dot: rgba(190, 226, 205, 0.05);
+    /* Half of what it was. A regular lattice of pale specks on an L*6 ground
+     does not read as paper texture, it reads as dithering. */
+    --dot: rgba(190, 226, 205, 0.028);
     --paper-lift: #1d2c24;
     --scrim: rgba(18, 28, 22, 0.92);
     --scrim-rgb: 18, 28, 22;
     --selection: rgba(19, 96, 62, 0.8);
-    --edge-hi: rgba(190, 226, 205, 0.055);
+    --edge-hi: rgba(190, 226, 205, 0.13);
+    /* Nothing casts a shadow on an L*6 ground, so a dark object separates by
+       catching light rather than by blocking it. 0.055 was thirteen times less
+       than light's 0.72 and computed to a three-value step over --paper: the
+       comment above --edge-hi says one pixel of inset highlight is the
+       difference between a rectangle and an object, and then set it to a value
+       nobody can see. */
+    --edge-lo: rgba(0, 0, 0, 0.3);
+    --edge-1: rgba(190, 226, 205, 0.3);
+    --edge-2: rgba(190, 226, 205, 0.1);
+    --edge-3: rgba(190, 226, 205, 0.05);
+    --paper-hi: #202f27;
+    --amb: 16%;
+    --lit-edge: rgba(190, 240, 215, 0.34);
+    --lit-ring: rgba(76, 196, 146, 0.42);
+    --lit-cast: rgba(43, 150, 110, 0.3);
+    --paper-lo: #17231c;
     --on-surface: #2a5642;
     --on-surface-ink: #e9f1ec;
     --well: #101a15;
@@ -382,9 +515,13 @@
 
     /* Shadow does almost nothing on a dark ground; depth comes from the
        lighter card surface instead, so these only deepen the separation. */
-    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
-    --sh-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
-    --sh-3: 0 1px 2px rgba(0, 0, 0, 0.5), 0 30px 64px -28px rgba(0, 0, 0, 0.8);
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.55), 0 4px 10px -6px rgba(0, 0, 0, 0.7);
+    --sh-2:
+      0 1px 2px rgba(0, 0, 0, 0.6), 0 8px 18px -10px rgba(0, 0, 0, 0.8),
+      0 24px 48px -26px rgba(0, 0, 0, 0.9);
+    --sh-3:
+      0 1px 2px rgba(0, 0, 0, 0.65), 0 14px 28px -12px rgba(0, 0, 0, 0.85),
+      0 44px 76px -32px rgba(0, 0, 0, 0.95);
   }
 }
 
@@ -427,12 +564,30 @@
   --hairline: #24312a;
   --btn-1: #2f6b52;
   --btn-2: #22503c;
-  --dot: rgba(190, 226, 205, 0.05);
+  /* Half of what it was. A regular lattice of pale specks on an L*6 ground
+     does not read as paper texture, it reads as dithering. */
+  --dot: rgba(190, 226, 205, 0.028);
   --paper-lift: #1d2c24;
   --scrim: rgba(18, 28, 22, 0.92);
   --scrim-rgb: 18, 28, 22;
   --selection: rgba(19, 96, 62, 0.8);
-  --edge-hi: rgba(190, 226, 205, 0.055);
+  --edge-hi: rgba(190, 226, 205, 0.13);
+  /* Nothing casts a shadow on an L*6 ground, so a dark object separates by
+     catching light rather than by blocking it. 0.055 was thirteen times less
+     than light's 0.72 and computed to a three-value step over --paper: the
+     comment above --edge-hi says one pixel of inset highlight is the
+     difference between a rectangle and an object, and then set it to a value
+     nobody can see. */
+  --edge-lo: rgba(0, 0, 0, 0.3);
+  --edge-1: rgba(190, 226, 205, 0.3);
+  --edge-2: rgba(190, 226, 205, 0.1);
+  --edge-3: rgba(190, 226, 205, 0.05);
+  --paper-hi: #202f27;
+  --amb: 16%;
+  --lit-edge: rgba(190, 240, 215, 0.34);
+  --lit-ring: rgba(76, 196, 146, 0.42);
+  --lit-cast: rgba(43, 150, 110, 0.3);
+  --paper-lo: #17231c;
   --on-surface: #2a5642;
   --on-surface-ink: #e9f1ec;
   --well: #101a15;
@@ -446,9 +601,13 @@
      a background-image, and the button carries no colour of its own to spoil. */
   --map-glyph: invert(1);
 
-  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --sh-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
-  --sh-3: 0 1px 2px rgba(0, 0, 0, 0.5), 0 30px 64px -28px rgba(0, 0, 0, 0.8);
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.55), 0 4px 10px -6px rgba(0, 0, 0, 0.7);
+  --sh-2:
+    0 1px 2px rgba(0, 0, 0, 0.6), 0 8px 18px -10px rgba(0, 0, 0, 0.8),
+    0 24px 48px -26px rgba(0, 0, 0, 0.9);
+  --sh-3:
+    0 1px 2px rgba(0, 0, 0, 0.65), 0 14px 28px -12px rgba(0, 0, 0, 0.85),
+    0 44px 76px -32px rgba(0, 0, 0, 0.95);
 }
 
 /* ---- base ------------------------------------------------------------------ */
@@ -495,21 +654,29 @@ body {
    * and stayed a dark-green dot on a dark-green ground every night session.
    */
   background-image:
+    /*
+     * One light, above the page, in the palette's own hue.
+     *
+     * This was two washes — mint at 10% -12% and sky at 102% -6% — and two
+     * off-centre lobes do not read as a light source, they read as two
+     * smudges with a visible terminating edge between them. The sky one was
+     * also the only place a second hue family touched the ground.
+     *
+     * One wide, centred, soft gradient anchored above the viewport is what a
+     * room looks like. Still `background-image` on the body rather than a
+     * fixed layer, still sized to the first screen, still never
+     * `background-attachment: fixed` — a viewport-anchored wash repaints
+     * 2,000px of page on every scroll frame.
+     */
     radial-gradient(
-      1100px 620px at 10% -12%,
-      color-mix(in srgb, var(--mint-3) 13%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      840px 520px at 102% -6%,
-      color-mix(in srgb, var(--sky) 9%, transparent),
-      transparent 60%
+      1500px 700px at 50% -16%,
+      color-mix(in srgb, var(--mint-3) var(--amb), transparent),
+      transparent 68%
     ),
     radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.2px);
-  background-repeat: no-repeat, no-repeat, repeat;
+  background-repeat: no-repeat, repeat;
   background-size:
     100% 940px,
-    100% 700px,
     var(--dot-size, 24px) var(--dot-size, 24px);
   font: 400 var(--t-6)/1.55 var(--font-body);
   letter-spacing: -0.011em;
@@ -772,7 +939,7 @@ code {
      five stopwatches for one button: the lift and the shadow are the slower
      pair and everything else is the house hover speed. */
   transition:
-    transform var(--dur-3) var(--ease),
+    transform var(--dur-3) var(--ease-spring),
     box-shadow var(--dur-3) var(--ease),
     background-color var(--dur-2),
     color var(--dur-2),
@@ -790,17 +957,11 @@ code {
      button was bright mint. */
   color: var(--on-accent);
   background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 1px 2px rgba(15, 23, 18, 0.25),
-    0 10px 24px -12px rgba(19, 36, 27, 0.65);
+  box-shadow: var(--lit-1);
 }
 .primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 1px 2px rgba(15, 23, 18, 0.25),
-    0 18px 34px -14px rgba(19, 36, 27, 0.75);
+  box-shadow: var(--lit-2);
 }
 .primary:active:not(:disabled) {
   transform: translateY(1px) scale(0.985);
@@ -820,8 +981,29 @@ code {
  * something else. The signal it carries is "you can compare now", which is an
  * event; an event is announced once.
  */
+/*
+ * `forwards`, not `both`, and it gives the outline back when it lands.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ `ready-in` is one ring going outward and away, which is a nice way to    │
+ * │ say the form has become submittable. It ended on `outline: 2px solid     │
+ * │ transparent; outline-offset: 10px` and `both` holds the last frame — and │
+ * │ an animation's declarations outrank a normal rule, so `:focus-visible`   │
+ * │ could no longer draw a ring on this button. The app's primary action had │
+ * │ a transparent focus ring for exactly the window in which it is the       │
+ * │ primary action. WCAG 2.2 SC 2.4.7 and 2.4.11.                            │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Naming `outline-color` and `outline-offset` rather than the `outline`
+ * shorthand keeps `outline-style` and `outline-width` out of the animation's
+ * hands, and the animation is dropped from the element the moment it ends —
+ * so the ring is the reader's again.
+ */
 .primary.is-ready {
-  animation: var(--dur-4) var(--ease-out) both ready-in;
+  animation: var(--dur-4) var(--ease-out) forwards ready-in;
+}
+.primary.is-ready:focus-visible {
+  animation: none;
 }
 
 .ghost {
@@ -868,7 +1050,7 @@ code {
     color var(--dur-2),
     background-color var(--dur-2),
     box-shadow var(--dur-2),
-    transform var(--dur-3) var(--ease);
+    transform var(--dur-3) var(--ease-spring);
 }
 .chip:hover {
   color: var(--ink);
@@ -887,10 +1069,19 @@ code {
  * `--on-surface` now goes the right way in each scheme: down into near-black
  * on porcelain, up to 2.2:1 above the ground on forest.
  */
+/*
+ * Chosen, not switched off.
+ *
+ * --on-surface is L*33 in dark and the chip carried --sh-2, a black cast on
+ * a near-black ground: the selected "Price" and "Standard" pills read as
+ * disabled rather than as the current state. Same recipe as the primary —
+ * a lit rim and an accent ring — so "this one" looks the same everywhere in
+ * the product, at whatever size it happens to be.
+ */
 .chip.active {
   color: var(--on-surface-ink);
   background: var(--on-surface);
-  box-shadow: var(--sh-2);
+  box-shadow: var(--lit-1);
 }
 
 .kbd {
@@ -2049,6 +2240,18 @@ h1.brand {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
+/*
+ * A relation is a word, and a word does not get the figure's size.
+ *
+ * "Similar price" in a 24px numeral slot reads as a number that failed to
+ * arrive. It is also the truthful answer when two bands overlap, which is
+ * most of the time, so it has to look like an answer rather than a gap.
+ */
+.stat-value.is-relation {
+  font: 500 var(--t-5)/1 var(--font-body);
+  letter-spacing: -0.012em;
+  color: var(--ink-2);
+}
 .stat-label {
   font-size: var(--t-1);
 }
@@ -2266,7 +2469,7 @@ h1.brand {
   gap: var(--s-6);
   padding: var(--s-6) var(--s-7);
   border-radius: var(--radius);
-  background: var(--paper);
+  background: var(--paper-grad);
   box-shadow: var(--surface-1);
   /*
    * A tint, not a lift.
@@ -2594,24 +2797,49 @@ h1.brand {
   color: var(--ink-3);
 }
 
+/*
+ * One filled pill per screen, and it belongs to the answer.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Every card carried the same 52px saturated gradient slab, so a screen    │
+ * │ showing four options showed four maximum-emphasis calls to action 380px  │
+ * │ apart. If everything is primary, nothing is — and this product's whole   │
+ * │ argument is that one of these is the answer and the rest are the working.│
+ * │ The answer and the working rendered identically.                         │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The list rows take the outline: accent ink, accent hairline, the card
+ * showing through. Still a 52px labelled control with its provider tile, so
+ * nothing is harder to hit or harder to read — it just stops shouting over
+ * the row above it. The hero keeps the fill, below.
+ */
 .book {
   min-height: var(--ctl-2xl);
   padding: 0 var(--s-7);
   font: 500 var(--t-5)/1 var(--font-body);
   letter-spacing: -0.012em;
-  /* The card's call to action, so it takes the accent rather than sitting
-     as a near-black pill on a near-black card. */
+  color: var(--forest-2);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--lit-ring);
+}
+@media (hover: hover) and (pointer: fine) {
+  .book:hover {
+    background: color-mix(in srgb, var(--forest-2) 10%, transparent);
+    box-shadow: inset 0 0 0 1px var(--forest-2);
+  }
+}
+/* The one the page is recommending. */
+.quote-card.hero .book {
   color: var(--on-accent);
   background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 18, 0.2),
-    0 10px 22px -14px rgba(15, 42, 29, 0.6);
+  box-shadow: var(--lit-1);
 }
-.book:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 18, 0.2),
-    0 16px 30px -14px rgba(15, 42, 29, 0.7);
+@media (hover: hover) and (pointer: fine) {
+  .quote-card.hero .book:hover {
+    background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
+    transform: translateY(-1px);
+    box-shadow: var(--lit-2);
+  }
 }
 .book.disabled {
   opacity: 0.5;
@@ -2939,7 +3167,7 @@ h1.admin-title {
     outline-offset: 0;
   }
   to {
-    outline: 2px solid transparent;
+    outline-color: transparent;
     outline-offset: 10px;
   }
 }
@@ -4350,7 +4578,7 @@ details[open] > summary::before {
   display: flex;
   align-items: stretch;
   gap: var(--s-2);
-  background: var(--paper);
+  background: var(--paper-grad);
 }
 .recent-trip + .recent-trip {
   border-top: 1px solid var(--line);
@@ -4507,7 +4735,7 @@ details[open] > summary::before {
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--radius);
-  background: var(--paper);
+  background: var(--paper-grad);
   box-shadow: var(--sh-3);
   animation: cmdk-rise var(--dur-2) var(--ease) both;
 }
@@ -5281,6 +5509,18 @@ details[open] > summary::before {
       animation-duration: var(--dur-2);
       animation-timing-function: var(--ease);
     }
+    /*
+     * The named groups — one per quote card — move on their own clock.
+     *
+     * Slower than the root crossfade and on the same curve everything else in
+     * the app decelerates on, because this is the one moment where a reader
+     * is meant to follow a specific row to its new rank rather than watch a
+     * page change. `*` rather than a list: the names are generated per quote.
+     */
+    ::view-transition-group(*) {
+      animation-duration: var(--dur-3);
+      animation-timing-function: var(--ease);
+    }
   }
 }
 
@@ -5380,7 +5620,7 @@ details[open] > summary::before {
   display: grid;
   overflow: clip;
   border-radius: var(--radius);
-  background: var(--paper);
+  background: var(--paper-grad);
   box-shadow: var(--surface-1);
 }
 .console > * + * {
@@ -5449,7 +5689,16 @@ details[open] > summary::before {
   font-size: var(--t-4);
   color: var(--ink-2);
 }
+/*
+ * The three rows in the app that scroll sideways rather than wrap — this
+ * strip, the filter row on a phone and the console's status line — already
+ * carry a scroll-driven edge fade, which says "there is more". `proximity`
+ * finishes the gesture: a flick lands on a tab rather than half of one, and
+ * it never fights a reader who is only scanning. Never `mandatory`, which
+ * does fight them, and can trap an assistive scroll.
+ */
 .deck-tabstrip {
+  scroll-snap-type: inline proximity;
   overflow-x: auto;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
@@ -5520,6 +5769,7 @@ details[open] > summary::before {
 .deck-tab {
   position: relative;
   z-index: 1;
+  scroll-snap-align: center;
   min-width: 0;
   padding: var(--s-5) var(--s-3);
   border: 0;
@@ -6440,6 +6690,18 @@ details[open] > summary::before {
 }
 .console .trip-stats .stat-label {
   order: -1;
+}
+/*
+ * The cells share a baseline whatever the value turns out to be.
+ *
+ * One of the five is a relation rather than a figure — "Similar price" when
+ * the two bands overlap — and a two-line value in a vertically-centred cell
+ * pushed its own label above the other four. `align-content: start` puts the
+ * labels on one line and lets the value grow downward into the room the
+ * register already reserves.
+ */
+.console .trip-stats > div {
+  align-content: start;
 }
 .console .stat-value {
   font-size: var(--t-8);

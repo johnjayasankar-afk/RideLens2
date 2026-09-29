@@ -54,13 +54,20 @@ export const metadata: Metadata = {
 
 export const viewport = {
   /*
-   * One per scheme, so the browser chrome matches the page instead of
-   * sitting as a bright band above a dark app.
+   * No `themeColor` here, and that is the fix rather than an omission.
+   *
+   * A media-keyed pair answers the OS and cannot answer the reader: someone
+   * on a dark machine who chooses Light got a porcelain page under a
+   * #0d1511 chrome band, and with `appleWebApp.capable` that band is the iOS
+   * standalone status bar on every screen. Two of the six OS x choice
+   * combinations were wrong.
+   *
+   * It also cannot simply be corrected from script, because these tags are
+   * React-managed metadata: the inline script below removed them and React
+   * put one back during hydration, leaving two. So the tag belongs to one
+   * owner. The script in <head> writes it synchronously before first paint
+   * and theme-toggle.tsx keeps it true afterwards.
    */
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f6f1" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d1511" },
-  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -106,11 +113,25 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           It has to be inline and synchronous — anything deferred paints
           first. Carries the nonce from src/proxy.ts, so the enforcing CSP
           does not have to make an exception for it.
+
+          It also fixes the browser chrome, for the same reason and in the
+          same frame. `viewport.themeColor` above is keyed on
+          prefers-color-scheme alone, so a reader on a dark machine who chose
+          Light got a porcelain page under a #0d1511 chrome band — and with
+          appleWebApp.capable that band is the iOS standalone status bar, on
+          every screen. A media-keyed meta that matches still wins over one
+          without, so the pair is replaced rather than added to.
+
+          The colours are the two --ground values, written here as literals
+          because this runs before the stylesheet has applied and there is
+          nothing yet to read them from. tests/e2e/compare.spec.ts checks all
+          six combinations against the --ground the page actually computes,
+          so a literal that drifts fails rather than lingers.
         */}
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("ridelens.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("ridelens.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++)m[i].remove();var e=document.createElement("meta");e.name="theme-color";e.content=d?"#0d1511":"#f8f6f1";document.head.appendChild(e)}catch(e){}`,
           }}
         />
       </head>

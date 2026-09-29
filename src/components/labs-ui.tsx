@@ -19,17 +19,30 @@ export function LabsUI() {
       observe: true,
       glass: [
         /*
-         * Flat glass on the bar, and no lens.
+         * The topbar is not dressed here any more.
          *
-         * `.gl` is a backdrop-filter, and the topbar is sticky, full width and
-         * on screen for every frame of every scroll — the most expensive
-         * surface in the app measured by frames it appears in, spent blurring
-         * a flat ground and a dot grid. `.gl--flat` keeps the rim of light and
-         * the pointer sheen, which are what make it feel like a material, and
-         * asks nothing of the compositor. `--gl-drop` went with it: it was a
-         * light-palette literal that never inverted.
+         * `.gl--flat` sets `background-color: rgba(var(--gl-rgb), var(--gl-tint))`
+         * and labs-glass loads after globals.css, so this line — six characters
+         * of it — was overriding the bar's own `rgba(var(--scrim-rgb), 0.96)`
+         * with a **50% tint**. `.gl--flat` carries no backdrop-filter by
+         * design, so that is a half-transparent sticky header with nothing
+         * behind it: measured, `getComputedStyle(.topbar).backgroundColor` was
+         * `rgba(11, 26, 19, 0.5)`. On a phone "Commands ⌘K" and "Clear route"
+         * read straight through the wordmark. It is the first thing anyone
+         * sees, it is on every screen, and it had been that way silently
+         * because the app's own rule never applied.
+         *
+         * Two more artefacts went with it. `.gl--spec`'s resting sheen is a
+         * `radial-gradient(240px circle at var(--gx, 50%) var(--gy, -10%))`,
+         * and 50% of 1440 is 720 — the "blotchy two-lobe wash peaking at x=720
+         * with a dead right half" is the pointer highlight parked at its
+         * default. And `.gl--flat`'s rim is `inset 1.6px 1.6px 0 -0.7px
+         * rgba(255, 255, 255, 1)`, pure white at full alpha, which drew a 1px
+         * L*45 column down the viewport's left edge and stopped at y=60.
+         *
+         * The bar's material is in globals.css now, where it is deterministic
+         * and where the app can decide what its most-seen 60px look like.
          */
-        { sel: ".topbar", flat: 1, spec: 1, vars: { "--gl-tint": ".5" } },
         /*
          * The cards are not dressed any more, and were not really dressed
          * before: React rewrites `className` on every re-render, which strips

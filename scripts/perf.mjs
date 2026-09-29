@@ -168,24 +168,50 @@ await browser.close();
 
 let failed = false;
 
+/*
+ * Frame times take the median. CLS takes the worst.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This reported the median of three runs for everything, and the desktop  │
+ * │ CLS here is bimodal: the same build, unchanged, alternates between      │
+ * │ 0.0021 and 0.0146 depending on where a shift at about 200ms lands       │
+ * │ relative to the map swapping in. A median of three coin flips reports   │
+ * │ the low number about half the time, so the figure quoted in this        │
+ * │ repository's commit messages has been the lucky half of a race — and a  │
+ * │ guard that under-reports by 7x half the time will pass a real           │
+ * │ regression without a word.                                              │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * A median is right for frame times: a reader scrolling for five seconds
+ * experiences the middle of the distribution. It is wrong for layout shift,
+ * which is not something you average over a session — you get the load you
+ * get, and the one that jumps is the one that matters. So CLS reports the
+ * worst run and the spread is printed beside it.
+ */
 function report(label, runs, budget) {
   const got = Object.fromEntries(
-    Object.keys(budget).map((k) => [k, median(runs.map((r) => r[k]))]),
+    Object.keys(budget).map((k) => [
+      k,
+      k === "cls" ? Math.max(...runs.map((r) => r[k])) : median(runs.map((r) => r[k])),
+    ]),
   );
-  console.log(`Performance (median of ${RUNS} runs, ${label})\n`);
+  const clsRuns = runs.map((r) => r.cls);
+  console.log(`Performance (${RUNS} runs, ${label} — frames median, CLS worst)\n`);
   for (const [key, limit] of Object.entries(budget)) {
     const v = got[key];
     const over = v > limit;
     if (over) failed = true;
+    const note =
+      key === "cls" && new Set(clsRuns).size > 1 ? `   (worst of ${clsRuns.join(", ")})` : "";
     console.log(
-      `  ${over ? "OVER " : "ok   "} ${key.padEnd(20)} ${String(v).padStart(8)} / ${limit}`,
+      `  ${over ? "OVER " : "ok   "} ${key.padEnd(20)} ${String(v).padStart(8)} / ${limit}${note}`,
     );
   }
   console.log(`\n  ~${(1000 / got.medianFrameMs).toFixed(0)} fps while scrolling\n`);
   return got;
 }
 
-const got = report(`${DESKTOP.width}x${DESKTOP.height}`, desktopRuns, BUDGET);
+report(`${DESKTOP.width}x${DESKTOP.height}`, desktopRuns, BUDGET);
 report(`${PHONE.width}x${PHONE.height}`, phoneRuns, PHONE_BUDGET);
 
 if (failed) {
