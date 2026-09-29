@@ -228,10 +228,23 @@
     --rose-bg: #3a1c17;
     --rose-t: #f6b3a5;
 
-    --on-accent: #08130d;
+    /*
+     * The button leads without being a lamp.
+     *
+     * #50caa0 measured 31.7x the card's luminance and 70x the page ground —
+     * in light the same button is 0.08x its card and recedes. `.book` paints
+     * it once per option, so a page whose job is comparison had eight glowing
+     * bars down it, each shouting louder than the prices they were under.
+     *
+     * The new gradient is 8x the card: still unmistakably the action on its
+     * card, no longer the brightest thing on the screen. With it the label
+     * goes light again — #e9f1ec clears 5.46:1 at the gradient's lightest
+     * point and 8.01:1 at its darkest.
+     */
+    --on-accent: #e9f1ec;
     --hairline: #24312a;
-    --btn-1: #50caa0;
-    --btn-2: #2f9d76;
+    --btn-1: #2f6b52;
+    --btn-2: #22503c;
     --dot: rgba(190, 226, 205, 0.05);
     --paper-lift: #1d2c24;
     --scrim: rgba(18, 28, 22, 0.92);
@@ -283,10 +296,10 @@
   --rose-bg: #3a1c17;
   --rose-t: #f6b3a5;
 
-  --on-accent: #08130d;
+  --on-accent: #e9f1ec;
   --hairline: #24312a;
-  --btn-1: #50caa0;
-  --btn-2: #2f9d76;
+  --btn-1: #2f6b52;
+  --btn-2: #22503c;
   --dot: rgba(190, 226, 205, 0.05);
   --paper-lift: #1d2c24;
   --scrim: rgba(18, 28, 22, 0.92);
@@ -502,14 +515,22 @@ code {
   background: var(--ink);
 }
 
+/*
+ * Opaque, because it is on screen for every frame of every scroll.
+ *
+ * It is sticky, full width, at z-index 40, and it was running
+ * blur(22px) saturate(1.6) over a dot grid — the single most expensive
+ * surface in the app measured by frames it appears in, spent on a blur of a
+ * flat ground and some dots. At 0.96 the page barely shows through anyway,
+ * and the rim of light and the pointer sheen that make it feel like a
+ * material are both `.gl--flat`, which costs nothing (see labs-ui.tsx).
+ */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 40;
   padding-top: env(safe-area-inset-top);
-  background: rgba(var(--scrim-rgb), 0.82);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  backdrop-filter: blur(22px) saturate(1.6);
+  background: rgba(var(--scrim-rgb), 0.96);
   box-shadow: 0 1px 0 var(--line);
   transition: background-color var(--dur-2);
 }
@@ -628,9 +649,9 @@ code {
   padding: 0 var(--s-8);
   font: 500 var(--t-6)/1 var(--font-body);
   letter-spacing: -0.012em;
-  /* The accent inverts between schemes — dark green in light, light mint in
-     dark — so the label on it has to invert too. White stayed white and
-     scored 2.04:1 on the dark button. */
+  /* Both schemes now put a light label on a deep green button, which is what
+     `--on-accent` is for — it was near-black through the period when the dark
+     button was bright mint. */
   color: var(--on-accent);
   background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
   box-shadow:
@@ -654,8 +675,17 @@ code {
   background: var(--soft);
   box-shadow: inset 0 0 0 1px var(--line);
 }
+/*
+ * Once, not forever.
+ *
+ * This was a four-layer box-shadow animated infinitely on the primary button,
+ * which means the compositor repaints it for as long as the page is open and
+ * both endpoints are set — including while somebody scrolls past it reading
+ * something else. The signal it carries is "you can compare now", which is an
+ * event; an event is announced once.
+ */
 .primary.is-ready {
-  animation: var(--dur-6) ease-in-out infinite ready-pulse;
+  animation: var(--dur-4) var(--ease-out) both ready-in;
 }
 
 .ghost {
@@ -1874,16 +1904,51 @@ h1.brand {
  * it. It now sits a step further off the page, and its own price is the
  * largest figure on screen.
  */
+/*
+ * Crop marks, not a glow.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The recommendation wore a 5px mint halo, which is how software says      │
+ * │ "this one is right". This product is not able to say that. It prints     │
+ * │ ranges, it refuses to name a winner when two of them overlap, and one    │
+ * │ tab along it tells you how many scenarios would change the answer.       │
+ * │                                                                          │
+ * │ Crop marks make a different claim, and it is the claim the product can   │
+ * │ actually support: this is the region under consideration. It is the      │
+ * │ mark a printer puts where the page will be cut, or a camera puts around  │
+ * │ the frame — an instrument indicating *what is being measured* rather     │
+ * │ than a light saying *this is good*.                                      │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Eight linear-gradients in one background-image on one pseudo-element: no
+ * DOM, no layout, no compositor layer, and it inverts because the colour is a
+ * token. The halo it replaces was two frozen light-palette literals.
+ */
 .quote-card.hero {
+  position: relative;
   background: linear-gradient(180deg, var(--paper-lift) 0%, var(--paper) 62%);
-  /* Both bands were light-palette literals — rgba(31,107,74) is light
-     --forest-2 and rgba(167,243,208) is light --mint — frozen into a rule that
-     runs in both schemes. The halo that reads as a highlight on porcelain
-     composited to a grey-green smear on forest. */
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--forest-2) 34%, transparent),
-    0 0 0 5px color-mix(in srgb, var(--mint) 32%, transparent),
+    0 0 0 1px var(--line-2),
+    inset 0 1px 0 var(--edge-hi),
     var(--sh-3);
+}
+.quote-card.hero::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  pointer-events: none;
+  /* 2px, not 1. At a hairline the brackets were measurably present and
+     visually absent — the computed style was right and a screenshot showed
+     nothing. A mark has to be a mark. */
+  background:
+    linear-gradient(var(--focus), var(--focus)) 0 0 / 16px 2px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 0 0 / 2px 16px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 100% 0 / 16px 2px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 100% 0 / 2px 16px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 0 100% / 16px 2px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 0 100% / 2px 16px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 100% 100% / 16px 2px no-repeat,
+    linear-gradient(var(--focus), var(--focus)) 100% 100% / 2px 16px no-repeat;
 }
 .quote-card.hero .price {
   font-size: var(--t-9);
@@ -2449,21 +2514,15 @@ h1.admin-title {
     transform: scale(1);
   }
 }
-@keyframes ready-pulse {
-  0%,
-  100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      0 1px 2px rgba(15, 23, 18, 0.25),
-      0 10px 24px -12px rgba(19, 36, 27, 0.65),
-      0 0 0 0 rgba(52, 211, 153, 0);
+/* One ring, outward, gone. Transform and opacity only — no shadow to repaint. */
+@keyframes ready-in {
+  from {
+    outline: 2px solid var(--focus);
+    outline-offset: 0;
   }
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      0 1px 2px rgba(15, 23, 18, 0.25),
-      0 14px 30px -12px rgba(19, 36, 27, 0.7),
-      0 0 0 5px rgba(52, 211, 153, 0.24);
+  to {
+    outline: 2px solid transparent;
+    outline-offset: 10px;
   }
 }
 

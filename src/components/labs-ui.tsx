@@ -2,9 +2,10 @@
 
 /* RideLens, in the Labs material.
  *
- * Glass on the top bar and the quote cards, flat glass on the filter chips. A
- * client component so it runs in the browser only; the module itself is written
- * so that importing it on the server does nothing at all.
+ * Flat glass on the top bar and the filter chips — the rim of light and the
+ * pointer sheen, without a backdrop-filter. A client component so it runs in
+ * the browser only; the module itself is written so that importing it on the
+ * server does nothing at all.
  *
  * The app renders results as they arrive, so labs-ui watches for new nodes.
  */
@@ -17,13 +18,26 @@ export function LabsUI() {
     const ui = initLabsUI({
       observe: true,
       glass: [
-        {
-          sel: ".topbar",
-          spec: 1,
-          lens: [13, 52, 9, 1.95],
-          vars: { "--gl-tint": ".5", "--gl-drop": "0 1px 0 rgba(28,51,38,.09)" },
-        },
-        { sel: ".quote-card", lens: [12, 34, 8, 1.7], vars: { "--gl-tint": ".66" } },
+        /*
+         * Flat glass on the bar, and no lens.
+         *
+         * `.gl` is a backdrop-filter, and the topbar is sticky, full width and
+         * on screen for every frame of every scroll — the most expensive
+         * surface in the app measured by frames it appears in, spent blurring
+         * a flat ground and a dot grid. `.gl--flat` keeps the rim of light and
+         * the pointer sheen, which are what make it feel like a material, and
+         * asks nothing of the compositor. `--gl-drop` went with it: it was a
+         * light-palette literal that never inverted.
+         */
+        { sel: ".topbar", flat: 1, spec: 1, vars: { "--gl-tint": ".5" } },
+        /*
+         * The cards are not dressed any more, and were not really dressed
+         * before: React rewrites `className` on every re-render, which strips
+         * the class this adds, while the `data-gl-done` flag it leaves behind
+         * stops it ever being re-applied. Measured live, `.quote-card` carried
+         * no `gl` class and `backdrop-filter: none`. Their material is in
+         * globals.css now, where it is deterministic.
+         */
         { sel: ".chip", flat: 1, vars: { "--gl-tint": ".5" } },
       ],
       headings: "h1, h2",
