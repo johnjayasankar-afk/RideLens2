@@ -899,6 +899,11 @@ code {
   line-height: 1.5;
   color: var(--ink-3);
 }
+/* .footer-copy too: "Where every number comes from" is the link to the page
+   that explains the whole product's arithmetic, and it was rendering as grey
+   prose with no underline and no link colour while the two links beneath it
+   were underlined. A link nobody can see is a page nobody reads. */
+.footer-copy a,
 .footer-labs a,
 .footer-links a {
   color: var(--ink-2);
@@ -909,6 +914,7 @@ code {
     color var(--dur-2),
     text-decoration-color var(--dur-2);
 }
+.footer-copy a:hover,
 .footer-labs a:hover,
 .footer-links a:hover {
   color: var(--ink);
@@ -1467,8 +1473,20 @@ h1.brand {
   display: grid;
   gap: var(--s-5);
 }
-.quick-picks.is-compact {
-  opacity: 0.92;
+/*
+ * De-emphasis with a colour, not with `opacity`.
+ *
+ * `opacity: 0.92` on a live control group fades the label, the hairline and
+ * the fill together, so the chips lose their edge as well as their weight and
+ * stop reading as buttons — and they sit 12px above "Swap" and "Use current
+ * location", which do not fade, so the row reads as two different kinds of
+ * thing. It is the cheapest de-emphasis move there is.
+ *
+ * Once a route is set these are a shortcut nobody needs at that moment, which
+ * is a job for the ink.
+ */
+.quick-picks.is-compact .chip {
+  color: var(--ink-3);
 }
 .quick-picks-head {
   display: flex;
@@ -3006,9 +3024,29 @@ h1.admin-title {
   font-size: var(--t-4);
   line-height: 1.55;
 }
+/*
+ * The handoff's one action keeps the fill.
+ *
+ * `.book` went quiet so that a list of four options would not show four
+ * maximum-emphasis calls to action — but /book is a page with exactly one
+ * thing to do on it and no hero card to carry the emphasis instead. Left as
+ * an outline it read as equal in weight to "Back to comparison" beside it,
+ * which is the opposite of true. The rule is one filled pill per screen, not
+ * one filled pill per app.
+ */
 .book-continue {
   width: 100%;
   min-height: var(--ctl-2xl);
+  color: var(--on-accent);
+  background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
+  box-shadow: var(--lit-1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .book-continue:hover {
+    background: linear-gradient(180deg, var(--btn-1) 0%, var(--btn-2) 100%);
+    transform: translateY(-1px);
+    box-shadow: var(--lit-2);
+  }
 }
 .book-back {
   justify-self: start;
@@ -3438,6 +3476,24 @@ h1.admin-title {
     border-color var(--dur-2) var(--ease),
     transform var(--dur-2) var(--ease);
 }
+/*
+ * An edge in the chip's own hue.
+ *
+ * "Modeled estimate" is `--amber-bg` #3a2a12 on a card at #17231c: L*18 on
+ * L*17, so the most-repeated coloured object in the product had essentially
+ * **zero shape contrast** while carrying maximum hue dissonance — a tobacco
+ * lozenge with no edges, on every card.
+ *
+ * The amber stays amber. It is doing work by being unlovely, and re-toning it
+ * into the palette would make the warning stop reading as a warning. What it
+ * was missing is craft, not restraint: a ring at 34% of its own text colour
+ * gives it a shape without touching its hue or its weight, and `currentColor`
+ * means the mint and rose variants get theirs from the same line. Hover still
+ * takes the ring to full, so the affordance is unchanged.
+ */
+.prov-chip {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 34%, transparent);
+}
 .prov-chip:hover {
   border-color: currentColor;
 }
@@ -3700,8 +3756,25 @@ h1.admin-title {
   font-size: var(--t-1);
   font-weight: 700;
 }
+/*
+ * The trust page, built like the rest of the app.
+ *
+ * Seven sources, each a block of prose divided from the next by a hairline
+ * drawn directly on the page ground — the one list in the product that is not
+ * an enclosure, on the page whose whole job is to be believed. Same bargain
+ * the option list and the ledger strike: one box, a hairline between entries,
+ * rows that give up their own radius.
+ */
+.sources-list {
+  overflow: clip;
+  border-radius: var(--radius);
+  background: var(--paper-grad);
+  box-shadow: var(--surface-1);
+}
 .source-row {
-  padding: var(--s-6) 0;
+  padding: var(--s-6) var(--s-7);
+}
+.source-row + .source-row {
   border-top: 1px solid var(--line);
 }
 .source-head {
@@ -3718,6 +3791,10 @@ h1.admin-title {
 .source-status {
   padding: var(--s-2) var(--s-5);
   border-radius: 999px;
+  /* The same ring as .prov-chip, from the same reasoning: these three say
+     "answering", "needs approval" and "not permitted" and they were flat
+     fills with no edge. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 34%, transparent);
   font: 600 var(--t-2)/1.5 var(--font-body);
   white-space: nowrap;
 }
@@ -5901,6 +5978,35 @@ details[open] > summary::before {
   margin: 0;
   font-size: var(--t-3);
   line-height: 1.5;
+}
+/*
+ * Nothing to report is a reading too.
+ *
+ * `--panel-min` reserves 420px so switching tabs does not yank the page, and
+ * eight panels answer with a single sentence when they have nothing: "Nothing
+ * here gets you there without a car" sat at the top of an otherwise empty
+ * 850px box. That does not read as an answer, it reads as a panel that
+ * failed to load — which is the one impression this product cannot afford,
+ * because refusing to say something is half of what it does.
+ *
+ * Centred in the space the deck was always going to reserve, at a measure,
+ * under the mark an instrument uses for no reading. The em dash carries `/ ""`
+ * so it stays out of the accessible name — three of these are `aria-live`
+ * regions and a screen reader should hear the sentence, not a dash.
+ */
+.deck-panel > .deck-empty:only-child {
+  display: grid;
+  align-content: center;
+  gap: var(--s-5);
+  min-height: calc(var(--panel-min) - var(--s-10));
+  max-width: 54ch;
+  font-size: var(--t-5);
+  color: var(--ink-2);
+}
+.deck-panel > .deck-empty:only-child::before {
+  content: "—" / "";
+  font: 400 var(--t-7)/1 var(--font-mono);
+  color: var(--ink-3);
 }
 .deck-foot {
   margin-top: 12px;
