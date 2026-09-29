@@ -71,6 +71,8 @@ picture {
     var(--gl-drop, 0 18px 40px -18px rgba(0, 0, 0, 0.55));
 }
 .gl--mint {
+  /* scheme-fixed: this material is mint in both schemes by definition, so its
+     forest rim is correct in both. See scripts/css-tokens.mjs. */
   background-color: rgba(163, 240, 203, var(--gl-tint, 0.62));
   box-shadow:
     inset 1.6px 1.6px 0 -0.6px rgba(255, 255, 255, 0.9),

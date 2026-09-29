@@ -24,6 +24,13 @@
  *   3. No property is defined in terms of itself. --btn-1: var(--btn-1) is
  *      what a careless find-and-replace leaves behind, and it silently
  *      removes the background from every button that reads it.
+ *   4b. No colour token is defined in :root and in neither dark block. That
+ *      is a light value the dark scheme silently inherits, and it is the
+ *      failure this file was written for, wearing a different hat: --well,
+ *      --ramp-2, --amber-fill, --sky-fill, --on-surface and --on-surface-ink
+ *      all shipped that way for a commit each, because check 1 compares the
+ *      two dark blocks to *each other* and two blocks that are both missing a
+ *      token agree perfectly.
  *   4. No rule outside the palette hardcodes a colour the palette owns. The
  *      dashed line between From and To was `rgba(28, 51, 38, 0.2)` — a dark
  *      green dash, on the dark green card, invisible every night since it was
@@ -45,9 +52,32 @@ const JS_GLOBS = ["src/**/*.{ts,tsx,js,jsx}"];
  * both. These two are the light ground's ink and the dark ground's ink, and
  * writing either one straight into a rule pins that rule to one scheme.
  */
+/**
+ * Rules whose colour is deliberately the same in both schemes.
+ *
+ * `.gl--dark` is a dark material that appears on light pages and `.gl--mint`
+ * is a mint one that appears on both; the rim of light on each is the colour
+ * it is because of the surface under it, not because of the page. Named
+ * rather than pattern-matched, so adding one is a decision somebody makes in
+ * a diff rather than a comment somebody drops into a rule.
+ */
+const SCHEME_FIXED = [/(^|[\s,])\.gl--dark/, /(^|[\s,])\.gl--mint/];
+
 const SCHEME_INKS = [
   { rgb: "28, 51, 38", of: "the light palette's forest ink" },
   { rgb: "190, 226, 205", of: "the dark palette's ash" },
+  /*
+   * The accents, added after an audit of the screenshots found thirteen of
+   * them frozen into rules that run in both schemes. The two inks above were
+   * the obvious half of this check and the accents were the half that
+   * mattered: a light-mode mint pinned at 0.5 alpha is invisible on porcelain
+   * and the loudest thing on the dark home screen, which is exactly backwards
+   * and exactly the kind of thing nobody notices in the scheme they use.
+   */
+  { rgb: "31, 107, 74", of: "the light palette's forest accent (--forest-2)" },
+  { rgb: "167, 243, 208", of: "the light palette's mint (--mint)" },
+  { rgb: "52, 211, 153", of: "the light palette's bright mint (--mint-3)" },
+  { rgb: "110, 231, 183", of: "the light palette's mid mint (--mint-2)" },
 ];
 
 /** Rules, flattened, each carrying the at-rules it sits inside. */
@@ -152,9 +182,10 @@ for (const file of CSS) {
   const text = readFileSync(file, "utf8");
   const rules = parseRules(text);
 
-  /* The two ways this codebase says "dark". */
+  /* The two ways this codebase says "dark", and the light block they answer. */
   const viaMedia = new Map();
   const viaAttr = new Map();
+  const viaLight = new Map();
 
   for (const rule of rules) {
     const inDarkMedia = rule.at.some((a) => /prefers-color-scheme:\s*dark/.test(a));
@@ -177,14 +208,38 @@ for (const file of CSS) {
 
       if (inDarkMedia && rootish) viaMedia.set(prop, value);
       else if (!inDarkMedia && attrDark && rootish) viaAttr.set(prop, value);
+      /* Only a top-level :root is "the light palette". A :root inside
+         @media print, or @supports, or a width query, is a scoped override
+         and has no dark counterpart to be missing. */
+      else if (rootish && !attrDark && !inDarkMedia && rule.at.length === 0) {
+        viaLight.set(prop, { value, line: declLine, body: rule.body });
+      }
     }
 
-    /* 4. A palette colour written into a rule instead of read from a token.
-       Custom-property declarations are where these belong and are skipped, as
-       are var() fallbacks — a fallback only applies when its token is unset,
-       and the scheme blocks are exactly what set it. labs-glass.css writes its
-       light rim that way on purpose. */
-    const ordinary = stripFallbacks(rule.body.replace(/--[A-Za-z0-9_-]+\s*:[^;]*/g, ""));
+    /*
+     * 4. A palette colour written into a rule instead of read from a token.
+     *
+     * Three things are skipped, and each of them is a case where a literal
+     * genuinely cannot fail to invert:
+     *
+     *   · custom-property declarations, which are where a literal belongs;
+     *   · var() fallbacks, which only apply when the token is unset and the
+     *     scheme blocks are exactly what set it;
+     *   · rules that are already scoped to one scheme, by selector or by
+     *     enclosing media query. A rule that only runs in dark cannot be
+     *     wrong in light. labs-glass.css writes its dark recipes this way.
+     *
+     * And SCHEME_FIXED names the handful of rules whose colour is the same in
+     * both schemes on purpose.
+     */
+    const schemeScoped =
+      /\[data-theme=["']?(dark|light)["']?\]/.test(rule.selector) ||
+      rule.at.some((a) => /prefers-color-scheme/.test(a));
+    const optedOut = SCHEME_FIXED.some((re) => re.test(rule.selector));
+    const ordinary =
+      schemeScoped || optedOut
+        ? ""
+        : stripFallbacks(rule.body.replace(/--[A-Za-z0-9_-]+\s*:[^;]*/g, ""));
     for (const ink of SCHEME_INKS) {
       const at = ordinary.indexOf(`rgba(${ink.rgb}`);
       if (at === -1) continue;
@@ -227,6 +282,45 @@ for (const file of CSS) {
           detail: `${prop} is set for a chosen Dark but not for OS dark — a dark OS with no choice made gets the light value`,
         });
       }
+    }
+  }
+
+  /*
+   * 4b. A colour defined only in the light block.
+   *
+   * Scheme-independent tokens — sizes, durations, easings, a map style name —
+   * belong in :root alone. A *colour* there is a light value that the dark
+   * scheme will quietly inherit, which is the same bug as a hardcoded literal
+   * with a token's name on it.
+   */
+  const looksLikeAColour = (v) =>
+    /^#[0-9a-f]{3,8}$/i.test(v.trim()) || /^(rgba?|hsla?|color-mix)\(/i.test(v.trim());
+  if (viaMedia.size || viaAttr.size) {
+    for (const [prop, { value, line }] of viaLight) {
+      if (!looksLikeAColour(value)) continue;
+      if (viaMedia.has(prop) || viaAttr.has(prop)) continue;
+      /* `same-in-both` beside the declaration is the documented way to say a
+         colour really does not change with the scheme. Comments are blanked
+         before parsing, so this reads the original text around the line. */
+      if (
+        /same-in-both/.test(
+          text
+            .split("\n")
+            .slice(Math.max(0, line - 4), line)
+            .join("\n"),
+        )
+      ) {
+        continue;
+      }
+      problems.push({
+        file,
+        line,
+        kind: "light-only colour",
+        detail:
+          `${prop} is a colour and is set only in the light block, so the dark\n` +
+          `                   scheme inherits it. Give it a dark value, or if it really is the\n` +
+          `                   same in both, say so where it is defined.`,
+      });
     }
   }
 

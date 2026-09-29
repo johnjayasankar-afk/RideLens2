@@ -161,6 +161,25 @@
      .chip.active for why one value could not do both. */
   --on-surface: #13241b;
   --on-surface-ink: #ffffff;
+  /* A recessed channel. --ground disappears inside the deck, which is where
+     every chart track lives. */
+  --well: #ece9e1;
+  /*
+   * Fills, kept separate from the text accents, and the reason is arithmetic.
+   *
+   * --forest-2 has to climb to #4cc492 in dark to carry 4.5:1 as *text*. Used
+   * as a bar fill, that took the Spread ramp from 3.35:1 in light to 1.24:1
+   * in dark, and the Breakdown's ride slice against its fees slice from
+   * 2.39:1 to 1.01:1 — the green and the amber were the same colour, so the
+   * chart that exists to show where the money goes was a single-tone bar.
+   *
+   * A fill has no 4.5:1 to meet. It only has to separate from its neighbours
+   * and from the track, and the contrast audit walks text nodes, so nothing
+   * in the build could ever have told us.
+   */
+  --ramp-2: #1f6b4a;
+  --amber-fill: #de8a2e;
+  --sky-fill: #3f7fc4;
   /* The top edge of a raised surface catching light. One pixel of inset
      highlight is the difference between a rectangle and an object; on the
      dark ground it has to come from the accent, because white reads as a
@@ -251,6 +270,12 @@
     --scrim-rgb: 18, 28, 22;
     --selection: rgba(19, 96, 62, 0.8);
     --edge-hi: rgba(190, 226, 205, 0.055);
+    --on-surface: #2a5642;
+    --on-surface-ink: #e9f1ec;
+    --well: #101a15;
+    --ramp-2: #15784f;
+    --amber-fill: #e0a750;
+    --sky-fill: #5e9ad8;
     --map-style: "dark-matter";
 
     /* Shadow does almost nothing on a dark ground; depth comes from the
@@ -306,6 +331,12 @@
   --scrim-rgb: 18, 28, 22;
   --selection: rgba(19, 96, 62, 0.8);
   --edge-hi: rgba(190, 226, 205, 0.055);
+  --on-surface: #2a5642;
+  --on-surface-ink: #e9f1ec;
+  --well: #101a15;
+  --ramp-2: #15784f;
+  --amber-fill: #e0a750;
+  --sky-fill: #5e9ad8;
   --map-style: "dark-matter";
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -429,11 +460,6 @@ code {
 .cmdk-item:focus-visible,
 .party-stepper .ghost:focus-visible {
   outline-offset: -2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  :focus-visible {
-    transition: none;
-  }
 }
 .shell {
   width: min(var(--shell-max), calc(100% - 2 * var(--space-3)));
@@ -865,7 +891,7 @@ code {
   height: 7px;
   border-radius: 50%;
   background: var(--mint-3);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 20%, transparent);
 }
 h1.brand {
   margin: 0;
@@ -1020,16 +1046,16 @@ h1.brand {
   background: var(--paper);
   box-shadow:
     inset 0 0 0 1px var(--forest-2),
-    0 0 0 4px rgba(52, 211, 153, 0.18);
+    0 0 0 4px color-mix(in srgb, var(--mint-3) 18%, transparent);
 }
 .place-field.is-selected input {
   background: var(--mint-bg);
-  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.38);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--forest-2) 38%, transparent);
 }
 .place-field.is-selected input:focus {
   box-shadow:
     inset 0 0 0 1px var(--forest-2),
-    0 0 0 4px rgba(52, 211, 153, 0.18);
+    0 0 0 4px color-mix(in srgb, var(--mint-3) 18%, transparent);
 }
 .place-pending {
   position: absolute;
@@ -1043,7 +1069,7 @@ h1.brand {
 .place-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(31, 107, 74, 0.22);
+  border: 2px solid color-mix(in srgb, var(--forest-2) 22%, transparent);
   border-top-color: var(--forest-2);
   border-radius: 50%;
   animation: var(--dur-4) linear infinite spin;
@@ -1069,7 +1095,7 @@ h1.brand {
   height: 6px;
   border-radius: 50%;
   background: var(--mint-3);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 22%, transparent);
 }
 .place-suggestions {
   position: absolute;
@@ -1626,9 +1652,10 @@ h1.brand {
   justify-content: space-between;
   gap: var(--s-5);
   padding: var(--s-5) 0;
+  /* No backdrop-filter: it is sticky, it moves on every scroll frame, and it
+     sits over a colour within a few percent of its own. The exact case the
+     performance budget exists to catch. */
   background: var(--scrim);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   box-shadow: 0 1px 0 var(--line);
 }
 .route-summary {
@@ -1723,7 +1750,7 @@ h1.brand {
   padding: var(--s-6) var(--s-6);
   border-radius: var(--radius-sm);
   background: var(--mint-bg);
-  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.16);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--forest-2) 16%, transparent);
   animation: var(--dur-3) var(--ease) both empty-in;
 }
 .insight-kicker {
@@ -1778,8 +1805,16 @@ h1.brand {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-3);
-  /* Category chips appear with the results; same reason as above. */
-  min-height: 36px;
+  /*
+   * The reserve has to be the height the row actually is.
+   *
+   * It was 36px — a bare chip — and the row became 46 when the two groups
+   * were put in enclosures: the chip plus 4px of padding and a hairline on
+   * each side. Ten pixels is not much until you notice it lands at the
+   * moment the comparison arrives, under everything a reader is about to
+   * read. CLS went 0.002 to 0.013 on the commit that added the enclosures.
+   */
+  min-height: 46px;
 }
 .sep {
   width: 1px;
@@ -2068,7 +2103,7 @@ h1.brand {
 }
 .status-dot.is-fresh {
   background: var(--fresh);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 22%, transparent);
 }
 .status-dot.is-recent {
   background: var(--recent);
@@ -2709,6 +2744,16 @@ h1.admin-title {
     font-size: var(--t-4);
   }
 }
+/*
+ * The only one, on purpose.
+ *
+ * `!important` on `*` beats anything a surface can declare, so the nine
+ * per-surface `@media (prefers-reduced-motion: reduce)` blocks that used to
+ * follow it — for the provenance sheet, the axis bar, the palette, five parts
+ * of the assistant and the deck — were 50 lines that could not have had an
+ * effect. Anything that needs more than stopping (a `scroll-behavior`, a
+ * dash-offset to reset) still gets its own block; there are two.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2905,13 +2950,6 @@ h1.admin-title {
     transform: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .prov-scrim,
-  .prov-sheet {
-    animation: none;
-  }
-}
-
 /* ── Modeled-source notice (1.2) ──────────────────────────────────────────
    Persistent and undismissable while the only live source is the model. Not
    a warning banner — a caption, in the sky tone the rest of the app uses for
@@ -3497,15 +3535,10 @@ h1.admin-title {
     opacity: 0.4;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .axis-bar {
-    animation: none;
-  }
-}
 /* Sharing ground with the leader is the thing worth seeing, so it is the
    thing that gets the colour. */
 .axis-bar[data-overlaps="true"] {
-  background: linear-gradient(90deg, var(--mint-3), var(--forest-2));
+  background: linear-gradient(90deg, var(--mint-3), var(--ramp-2));
 }
 /*
  * A band that does not overlap the leader still represents a real price a
@@ -3700,7 +3733,7 @@ details[open] > summary::before {
   padding: var(--s-6) var(--s-6);
   border-radius: var(--radius-sm);
   background: var(--mint-bg);
-  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.18);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--forest-2) 18%, transparent);
 }
 .walk-tip-glyph {
   flex-shrink: 0;
@@ -3793,7 +3826,7 @@ details[open] > summary::before {
 }
 .snapshot-row[data-best] {
   background: var(--mint-bg);
-  box-shadow: inset 0 0 0 1px rgba(31, 107, 74, 0.2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--forest-2) 20%, transparent);
 }
 .snapshot-name {
   display: grid;
@@ -4015,12 +4048,6 @@ details[open] > summary::before {
   from {
     opacity: 0;
     transform: translateY(-6px) scale(0.99);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cmdk-scrim,
-  .cmdk {
-    animation: none;
   }
 }
 .cmdk-input {
@@ -4561,12 +4588,6 @@ details[open] > summary::before {
     opacity: 0.45;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ask-open-glyph {
-    animation: none;
-  }
-}
-
 .ask {
   display: grid;
   gap: var(--s-5);
@@ -4583,11 +4604,6 @@ details[open] > summary::before {
   from {
     opacity: 0;
     transform: translateY(6px) scale(0.995);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ask {
-    animation: none;
   }
 }
 .ask-head {
@@ -4649,11 +4665,6 @@ details[open] > summary::before {
     transform: translateY(3px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ask-turn {
-    animation: none;
-  }
-}
 .ask-turn.is-user {
   justify-items: end;
 }
@@ -4688,11 +4699,6 @@ details[open] > summary::before {
   50% {
     opacity: 0.25;
     transform: scale(0.8);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ask-typing {
-    animation: none;
   }
 }
 .ask-form {
@@ -4988,15 +4994,6 @@ details[open] > summary::before {
   padding-top: var(--s-5);
   border-top: 1px solid var(--line);
 }
-@media (prefers-reduced-motion: reduce) {
-  .deck-indicator {
-    transition: none;
-  }
-  .deck-panel {
-    animation: none;
-  }
-}
-
 /*
  * Narrow: content-width tabs that scroll, and the selection drawn on the tab
  * itself.
@@ -5088,15 +5085,15 @@ details[open] > summary::before {
 }
 .comp-seg[data-slice="metered"],
 .comp-dot[data-slice="metered"] {
-  background: var(--forest-2);
+  background: var(--ramp-2);
 }
 .comp-seg[data-slice="fees"],
 .comp-dot[data-slice="fees"] {
-  background: var(--amber);
+  background: var(--amber-fill);
 }
 .comp-seg[data-slice="calibration"],
 .comp-dot[data-slice="calibration"] {
-  background: var(--sky);
+  background: var(--sky-fill);
 }
 .comp-legend {
   display: flex;
@@ -5450,10 +5447,10 @@ details[open] > summary::before {
   border-radius: var(--r-1);
 }
 .tor-bar[data-dir="up"] {
-  background: var(--amber);
+  background: var(--amber-fill);
 }
 .tor-bar[data-dir="down"] {
-  background: var(--forest-2);
+  background: var(--ramp-2);
 }
 .tor-arms {
   grid-column: 2;
@@ -5592,4 +5589,30 @@ details[open] > summary::before {
     padding-right: var(--s-4);
     padding-left: var(--s-4);
   }
+}
+
+/* ── One bar, one ruler ────────────────────────────────────────────────────
+   Three bar charts in three adjacent tabs of one panel, all plotting dollars,
+   drawn in three unrelated grammars: track heights 16/14/16, radii 999/7/4,
+   three different fills, and the *same quantity* — the metered ride — a
+   gradient with round caps in Spread and a flat fill with a 7px cap in
+   Breakdown. Tab across and the deck looked like three people's work.
+
+   Square-relieved caps, because a rounded cap is ambiguous about where the
+   value ends, and where the value ends is the entire subject of a panel about
+   three prices within a dollar of each other. */
+.axis-track,
+.comp-bar,
+.tor-track {
+  height: 14px;
+  border-radius: var(--r-1);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.comp-seg,
+.tor-bar {
+  border-radius: 0;
+}
+.axis-bar {
+  border-radius: var(--r-1);
 }
