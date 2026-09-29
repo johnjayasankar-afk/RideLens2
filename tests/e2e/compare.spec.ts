@@ -151,6 +151,44 @@ test.describe("RideLens anonymous flow", () => {
   }
 
   /*
+   * Two bars are pinned on the results page — the topbar and .sticky-bar —
+   * and `html { scroll-padding-top }` reserves for both through --stickies.
+   * That reserve is a number in a stylesheet standing in for the height of a
+   * bar whose contents are a route summary and a row of buttons, so it is
+   * exactly the kind of number that is right on the day it is written and
+   * wrong a month later. Under-reserving is the bug it was added to fix:
+   * scroll a focused control into view and it lands underneath the toolbar.
+   *
+   * 900 and 960 are both checked because the bar changes from a row to a
+   * stack at 960, and a reserve that is correct on one side of a breakpoint
+   * is not evidence about the other.
+   */
+  for (const width of [390, 900, 960, 1440]) {
+    test(`the scroll reserve covers both pinned bars at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(
+        "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204",
+      );
+      await page.waitForSelector(".sticky-bar");
+
+      const { pinned, reserved } = await page.evaluate(() => {
+        const topbar = document.querySelector(".topbar")!.getBoundingClientRect().height;
+        const bar = document.querySelector(".sticky-bar")!.getBoundingClientRect().height;
+        const root = document.documentElement;
+        /* --stickies is a calc(); resolve it the way the browser will. */
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:absolute;visibility:hidden;height:var(--stickies)";
+        root.appendChild(probe);
+        const reserved = probe.getBoundingClientRect().height;
+        probe.remove();
+        return { pinned: topbar + bar, reserved };
+      });
+
+      expect(reserved).toBeGreaterThanOrEqual(pinned);
+    });
+  }
+
+  /*
    * The brand mark is aria-hidden, so the wordmark beside it is the only
    * accessible name the home link has. The narrowest breakpoint clips that
    * text to fit the nav on one line — clipping keeps it, display:none would

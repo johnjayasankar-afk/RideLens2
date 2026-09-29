@@ -1164,7 +1164,7 @@ export function QuoteResults({
               </span>
               <span className="stat-label">Min drive</span>
             </div>
-            <div>
+            <div className="trip-stat-wide">
               <span className="stat-value">
                 {tripStats?.bestMid != null ? (
                   formatMoneyMinor(tripStats.bestMid)

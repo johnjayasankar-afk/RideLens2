@@ -56,6 +56,13 @@
   --r-3: 12px;
   --r-4: 16px;
   --r-5: 22px;
+  /* The square tiles — every provider logo and the brand mark — as a ratio
+     rather than a length, so curvature is constant across the six sizes they
+     appear at. It was six radii and five different ratios on one object:
+     0.25 in the rail, 0.30 in the card, 0.31 in the topbar, 0.33 in the Book
+     button, 0.35 in the status header. It is the most repeated object in the
+     interface, seven times on the results screen alone. */
+  --r-tile: 30%;
 
   /* ── Motion ─────────────────────────────────────────────────────────────
      1 a colour changing · 2 a control responding · 3 something moving ·
@@ -80,6 +87,27 @@
   --shell-max: 1160px;
   --sidebar-w: 360px;
   --topbar-h: 60px;
+  /*
+   * Two bars are pinned, not one.
+   *
+   * .sticky-bar pins at `top: var(--topbar-h)`, so on the results page the
+   * obscured strip at the top of the viewport is both of them. Every
+   * scroll-into-view in the app was reserving for the topbar alone and
+   * landing the target under the lower bar: scrolled down on a phone the
+   * toolbar sat on the console with the status strip gone entirely and the
+   * first register row sliced in half, leaving MILES and MIN WAIT printed
+   * with no number above them — a unit with no figure reads as a value that
+   * failed to load. It is also a WCAG 2.2 SC 2.4.11 failure, which is the
+   * rule the scroll-padding on <html> was written to satisfy.
+   *
+   * Measured: 64px at every width where the bar is a row, 97px below 960px
+   * where it stacks. The token is a ceiling rather than a measurement — over-
+   * reserving is invisible, under-reserving is the bug — and it is checked
+   * against the real bar at four widths in tests/e2e/compare.spec.ts, so it
+   * cannot drift the way the 60px assumption did.
+   */
+  --sticky-h: 64px;
+  --stickies: calc(var(--topbar-h) + var(--sticky-h));
 
   --ground: #f8f6f1;
   --ground-2: #f1efe9;
@@ -417,7 +445,7 @@ html {
    * see any of it. `.results` carried a scroll-margin for the jump after a
    * comparison; this covers every other scroll-into-view, focus included.
    */
-  scroll-padding-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 8px);
+  scroll-padding-top: calc(var(--stickies) + env(safe-area-inset-top, 0px) + var(--s-4));
 }
 body {
   min-height: 100%;
@@ -568,7 +596,7 @@ code {
   display: inline-block;
   width: 26px;
   height: 26px;
-  border-radius: var(--r-2);
+  border-radius: var(--r-tile);
   background:
     linear-gradient(rgba(240, 247, 243, 0.7), rgba(240, 247, 243, 0.7)) 50% 50% / 7px 1.6px
       no-repeat,
@@ -984,9 +1012,6 @@ h1.brand {
   background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
 }
-.provider-strip-item .provider-mark-img {
-  border-radius: var(--r-2);
-}
 
 .route-form {
   display: grid;
@@ -1028,9 +1053,16 @@ h1.brand {
   border-radius: 50%;
   background: var(--paper);
 }
+/*
+ * From and To differed in two dimensions at once — From a ring, To a solid
+ * disc — and the fill was --sky-t, the palette's sky *text* token, which
+ * swings from saturated navy to pale ice between the schemes while From stays
+ * recognisably green in both. One dimension is enough, and it is the hue,
+ * which is the one that matches the A and B pins on the map.
+ */
 .route-dot.to {
-  border-color: var(--sky-t);
-  background: var(--sky-t);
+  border-color: var(--sky);
+  background: var(--paper);
 }
 .route-line {
   flex: 1;
@@ -1381,10 +1413,37 @@ h1.brand {
   color: var(--ink-2);
   cursor: pointer;
 }
+/*
+ * A control that misreports its own state.
+ *
+ * `accent-color` styles the *checked* state only. Under `color-scheme: dark`
+ * Chrome paints the unchecked box as a solid #3b3b3b fill — so the unchecked
+ * control was a filled light square, which reads as checked or indeterminate,
+ * directly under the primary call to action. It was also pure neutral grey:
+ * the only object in the whole dark interface with no green in it.
+ */
 .auto-refresh input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--forest-2);
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-1);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  cursor: pointer;
+}
+.auto-refresh input:checked {
+  background: var(--on-surface);
+  box-shadow: inset 0 0 0 1px var(--on-surface);
+}
+.auto-refresh input:checked::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: var(--on-surface-ink);
+  clip-path: polygon(14% 46%, 0 60%, 39% 100%, 100% 22%, 86% 8%, 38% 71%);
 }
 .share-status {
   min-height: 1.2em;
@@ -1523,7 +1582,7 @@ h1.brand {
   display: grid;
   gap: var(--space-2);
   min-width: 0;
-  scroll-margin-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 8px);
+  scroll-margin-top: calc(var(--stickies) + env(safe-area-inset-top, 0px) + var(--s-4));
 }
 /*
  * Refreshing no longer fades the thing you are reading.
@@ -1572,6 +1631,53 @@ h1.brand {
   box-shadow: inset 0 0 0 1px var(--line-2);
   pointer-events: none;
 }
+/*
+ * The aperture.
+ *
+ * What makes a map read as a viewport onto the thing being measured rather
+ * than a picture pasted into the page is a mark that belongs to the frame
+ * instead of to the picture. The spec called for four corner L-brackets; the
+ * screenshot said no. Three of this map's four corners are already furniture
+ * — the HUD sits at 12px top-left, MapLibre's zoom stack at the top-right,
+ * the CARTO/OSM attribution along the bottom-right — so brackets at any
+ * inset either draw across that chrome or dodge it, and a bracket that
+ * dodges is not an aperture, it is a decoration.
+ *
+ * Centre ticks instead: one 10px mark at the midpoint of each edge, which is
+ * where a viewfinder puts them and where this map has nothing. They also say
+ * something true — the view is fitted to the route, so its centre is the
+ * route's centre — and they are a different mark from the hero's crop marks,
+ * which are 2px, outside the card, and mean "this is the recommendation".
+ * Four background layers on one otherwise-unused pseudo-element: no new DOM,
+ * no JS, nothing for the compositor.
+ *
+ * They do not pulse while the route loads. Marks that breathe claim a
+ * re-metering that is not happening, in the one product that has built its
+ * identity on refusing exactly that.
+ */
+.map-slot::before {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--forest-2), var(--forest-2)),
+    linear-gradient(var(--forest-2), var(--forest-2)),
+    linear-gradient(var(--forest-2), var(--forest-2)),
+    linear-gradient(var(--forest-2), var(--forest-2));
+  background-repeat: no-repeat;
+  background-size:
+    1px 10px,
+    1px 10px,
+    10px 1px,
+    10px 1px;
+  background-position:
+    top center,
+    bottom center,
+    left center,
+    right center;
+}
 .map-slot {
   position: relative;
 }
@@ -1615,12 +1721,20 @@ h1.brand {
   max-width: min(300px, 72%);
   padding: var(--s-5) var(--s-5);
   border-radius: var(--r-4);
-  background: var(--scrim);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow:
-    0 0 0 1px var(--line),
-    var(--sh-2);
+  /* The material comes from .gl--flat in labs-glass, which loads after this
+     file. Only the tint is ours: 0.94 rather than labs-glass's 0.68, because
+     that number is for a surface on a flat ground and this one is a readout
+     over a photograph of a city. The blur it replaces bought nothing at that
+     opacity and cost a backdrop-filter on the element that repaints whenever
+     the map pans.
+
+     Only the tint: every degrade arrives with the material. labs-glass takes
+     .gl--flat to 0.97 under prefers-reduced-transparency and to Canvas with
+     a real border under forced-colors, both with !important, which is why
+     .route-map-hud is no longer named in this file's own reduced-transparency
+     rule — an entry there would have been dead. */
+  --gl-rgb: var(--scrim-rgb);
+  --gl-tint: 0.94;
   pointer-events: none;
 }
 .route-map-hud-row {
@@ -1628,6 +1742,9 @@ h1.brand {
   align-items: center;
   gap: var(--s-4);
   font-size: var(--t-4);
+  /* An instrument's figures sit on one width. The row carries miles and
+     minutes that tick. */
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 .hud-label {
@@ -1869,13 +1986,6 @@ h1.brand {
    */
   min-height: calc(var(--ctl-md) + 2 * var(--s-2) + 2px);
 }
-.sep {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: var(--line-2);
-}
-
 /*
  * One enclosure, one hairline between rows.
  *
@@ -2176,7 +2286,7 @@ h1.brand {
   width: var(--mark-size, 40px);
   height: var(--mark-size, 40px);
   object-fit: cover;
-  border-radius: var(--r-3);
+  border-radius: var(--r-tile);
   background: transparent;
   box-shadow: 0 0 0 1px var(--line);
 }
@@ -2412,7 +2522,6 @@ h1.brand {
 }
 .book-with-logo .provider-mark-img {
   --mark-size: 24px;
-  border-radius: var(--r-2);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 .book.book-secondary {
@@ -2483,7 +2592,6 @@ h1.brand {
 .status-brand .brand-mark {
   width: 34px;
   height: 34px;
-  border-radius: var(--r-3);
   background-size:
     9px 2px,
     auto;
@@ -2778,6 +2886,11 @@ h1.admin-title {
   .results-empty-mobile {
     display: block;
   }
+  /* The toolbar stacks into two rows here — see .sticky-bar below — so the
+     strip it obscures is taller. */
+  :root {
+    --sticky-h: 104px;
+  }
   .mobile-compare-bar {
     position: sticky;
     bottom: 0;
@@ -2820,15 +2933,15 @@ h1.admin-title {
     -webkit-mask-image: linear-gradient(
       90deg,
       transparent 0,
-      #000 var(--filters-fade-l, 0px),
-      #000 calc(100% - var(--filters-fade-r, 28px)),
+      #000 var(--scroll-fade-l, 0px),
+      #000 calc(100% - var(--scroll-fade-r, 28px)),
       transparent 100%
     );
     mask-image: linear-gradient(
       90deg,
       transparent 0,
-      #000 var(--filters-fade-l, 0px),
-      #000 calc(100% - var(--filters-fade-r, 28px)),
+      #000 var(--scroll-fade-l, 0px),
+      #000 calc(100% - var(--scroll-fade-r, 28px)),
       transparent 100%
     );
   }
@@ -2851,13 +2964,26 @@ h1.admin-title {
    */
   @supports (animation-timeline: scroll()) {
     .filters {
-      animation: filters-edges linear both;
+      animation: scroll-fade-edges linear both;
       animation-timeline: scroll(self inline);
     }
   }
+  /* .segmented, not .sep: the stray hairline between the two groups is gone —
+     two bordered enclosures are their own separation — and the enclosure is
+     what has to keep its width and let the row scroll, which is the whole
+     point of the inline scroll above. Naming a class that no longer exists
+     meant the groups shrank instead. */
   .chip,
-  .sep {
+  .segmented {
     flex-shrink: 0;
+  }
+  /* And nothing inside a group wraps either. With the groups shrinking, both
+     folded: "Rank by" became a 146×143 circle with Price / Soonest / Value
+     stacked inside a 999px radius, and "Vehicle class" a 211×121 box with
+     Premium and All trailing 70px of empty pill on line two. The row scrolls;
+     the groups should overflow into it, not fold. */
+  .segmented {
+    flex-wrap: nowrap;
   }
   .sticky-bar {
     flex-direction: column;
@@ -2888,6 +3014,20 @@ h1.admin-title {
    */
   .trip-stats > .trip-stat-desktop {
     display: none;
+  }
+  /*
+   * ...which leaves three cells in a two-column grid, and the span rule that
+   * should catch the odd one out is `:last-child:nth-child(odd)` — matched
+   * against the DOM, where the last child is one of the two cells just
+   * hidden. So below 640px the money cell sat in the left half and the right
+   * half was a bordered, filled, empty box: the same thing a unit with no
+   * figure is, which is a value that failed to load.
+   *
+   * Named rather than counted, because the cell that should take the width
+   * is the one holding the money, not the one that happens to be third.
+   */
+  .trip-stats > .trip-stat-wide {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 520px) {
@@ -3211,8 +3351,13 @@ h1.admin-title {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--forest);
-  color: #f0f7f3;
+  /* --forest is #0a120d in dark against a #0d1511 ground: 1.03:1, so the six
+     numbers behind "What RideLens will never claim" simply were not there, on
+     the most trust-critical page in the product. The pair below is the app's
+     filled-accent surface and the ink that goes on it, and it is correct in
+     both schemes — which a pinned #f0f7f3 never could be. */
+  background: var(--on-surface);
+  color: var(--on-surface-ink);
   font-size: var(--t-1);
   font-weight: 700;
 }
@@ -3784,7 +3929,10 @@ h1.admin-title {
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  min-height: var(--ctl-xl);
+  /* No min-height: 44 is the coarse-pointer floor and it is declared in that
+     block with every other touch target. Declared here too, it made "Match
+     system" a 44px control beside 36px nav links in a 60px topbar on a
+     desktop mouse. */
   padding: 0 var(--s-5);
 }
 .theme-glyph {
@@ -3857,6 +4005,8 @@ details[open] > summary::before {
   .topnav a,
   .skip-link,
   .party-stepper .ghost,
+  .comp-more,
+  .pending-chip,
   .theme-toggle {
     min-height: var(--ctl-xl);
   }
@@ -4185,24 +4335,29 @@ details[open] > summary::before {
   color: var(--mint-t);
 }
 
-@property --filters-fade-l {
+/* The two rows in the app that scroll sideways rather than wrap — the filter
+   row on a phone and the console's status strip at every width — share this
+   pair. Registered custom properties, because a raw var() inside a gradient
+   is not an animatable value, and both rows drive them from their own scroll
+   position so the fade is true rather than decorative. */
+@property --scroll-fade-l {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
 }
-@property --filters-fade-r {
+@property --scroll-fade-r {
   syntax: "<length>";
   inherits: false;
   initial-value: 28px;
 }
-@keyframes filters-edges {
+@keyframes scroll-fade-edges {
   from {
-    --filters-fade-l: 0px;
-    --filters-fade-r: 28px;
+    --scroll-fade-l: 0px;
+    --scroll-fade-r: 28px;
   }
   to {
-    --filters-fade-l: 28px;
-    --filters-fade-r: 0px;
+    --scroll-fade-l: 28px;
+    --scroll-fade-r: 0px;
   }
 }
 
@@ -5010,15 +5165,35 @@ details[open] > summary::before {
    A shape beside the sentence. The axis does not start at zero — these are
    fares inside a narrow band and a zero baseline flattens every one of them
    — so it carries its own low and high, and the reader can see the scale. */
+/*
+ * The one genuinely analytic thing the product has about *you* — whether
+ * today is unusual for this route — was drawn at the size of a favicon.
+ *
+ * `inline-grid` around a 132px SVG inside a panel whose text runs past
+ * 700px: the ink occupied about 19% of the width available to it, and the
+ * sentence explaining it started on a new line below rather than beside, so
+ * the row holding the chart was mostly empty panel. It is now the width of
+ * its panel, which is the only width a chart of a trend should ever be.
+ */
 .spark {
   margin: 6px 0 2px;
-  display: inline-grid;
-  gap: 1px;
+  display: block;
 }
 .spark-svg {
   display: block;
+  width: 100%;
+  height: 44px;
   overflow: visible;
 }
+/* The viewBox is stretched to the panel, so without this the 1.5px line
+   becomes a 1.5×(panel/132) smear and the dashed today-line's 2-3 pattern
+   stretches with it. */
+.spark-line,
+.spark-today {
+  vector-effect: non-scaling-stroke;
+}
+/* The area fill stretches with the viewBox, which is what a fill should do;
+   only the three stroked things are held at their own weight. */
 .spark-area {
   fill: var(--mint-t);
   opacity: 0.1;
@@ -5029,9 +5204,15 @@ details[open] > summary::before {
   stroke-width: 1.5;
   stroke-linejoin: round;
   stroke-linecap: round;
-  /* Drawn in, once. */
-  stroke-dasharray: 400;
-  stroke-dashoffset: 400;
+  /* Drawn in, once.
+     The dash has to be longer than the whole line or the line is never whole:
+     at 132px wide 400 always covered it, stretched to a 674px panel it did
+     not, and the last two thirds of the history were left permanently
+     invisible behind the gap. `vector-effect` also moves the dash into screen
+     pixels, so this is a pixel length now and 2000 clears any panel the
+     layout can produce. */
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
   animation: spark-draw var(--dur-4) var(--ease) var(--dur-1) both;
 }
 @keyframes spark-draw {
@@ -5046,7 +5227,10 @@ details[open] > summary::before {
   opacity: 0.7;
 }
 .spark-now {
-  fill: var(--mint-t);
+  stroke: var(--mint-t);
+  stroke-width: 6;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
 }
 @media (prefers-reduced-motion: reduce) {
   .spark-line {
@@ -5434,6 +5618,10 @@ details[open] > summary::before {
   border-radius: var(--r-1);
 }
 .comp-more {
+  /* It had no min-height at all and computed to about 19px — under the 24px
+     WCAG 2.2 SC 2.5.8 asks for at AA, on a fine pointer, in the one place the
+     claim in the coarse-pointer block below was never re-checked against. */
+  min-height: var(--ctl-xs);
   padding: var(--s-1) var(--s-4);
   border: 1px solid var(--line-2);
   border-radius: 999px;
@@ -5871,7 +6059,6 @@ details[open] > summary::before {
 @media (prefers-reduced-transparency: reduce) {
   .topbar,
   .sticky-bar,
-  .route-map-hud,
   .mobile-compare-bar,
   .route-map-overlay {
     background: var(--ground);
@@ -5968,6 +6155,39 @@ details[open] > summary::before {
 }
 .console .market-pulse::-webkit-scrollbar {
   display: none;
+}
+/*
+ * The strip scrolls, and nothing said so.
+ *
+ * At 390px "CLEAR CONDITIONS" is cut mid-word at the right edge with no
+ * scrollbar, no fade and no shadow — which reads as a clipping bug rather
+ * than as a ticker you can push. It is the same problem the filter row had
+ * and the same fix: a mask driven by the strip's own scroll position, so the
+ * right edge fades out exactly as you reach the end of it and the left edge
+ * fades in as the first cell leaves. Browsers without scroll-driven
+ * animations get the static right-edge fade, which is still truer than none.
+ */
+.console .market-pulse {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 var(--scroll-fade-l, 0px),
+    #000 calc(100% - var(--scroll-fade-r, 28px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 var(--scroll-fade-l, 0px),
+    #000 calc(100% - var(--scroll-fade-r, 28px)),
+    transparent 100%
+  );
+}
+@supports (animation-timeline: scroll()) {
+  .console .market-pulse {
+    animation: scroll-fade-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
 }
 .console .market-pulse > * {
   display: inline-flex;

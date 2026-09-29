@@ -69,8 +69,11 @@ export function PriceSparkline({ points, todayLowMinor, scaleLowMinor, scaleHigh
       <svg
         className="spark-svg"
         viewBox={`0 0 ${W} ${H}`}
-        width={W}
-        height={H}
+        /* The width comes from the panel, not from W: see .spark in
+           globals.css. `none` so the shape stretches to fill it rather than
+           sitting 132px wide in the middle of 700px of nothing; the strokes
+           carry vector-effect so they do not stretch with it. */
+        preserveAspectRatio="none"
         role="img"
         aria-label={`Your ${points.length} previous comparisons of this route ran ${formatMoneyMinor(min)} to ${formatMoneyMinor(max)}. Today is ${formatMoneyMinor(todayLowMinor)}.`}
       >
@@ -78,7 +81,11 @@ export function PriceSparkline({ points, todayLowMinor, scaleLowMinor, scaleHigh
         <polyline className="spark-line" points={line} />
         {/* Today, against that history. */}
         <line className="spark-today" x1={PAD} x2={W - PAD} y1={todayY} y2={todayY} />
-        <circle className="spark-now" cx={W - PAD} cy={todayY} r="2.6" />
+        {/* A zero-length line with a square cap, which is the only marker
+            shape that survives a non-uniform stretch: a circle becomes an
+            ellipse and a rect becomes a bar, but a cap is drawn from the
+            stroke, and the stroke is non-scaling. */}
+        <line className="spark-now" x1={W - PAD} y1={todayY} x2={W - PAD} y2={todayY} />
       </svg>
       <figcaption className="spark-scale" aria-hidden>
         <span>{formatMoneyMinor(min)}</span>

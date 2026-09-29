@@ -419,7 +419,15 @@ export function RouteMap({ pickup, destination, route, loading, hold = false }: 
           <span>Tracing route…</span>
         </div>
       ) : null}
-      <div className="route-map-hud" aria-hidden>
+      {/*
+        The one surface in the product with a photograph behind it, so the
+        one that wears the shared material rather than a hand-rolled scrim.
+        `gl--flat` alone, never `gl gl--flat`: in labs-glass they are sibling
+        classes, and `gl--flat` never unsets `gl`'s backdrop-filter — writing
+        both ships blur(16px) saturate(1.8) on the surface you are claiming
+        costs nothing.
+      */}
+      <div className="route-map-hud gl--flat" aria-hidden>
         <div className="route-map-hud-row">
           <span className="pin-a">A</span>
           <span className="hud-label">{pickupLabel}</span>
