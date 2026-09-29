@@ -1898,27 +1898,110 @@ h1.brand {
 .quote-list > .quote-card + .quote-card {
   border-top: 1px solid var(--line);
 }
+/*
+ * The shape the results actually take.
+ *
+ * This was four floating slabs with a 12px gutter and a radius each — the
+ * card geometry from before `.quote-list` became one enclosure. So the
+ * loading state promised a stack of separate cards and the answer arrived as
+ * a single ruled list: four radii vanished, three gutters closed, and every
+ * row below moved. A skeleton whose silhouette is wrong is worse than no
+ * skeleton, because the shift it causes is the one it exists to prevent.
+ */
 .skeletons {
   display: grid;
-  gap: var(--s-5);
+  gap: 0;
+  overflow: clip;
+  border-radius: var(--radius);
+  box-shadow: var(--surface-1);
 }
 .skeleton-card {
   display: grid;
-  gap: var(--s-5);
-  padding: var(--s-6);
-  border-radius: var(--radius);
+  align-content: start;
+  gap: var(--s-6);
+  padding: var(--s-6) var(--s-7);
   background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
 }
-.sk-head {
+.skeleton-card + .skeleton-card {
+  border-top: 1px solid var(--line);
+}
+/* Stand-ins for .meta-chips: four pills of unequal width, because the real
+   row is "Standard · Estimate · Steady · 2 min ago" and a row of four equal
+   blocks is the one thing it never looks like. */
+.sk-chips {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+.sk-chips .sk-line {
+  height: var(--ctl-xs);
+  flex: none;
+}
+.sk-chips .sk-line:nth-child(1) {
+  width: 84px;
+}
+.sk-chips .sk-line:nth-child(2) {
+  width: 108px;
+}
+.sk-chips .sk-line:nth-child(3) {
+  width: 96px;
+}
+.sk-chips .sk-line:nth-child(4) {
+  width: 72px;
+}
+/* The same four columns as .wait-row, over the same hairline, so the row
+   that arrives lands where the row that was waiting stood. */
+.sk-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-4);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line);
+}
+.sk-price {
+  justify-self: end;
+  width: var(--fig-col);
+  height: var(--t-8);
+  border-radius: var(--r-2);
+}
+.sk-cta {
+  height: var(--ctl-2xl);
+  border-radius: 999px;
+}
+.sk-price,
+.sk-cta {
+  background: linear-gradient(90deg, var(--soft), var(--line-2), var(--soft));
+  background-size: 200% 100%;
+  animation: var(--dur-5) linear infinite shimmer;
+}
+/* Staggered, so four cards read as four things arriving rather than one
+   flashing block. */
+.skeleton-card:nth-child(2) .sk-line,
+.skeleton-card:nth-child(2) .sk-price,
+.skeleton-card:nth-child(2) .sk-cta {
+  animation-delay: var(--dur-1);
+}
+.skeleton-card:nth-child(3) .sk-line,
+.skeleton-card:nth-child(3) .sk-price,
+.skeleton-card:nth-child(3) .sk-cta {
+  animation-delay: var(--dur-2);
+}
+.skeleton-card:nth-child(4) .sk-line,
+.skeleton-card:nth-child(4) .sk-price,
+.skeleton-card:nth-child(4) .sk-cta {
+  animation-delay: var(--dur-3);
+}
+/* .quote-card-header's own track list, not an approximation of it. */
+.sk-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--s-5);
 }
 .sk-lines {
-  flex: 1;
   display: grid;
   gap: var(--s-4);
+  min-width: 0;
 }
 .sk-line {
   height: 12px;

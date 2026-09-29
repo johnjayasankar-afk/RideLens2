@@ -1264,6 +1264,16 @@ export function QuoteResults({
       {loading && !hero ? (
         <div className="skeletons" aria-busy="true" aria-label="Loading quotes">
           {(["uber", "lyft", "empower", "curb"] as const).map((p) => (
+            /*
+              The two things somebody is actually waiting for.
+              ────────────────────────────────────────────────
+              This stood in for a ~340px card with a 26px price on the right
+              and a 48px button at the foot, and it was a logo and three
+              lines — about 96px, with no placeholder for the price or the
+              CTA at all. The console's skeletons were agonised over, down to
+              a comment about 14px of shift; the card list, where ~900px of
+              growth lands, got none of it.
+            */
             <div key={p} className="skeleton-card" aria-hidden>
               <div className="sk-head">
                 <ProviderLogo provider={p} size={40} />
@@ -1271,8 +1281,22 @@ export function QuoteResults({
                   <div className="sk-line w40" />
                   <div className="sk-line w60" />
                 </div>
+                <div className="sk-price" />
+              </div>
+              <div className="sk-row">
+                <div className="sk-line" />
+                <div className="sk-line" />
+                <div className="sk-line" />
+                <div className="sk-line" />
+              </div>
+              <div className="sk-chips">
+                <div className="sk-line" />
+                <div className="sk-line" />
+                <div className="sk-line" />
+                <div className="sk-line" />
               </div>
               <div className="sk-line w30" />
+              <div className="sk-cta" />
             </div>
           ))}
         </div>
