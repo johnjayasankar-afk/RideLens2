@@ -206,6 +206,23 @@
   --key-track: 0.13em;
   /* Every figure in the product right-aligns inside this. 11.5ch of IBM Plex
      Mono holds "$41.34 to 44.36"; measure before narrowing it. */
+  /*
+   * Hairline, caught light, cast shadow — the order a real edge produces
+   * them, stated once.
+   *
+   * Seven top-level surfaces sat on the same ground at the same tier and no
+   * two agreed: radii 20/22/24, three different hairline mechanisms
+   * (`0 0 0 1px`, `border: 1px solid`, `inset 0 0 0 1px`), shadows --sh-1,
+   * --sh-2, --sh-3 and none, and the caught light present on four of them.
+   * `.ask` carried --sh-2 inside a card carrying --sh-1, so a panel nested
+   * in a card was elevated above it.
+   *
+   * A spread shadow rather than a border, deliberately: a border grows the
+   * box by two pixels and a hairline should not change what it encloses.
+   */
+  --surface-1: 0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), var(--sh-1);
+  --surface-2: 0 0 0 1px var(--line), inset 0 1px 0 var(--edge-hi), var(--sh-2);
+
   --fig-col: 11.5ch;
   --axis-name: 104px;
   --axis-value: 92px;
@@ -1533,9 +1550,7 @@ h1.brand {
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--ground-2);
-  box-shadow:
-    0 0 0 1px var(--line),
-    var(--sh-2);
+  box-shadow: var(--surface-2);
 }
 /*
  * The map is a photograph of a city and the page is paper. Without an inner
@@ -1855,7 +1870,28 @@ h1.brand {
   background: var(--line-2);
 }
 
-.quote-list,
+/*
+ * One enclosure, one hairline between rows.
+ *
+ * Three identical floating slabs with a 12px gap gave the list no shared
+ * vertical edge, so the same four fields — PICKUP, DRIVE, TOTAL, ARRIVE —
+ * sat on different verticals in row one and row two. Every class name and
+ * every child selector is kept; a card loses only its radius and its edge.
+ */
+.quote-list {
+  display: grid;
+  gap: 0;
+  overflow: clip;
+  border-radius: var(--radius);
+  box-shadow: var(--surface-1);
+}
+.quote-list > .quote-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+.quote-list > .quote-card + .quote-card {
+  border-top: 1px solid var(--line);
+}
 .skeletons {
   display: grid;
   gap: var(--s-5);
@@ -1922,7 +1958,7 @@ h1.brand {
   border-radius: 999px;
   font-size: var(--t-4);
   text-transform: capitalize;
-  background: var(--ground-2);
+  background: var(--soft);
 }
 
 .section-label-row {
@@ -1948,23 +1984,33 @@ h1.brand {
   padding: var(--s-6) var(--s-7);
   border-radius: var(--radius);
   background: var(--paper);
-  /* Hairline, caught light, cast shadow — in that order, which is the order
-     a real edge produces them. */
-  box-shadow:
-    0 0 0 1px var(--line),
-    inset 0 1px 0 var(--edge-hi),
-    var(--sh-1);
-  transition:
-    box-shadow 0.35s var(--ease),
-    transform 0.35s var(--ease);
+  box-shadow: var(--surface-1);
+  /*
+   * A tint, not a lift.
+   *
+   * `translateY(-1px)` with a 350ms box-shadow transition is the exact pair
+   * the performance budget names, running on the element that repeats most.
+   * And on iOS a tap applies `:hover` and it *sticks*, so after tapping a
+   * card it stayed raised and the page appeared to have selected it — which
+   * directly contradicts the hero, where elevation means "this is the
+   * recommendation".
+   */
+  transition: background-color var(--dur-2) var(--ease);
 }
-.quote-card:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px var(--line-2),
-    inset 0 1px 0 var(--edge-hi),
-    var(--sh-2);
+@media (hover: hover) and (pointer: fine) {
+  .quote-card:hover {
+    background: var(--paper-lift);
+  }
 }
+/*
+ * Keyboard parity. A pointer always knows which card it is on; a keyboard
+ * infers it from a 2px ring on a 340px object. No transform — the card must
+ * not move under a focused control, or the ring moves with it.
+ */
+.quote-card:focus-within {
+  background: var(--paper-lift);
+}
+
 /*
  * The hero is the answer; the rest are the working. It carried the same
  * elevation as every other row, so the eye had to read the border to find
@@ -2021,9 +2067,7 @@ h1.brand {
   font-size: var(--t-9);
   letter-spacing: -0.045em;
 }
-.quote-card.hero:hover {
-  transform: translateY(-2px);
-}
+/* The card carrying the marks must not move under them. */
 /* The hero does not need the hover lift the list rows use to feel live —
    it is already raised — so only the shadow deepens. */
 @media (max-width: 720px) {
@@ -2119,6 +2163,13 @@ h1.brand {
   min-height: var(--ctl-xs);
   padding: 0 var(--s-5);
   border-radius: 999px;
+  /* --soft, not --ground-2: "Market steady" is printed twice on this page,
+     180px apart, and in dark the relationship between the two inverts —
+     --soft composites lighter than --paper while --ground-2 is darker — so
+     the identical chip was a raised tint in one place and a recessed well in
+     the other, and which was which flipped with the scheme. An alpha tint
+     keeps the same relationship to whatever surface it lands on. */
+  background: var(--soft);
   font: 500 var(--t-3)/1 var(--font-body);
   color: var(--ink-2);
   background: var(--ground-2);
@@ -2154,7 +2205,10 @@ h1.brand {
 
 .fee-breakdown {
   padding-top: var(--s-5);
-  border-top: 1px dashed var(--line-2);
+  /* Solid, like the rule 90px above it doing the identical job. A dashed
+     rule means "this boundary is soft"; spending that at random inside a
+     card made the card look patched. */
+  border-top: 1px solid var(--line);
   font-size: var(--t-4);
 }
 .fee-breakdown summary {
@@ -2395,9 +2449,7 @@ h1.admin-title {
   padding: var(--s-7);
   border-radius: var(--radius);
   background: var(--paper);
-  box-shadow:
-    0 0 0 1px var(--line),
-    var(--sh-1);
+  box-shadow: var(--surface-1);
 }
 .book-meta dt {
   margin-bottom: 4px;
@@ -4622,7 +4674,7 @@ details[open] > summary::before {
 }
 .ask-open:hover {
   background: var(--mint-bg);
-  box-shadow: inset 0 0 0 1px transparent;
+  box-shadow: inset 0 0 0 1px var(--forest-2);
   transform: translateY(-1px);
 }
 .ask-open-glyph {
@@ -4648,9 +4700,9 @@ details[open] > summary::before {
   padding: var(--s-6);
   border-radius: var(--radius);
   background: var(--paper);
-  box-shadow:
-    inset 0 0 0 1px var(--line),
-    var(--sh-2);
+  /* --surface-1, not --sh-2: this sits inside a card that carries --sh-1,
+     and a panel nested in a card cannot be elevated above it. */
+  box-shadow: var(--surface-1);
   animation: ask-in var(--dur-3) var(--ease) both;
 }
 @keyframes ask-in {
@@ -4868,12 +4920,9 @@ details[open] > summary::before {
 .console {
   display: grid;
   overflow: clip;
-  border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--paper);
-  box-shadow:
-    inset 0 1px 0 var(--edge-hi),
-    var(--sh-1);
+  box-shadow: var(--surface-1);
 }
 .console > * + * {
   border-top: 1px solid var(--line);
@@ -4922,10 +4971,9 @@ details[open] > summary::before {
   gap: var(--s-6);
   margin-top: var(--space-3, 20px);
   padding: var(--s-6) var(--s-7) var(--s-7);
-  border: 1px solid var(--line);
-  border-radius: var(--r-5);
+  border-radius: var(--radius);
   background: var(--ground-2);
-  box-shadow: inset 0 1px 0 var(--edge-hi);
+  box-shadow: var(--surface-1);
 }
 .deck-head {
   display: flex;
