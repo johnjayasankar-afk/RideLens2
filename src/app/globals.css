@@ -75,7 +75,6 @@
   --dur-3: 320ms;
   --dur-4: 520ms;
   --dur-5: 1100ms;
-  --dur-6: 2400ms;
 
   /* The page's own rhythm, from the same grid. */
   --space-1: var(--s-4);
@@ -177,7 +176,6 @@
   /* A softer landing for things that arrive, and a symmetric one for things
      that go out and come back. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   /*
    * The one spring in the product, and it is only ever for a press.
    *
@@ -205,7 +203,6 @@
   /* Tokens that exist so dark mode has somewhere to change them. Each one
      was a hardcoded literal that would have stayed light. */
   --on-accent: #fff;
-  --hairline: #e6e1d6;
   --btn-1: #2c5a42;
   --btn-2: #1a3a2a;
   --dot: rgba(28, 51, 38, 0.06);
@@ -331,6 +328,10 @@
   --lit-2:
     inset 0 1px 0 var(--lit-edge), 0 0 0 1px var(--lit-ring), 0 1px 2px rgba(0, 0, 0, 0.3),
     0 18px 38px -14px var(--lit-cast);
+  /* The same light without the cast, for a control that is already inside a
+     track: a drop shadow within an enclosure is the thing the segmented
+     group's `box-shadow: none` was written to stop, and it was right. */
+  --lit-0: inset 0 1px 0 var(--lit-edge), 0 0 0 1px var(--lit-ring);
 
   --fig-col: 11.5ch;
   /* The deck's one vertical: row names, and the first character of every
@@ -476,7 +477,6 @@
      * point and 8.01:1 at its darkest.
      */
     --on-accent: #e9f1ec;
-    --hairline: #24312a;
     --btn-1: #2f6b52;
     --btn-2: #22503c;
     /* Half of what it was. A regular lattice of pale specks on an L*6 ground
@@ -561,7 +561,6 @@
   --rose-t: #f6b3a5;
 
   --on-accent: #e9f1ec;
-  --hairline: #24312a;
   --btn-1: #2f6b52;
   --btn-2: #22503c;
   /* Half of what it was. A regular lattice of pale specks on an L*6 ground
@@ -1282,14 +1281,24 @@ h1.brand {
   border-color: var(--sky);
   background: var(--paper);
 }
+/*
+ * The rail between the two endpoints, drawn rather than defaulted.
+ *
+ * This was `border-left: 2px dashed`, which is the user agent's dash rhythm
+ * — uneven, dependent on the box height, and overshooting both nodes. It is
+ * the one mark in the product that looked like `border: 1px dashed red` left
+ * in after debugging a layout, on the control every reader touches first.
+ *
+ * A repeating gradient is the same two pixels with a rhythm the app chose:
+ * a 4px tick, a 5px gap, rounded ends, and it stops where it is told to.
+ */
 .route-line {
   flex: 1;
-  width: 0;
+  width: 2px;
   min-height: 1.5rem;
   margin: 6px 0;
-  /* `--line-2`, not the forest literal it was: a dark dash on the dark card
-     was invisible, on the one control everybody uses. */
-  border-left: 2px dashed var(--line-2);
+  border-radius: 999px;
+  background: repeating-linear-gradient(to bottom, var(--line-2) 0 4px, transparent 4px 9px);
 }
 
 .place-field {
@@ -3483,7 +3492,7 @@ h1.admin-title {
   overflow-y: auto;
   padding: 22px 22px calc(22px + env(safe-area-inset-bottom));
   background: var(--paper);
-  border: 1px solid var(--line, var(--hairline));
+  border: 1px solid var(--line);
   border-radius: var(--radius) var(--radius) 0 0;
   box-shadow: 0 -12px 44px rgb(15 23 18 / 0.18);
   animation: prov-rise var(--dur-3) var(--ease) both;
@@ -3525,7 +3534,7 @@ h1.admin-title {
 
 .prov-rows {
   margin: 4px 0 14px;
-  border-top: 1px solid var(--line, var(--hairline));
+  border-top: 1px solid var(--line);
 }
 .prov-row {
   display: flex;
@@ -3533,7 +3542,7 @@ h1.admin-title {
   justify-content: space-between;
   gap: var(--s-7);
   padding: var(--s-4) 0;
-  border-bottom: 1px solid var(--line, var(--hairline));
+  border-bottom: 1px solid var(--line);
 }
 .prov-row dt {
   font-size: var(--t-4);
@@ -3693,7 +3702,7 @@ h1.admin-title {
 }
 .source-row {
   padding: var(--s-6) 0;
-  border-top: 1px solid var(--line, var(--hairline));
+  border-top: 1px solid var(--line);
 }
 .source-head {
   display: flex;
@@ -3752,7 +3761,7 @@ h1.admin-title {
   justify-content: space-between;
   gap: var(--s-6);
   padding: var(--s-4) 0;
-  border-bottom: 1px solid var(--line, var(--hairline));
+  border-bottom: 1px solid var(--line);
   font-size: var(--t-4);
 }
 .coverage-list strong {
@@ -4723,7 +4732,11 @@ details[open] > summary::before {
   justify-content: center;
   align-items: flex-start;
   padding: 12vh var(--s-6) var(--s-6);
-  background: rgba(var(--scrim-rgb), 0.55);
+  /* 0.55 put the palette at 1.11:1 against its own scrim — on any non-OLED
+     display the dialog did not read as floating, it read as a region of the
+     same page with different text in it. A modal's scrim is the only thing
+     saying "the rest is behind"; 3px of blur cannot carry that alone. */
+  background: rgba(var(--scrim-rgb), 0.82);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: cmdk-fade var(--dur-1) var(--ease) both;
@@ -6241,6 +6254,18 @@ details[open] > summary::before {
 .segmented .chip {
   box-shadow: none;
 }
+/*
+ * ...except the chosen one, which needs to look chosen.
+ *
+ * This rule is (0,2,0) and later in the file than `.chip.active`, so it was
+ * also switching off the lit ring that tells a reader which of Price /
+ * Soonest / Value is current — and --on-surface alone measures L*33 in dark,
+ * which reads as disabled. The ring is the one part of the recipe that
+ * belongs inside a track.
+ */
+.segmented .chip.active {
+  box-shadow: var(--lit-0);
+}
 .segmented .chip:not(.active) {
   background: transparent;
 }
@@ -6714,6 +6739,100 @@ details[open] > summary::before {
 .results > .section-label,
 .section-label-row {
   padding-inline: var(--pad-x);
+}
+
+/* ── Forced colours ────────────────────────────────────────────────────────
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ globals.css had no `forced-colors` block at all, and the file's proudest │
+   │ decision is the one that mode deletes: `--surface-1` draws its edge as   │
+   │ `0 0 0 1px var(--line)` — a spread shadow rather than a border, chosen   │
+   │ because "a hairline should not change what it encloses" — and Windows    │
+   │ High Contrast forces `box-shadow` to none. So every enclosure in the     │
+   │ product loses its edge at the same instant: the option list, the         │
+   │ console, the deck, the cards, the ledger, the palette, the map slot.     │
+   │ labs-glass's own rescue covers only the three elements wearing `.gl*`.   │
+   │                                                                          │
+   │ The constraint brief names six OS x choice scheme combinations. This is  │
+   │ a seventh, and nobody had counted it.                                    │
+   └──────────────────────────────────────────────────────────────────────────┘
+
+   Every enclosure gets a real border, every lit or gradient fill gives up a
+   colour the system has replaced anyway, and the things that carry meaning in
+   colour — the charts, the provider marks, the map — keep theirs. */
+@media (forced-colors: active) {
+  .quote-card,
+  .quote-list,
+  .skeletons,
+  .console,
+  .deck,
+  .cmdk,
+  .trip-list,
+  .trip-row,
+  .recent-trips-list,
+  .recent-trip,
+  .trips-empty,
+  .results-empty,
+  .map-slot,
+  .place-field input,
+  .chip,
+  .ghost,
+  .primary,
+  .book,
+  .meta-chip,
+  .kbd,
+  .trip-stats > div {
+    border: 1px solid CanvasText;
+    background-image: none;
+  }
+  /* A row inside an enclosure keeps one rule, not two. */
+  .quote-list > .quote-card + .quote-card,
+  .trip-row + .trip-row,
+  .recent-trip + .recent-trip {
+    border-top-width: 1px;
+  }
+  .primary,
+  .quote-card.hero .book {
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+  /*
+   * `!important`, and it is the correct kind.
+   *
+   * labs-ui dresses every `.chip` in `.gl--flat`, and labs-glass's own
+   * forced-colors block sets `background-color: Canvas !important` on it. So
+   * under Windows High Contrast the selected chip was Canvas with CanvasText
+   * — identical to the six unselected ones beside it, and which filter or
+   * ranking is active became unreadable. A selected state has to out-rank a
+   * material.
+   */
+  .chip.active {
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+  /* The hero's crop marks and the map's centre ticks are gradients on a
+     pseudo-element: forced colours leaves a gradient alone, so they survive
+     as the only mark still in the accent. Nothing else should. */
+  .deck-indicator,
+  .console .market-pulse::after {
+    background: Highlight;
+  }
+  /* Charts and brand marks mean what their colours mean. */
+  .axis-bar,
+  .axis-track,
+  .comp-bar,
+  .comp-seg,
+  .comp-taken,
+  .comp-dot,
+  .tor-track,
+  .tor-bar,
+  .spark-svg,
+  .departure-chart,
+  .provider-mark-img,
+  .brand-mark,
+  .status-dot,
+  .map-slot {
+    forced-color-adjust: none;
+  }
 }
 
 /* ── Press ─────────────────────────────────────────────────────────────────
