@@ -155,6 +155,8 @@
   /* Selected text is text somebody is reading. Mint at half alpha clears
      14:1 over the light ground; over the dark one it fell to 4.18:1. */
   --selection: rgba(110, 231, 183, 0.5);
+  /* The ring follows the accent, and is named so a rule can say what it is. */
+  --focus: var(--forest-2);
   /* The top edge of a raised surface catching light. One pixel of inset
      highlight is the difference between a rectangle and an object; on the
      dark ground it has to come from the accent, because white reads as a
@@ -185,9 +187,19 @@
     --ink: #e9f1ec;
     --ink-2: #a8b6ad;
     --ink-3: #8b9a91;
-    --line: rgba(190, 226, 205, 0.11);
-    --line-2: rgba(190, 226, 205, 0.2);
-    --soft: rgba(190, 226, 205, 0.06);
+    /*
+     * Stronger than they look like they should be, and the reason is
+     * arithmetic. --ground, --ground-2, --paper and --paper-lift sit at
+     * 1.06:1, 1.08:1 and 1.11:1 from each other, and a cast shadow does
+     * essentially nothing on a dark ground — so on this scheme the surfaces
+     * had no separation at all and every panel floated. Lifting the surfaces
+     * instead would have worked and would also have pushed --ink-3 to 3.6:1
+     * on the raised one, under AA. A border is not text, so this is where the
+     * hierarchy can come from for free.
+     */
+    --line: rgba(190, 226, 205, 0.16);
+    --line-2: rgba(190, 226, 205, 0.28);
+    --soft: rgba(190, 226, 205, 0.07);
 
     --forest: #0a120d;
     /* The accent has to climb a long way: #1f6b4a on #0d1511 is unreadable. */
@@ -241,9 +253,9 @@
   --ink: #e9f1ec;
   --ink-2: #a8b6ad;
   --ink-3: #8b9a91;
-  --line: rgba(190, 226, 205, 0.11);
-  --line-2: rgba(190, 226, 205, 0.2);
-  --soft: rgba(190, 226, 205, 0.06);
+  --line: rgba(190, 226, 205, 0.16);
+  --line-2: rgba(190, 226, 205, 0.28);
+  --soft: rgba(190, 226, 205, 0.07);
 
   --forest: #0a120d;
   --forest-2: #4cc492;
@@ -370,9 +382,41 @@ code {
   background: var(--selection);
   color: var(--ink);
 }
+/*
+ * One ring, everywhere, and it snaps.
+ *
+ * The offset is the halo: two pixels of whatever surface is behind, so the
+ * ring reads on the ground, on paper, on mint and on the dark green buttons
+ * without needing a second colour. Modern outlines follow border-radius, so a
+ * pill gets a pill.
+ *
+ * It animates from flush to offset, which costs nothing and is the difference
+ * between a ring that appears and a ring that arrives.
+ */
 :focus-visible {
-  outline: 2px solid var(--forest-2);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  transition: outline-offset var(--dur-1) var(--ease-out);
+}
+:focus-visible:active {
+  outline-offset: 1px;
+}
+/*
+ * Inset where the ring would be clipped.
+ *
+ * The deck's tab strip scrolls sideways, so an outline offset outward on the
+ * first or last tab is cut off by the scroll box — the one place a keyboard
+ * user most needs to see where they are.
+ */
+.deck-tab:focus-visible,
+.cmdk-item:focus-visible,
+.party-stepper .ghost:focus-visible {
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :focus-visible {
+    transition: none;
+  }
 }
 .shell {
   width: min(var(--shell-max), calc(100% - 2 * var(--space-3)));
@@ -5374,4 +5418,33 @@ details[open] > summary::before {
 }
 .robust:hover {
   box-shadow: 0 0 0 1px currentcolor;
+}
+
+/* ── Reduced transparency ──────────────────────────────────────────────────
+   Five surfaces in this file are translucent and blurred, and until now none
+   of them answered the preference. Somebody who has asked their system for
+   opaque interfaces — because translucency makes text hard for them to read —
+   was getting the map through the HUD, the comparison through the sticky bar,
+   and the whole page through the command palette's scrim.
+
+   `--ground` rather than `--paper` on the scrim: it is standing in for a
+   blur of the page, and the page is the ground. */
+@media (prefers-reduced-transparency: reduce) {
+  .topbar,
+  .sticky-bar,
+  .route-map-hud,
+  .mobile-compare-bar,
+  .route-map-overlay {
+    background: var(--ground);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* The one that is a scrim over content rather than a surface of its own: it
+     has to stay dark enough to still mean "behind", so it keeps its colour and
+     gives up the blur. */
+  .cmdk-scrim {
+    background: rgba(var(--scrim-rgb), 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
