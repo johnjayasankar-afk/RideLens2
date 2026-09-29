@@ -20,3 +20,7 @@ blob-report/
 
 # Vendored at build time by scripts/vendor-map-worker.ts
 public/vendor/
+
+# Scratch capture scripts a session leaves behind
+*.tmp.mjs
+*.tmp.ts

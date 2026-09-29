@@ -27,6 +27,10 @@ prices cannot, and each one mounts the first time you pick it — the forecast
 alone re-runs the fare engine a few hundred times, and that is not work to do
 on the way to a price.
 
+Which one is open lives in the URL, so a shared link opens on the panel the
+sender was reading and a reload keeps your place. ⌘K lists all eight, and the
+assistant can open one alongside an answer.
+
 - **Spread** — every band on one ruler. Bars that share ground are not
   separated by anything this model can measure, and it says so.
 - **Breakdown** — where the money goes, for every option on one scale. Three
@@ -34,6 +38,16 @@ on the way to a price.
   stack, and what corridor calibration moved it by. Usually the difference
   between the cheap option and the dear one is the ride, not the fees, and
   that is worth being able to see.
+- **What if** — how far the estimate moves when the model is wrong about its
+  inputs. Four levers — traffic, the route, the weather, the hour — each moved
+  either way and the real fare engine re-run, with the band printed on the card
+  drawn down the middle of the chart on the same scale. It is the model's own
+  partial derivatives, which is something it genuinely knows, unlike a
+  confidence score. Every option is run under every scenario, so it can also
+  answer the question that actually decides anything: whether the ordering
+  survives. On a Midtown → Stamford run, three of the eight scenarios change
+  which option is cheapest, and that verdict is repeated beside the takeaway
+  above the fold rather than left behind a tab.
 - **Trade-offs** — what paying more actually buys, as dollars per hour of
   time saved. It refuses to divide when the gap is under two minutes, because
   both durations are modelled to the minute and $32 for "one minute faster"
@@ -88,6 +102,10 @@ returns an intent, which is validated on the server, validated again in the
 browser, and then run through the same path the command palette uses. It
 cannot book, pay, send, share or delete — and a test greps the whole tool
 surface to keep it that way.
+
+Its sixth action is the only one that answers rather than changes anything:
+it can open one of the panels under the comparison, so "why is Lyft dearer"
+arrives with the breakdown already on screen.
 
 The key is read server-side and never reaches the browser. Your trip log is
 sent with the question and is not stored; no transcript is kept. Without a
