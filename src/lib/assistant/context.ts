@@ -32,6 +32,7 @@ import { confidenceLabel } from "@/lib/domain/confidence";
 import { formatMoneyMinor, formatQuotePrice } from "@/lib/domain/money";
 import { buildTradeoffs, formatMinutes, RESOLUTION_MINUTES } from "@/lib/domain/tradeoffs";
 import { provenanceOf } from "@/lib/domain/provenance";
+import { transitAlternativeFor } from "@/lib/transit/alternatives";
 import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
 import { historyForRoute, routeKeyFor, type TripRecord } from "@/lib/history/trip-log";
 import { personalAccuracy } from "@/lib/history/outcome";
@@ -86,6 +87,23 @@ export interface AssistantBrief {
    * to get wrong downstream.
    */
   ordering: string;
+  /**
+   * The way without a car, where a published fare covers it.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ The brief knew nothing about transit, so the assistant could open the │
+   * │ "No car" panel and could not say a word about what was in it. Asked   │
+   * │ the single question this product is proudest of answering — is there  │
+   * │ a way without one — it had to refuse.                                 │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * `transitAlternativeFor` is pure and synchronous over two points the
+   * session already holds, so this costs no fetch. Pre-formatted like every
+   * other figure here, and it carries its own absence: a fare with no journey
+   * time says so in the same breath, because a model handed a fare and a
+   * distance will otherwise supply the minutes itself.
+   */
+  withoutACar: string | null;
   /**
    * What the dearer options buy, one sentence each, or nothing when there is
    * nothing to weigh. Pre-written rather than left to the model, because the
@@ -236,6 +254,22 @@ export function buildBrief(
       : `${name} and ${runnerUp} overlap in price, so this comparison does not separate them.`;
   })();
 
+  /*
+   * The transit row, as the panel below states it. Fare only unless a routing
+   * source is configured, and saying which is the whole point.
+   */
+  const alt = transitAlternativeFor(
+    { lat: session.pickup.lat, lng: session.pickup.lng },
+    { lat: session.destination.lat, lng: session.destination.lng },
+  );
+  const withoutACar = alt
+    ? `${alt.label}: ${alt.fareMinor === 0 ? "free" : formatMoneyMinor(alt.fareMinor)}. ` +
+      (alt.durationSeconds != null
+        ? `Journey time ${minutes(alt.durationSeconds)}.`
+        : "The journey time is not modeled and must not be guessed.") +
+      (alt.unmodeled ? ` This does not include ${alt.unmodeled}, so the real total is higher.` : "")
+    : null;
+
   const ledger = buildTradeoffs(ranked);
   const tradeoffs = (ledger?.rows ?? []).map((row) => {
     const head = `${row.productName} is ${formatMoneyMinor(row.extraMinor)} more than ${ledger!.referenceName}`;
@@ -286,6 +320,7 @@ export function buildBrief(
       modelVersion: modelVersion || "unknown",
     },
     ordering,
+    withoutACar,
     tradeoffs,
     yourHistory,
     limits: [
@@ -331,6 +366,14 @@ export function renderBrief(brief: AssistantBrief): string {
   }
   lines.push("");
   lines.push(`WHETHER THE ORDER MEANS ANYTHING: ${brief.ordering}`);
+  if (brief.withoutACar) {
+    lines.push(`WITHOUT A CAR: ${brief.withoutACar}`);
+  } else {
+    lines.push(
+      "WITHOUT A CAR: RideLens has no published transit fare covering this route. That is a " +
+        "gap in its coverage, not a statement that no transit exists.",
+    );
+  }
   if (brief.tradeoffs.length > 0) {
     lines.push("");
     lines.push("WHAT THE DEARER OPTIONS BUY:");

@@ -307,3 +307,39 @@ describe("the ordering sentence the brief now carries", () => {
     expect(brief({ quotes: [] }).ordering).toContain("no options");
   });
 });
+
+/**
+ * The question this product exists to be willing to answer.
+ *
+ * The brief carried no transit at all, so the assistant could open the "No
+ * car" panel and then say nothing about what was in it. A comparison product
+ * that goes quiet when asked whether you need a car is a shopping funnel in a
+ * comparison's clothes — the transit module's own header says so.
+ */
+describe("asked whether you need a car at all", () => {
+  it("states the published fare where one covers the route", () => {
+    /* The fixture runs 14 Prince St → JFK Terminal 4, an airport corridor. */
+    const b = brief();
+    const reply = answerLocally("is there a way without a car", b);
+    expect(reply.refused).toBe(false);
+    expect(reply.action).toEqual({ action: "panel", panel: "transit" });
+    expect(b.withoutACar).toBeTruthy();
+    expect(reply.text).toContain("$");
+  });
+
+  it("never supplies a journey time the app does not have", () => {
+    const b = brief();
+    const reply = answerLocally("how do I get there by subway", b);
+    expect(reply.text).toMatch(/not modeled/);
+    expect(reply.text).not.toMatch(/\b\d+\s*min/);
+  });
+
+  it("calls a gap in coverage a gap, not an absence of transit", () => {
+    const b = brief();
+    /* A brief with no transit row still has to answer honestly. */
+    const bare = { ...b, withoutACar: null };
+    const reply = answerLocally("can I take the subway", bare);
+    expect(reply.text).toContain("coverage");
+    expect(reply.text.toLowerCase()).not.toContain("there is no transit");
+  });
+});

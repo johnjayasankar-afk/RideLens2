@@ -88,10 +88,17 @@ control beside it. See `docs/SECURITY.md`.
 
 ## Ask about a comparison
 
-Set `ANTHROPIC_API_KEY` and an assistant appears under the best price. It can
-explain the fee stack, say why one provider is dearer, tell you what a band
-means, and read your own history back to you — and it can act: re-run the
-comparison, swap the trip, re-rank, filter, set a price watch.
+There is an assistant under the best price. It can explain the fee stack, say
+why one provider is dearer, tell you what a band means, and read your own
+history back to you — and it can act: re-run the comparison, swap the trip,
+re-rank, filter, set a price watch.
+
+Two things can be behind it. With `ANTHROPIC_API_KEY` set it is Claude,
+working under the brief and the rules below. Without one it is a local
+answerer that reads your question and replies from the same brief — it
+recognises a question or says it does not, and it cannot write prose. It is
+not an AI and the box does not call it one; `/api/ask` reports which mode it
+is in and the footer says so.
 
 What it cannot do is invent a number. It is handed a brief of the figures
 already on your screen, with money pre-formatted as the strings you are
@@ -108,8 +115,16 @@ it can open one of the panels under the comparison, so "why is Lyft dearer"
 arrives with the breakdown already on screen.
 
 The key is read server-side and never reaches the browser. Your trip log is
-sent with the question and is not stored; no transcript is kept. Without a
-key the assistant is hidden rather than broken.
+sent with the question and is not stored; no transcript is kept.
+
+The local answerer is the stricter of the two, and deliberately: it never
+holds a price as a number, so the rules the model is *asked* to honour are
+properties of its code. It cannot average a band because it has no band to
+average, and it cannot name a winner across overlapping ranges because the
+only sentence it has about ordering is the one the brief pre-wrote with
+`comparePrices`. A test runs the whole repertoire over a corpus of questions
+and asserts that every money figure in every reply appears verbatim in the
+brief.
 
 ## Telling the model whether it was right
 

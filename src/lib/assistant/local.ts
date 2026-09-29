@@ -339,6 +339,21 @@ export function answerLocally(question: string, brief: AssistantBrief): LocalRep
     );
   }
 
+  /* The way without a car — the question this product is proudest of. */
+  if (
+    has(q, "transit", "subway", "train", "bus", "walk", "metro") ||
+    q.includes(" without a car ") ||
+    q.includes(" no car ") ||
+    q.includes(" public transport ") ||
+    q.includes(" public transit ")
+  ) {
+    return say(
+      brief.withoutACar ??
+        "RideLens has no published transit fare covering this route, which is a gap in its coverage rather than a statement that no transit runs.",
+      { action: "panel", panel: "transit" },
+    );
+  }
+
   /* Distance and drive time. */
   if (has(q, "far", "distance", "miles", "drive", "journey") && !has(q, "wait")) {
     return say(

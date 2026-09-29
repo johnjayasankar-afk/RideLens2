@@ -59,10 +59,14 @@ export const envSchema = z.object({
    */
   RIDELENS_REPORT_SECRET: optionalString,
   /*
-   * Powers the in-app assistant. Server-side only — it is read in a route
-   * handler and never reaches the browser. Unset, the assistant is hidden
-   * entirely rather than degraded, because a chat box that cannot answer is
-   * worse than no chat box.
+   * Puts a language model behind the in-app assistant. Server-side only — it
+   * is read in a route handler and never reaches the browser.
+   *
+   * Unset, the assistant still answers: /api/ask falls through to the local
+   * answerer in lib/assistant/local.ts, which reads the question and replies
+   * from the same brief. It reports `mode: "local"` so the surface can say
+   * which one is talking, because a keyword matcher is not an AI and should
+   * not be dressed as one. This used to hide the feature entirely.
    */
   ANTHROPIC_API_KEY: optionalString,
 
