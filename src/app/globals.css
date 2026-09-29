@@ -285,6 +285,7 @@
      seam. */
   --edge-hi: rgba(255, 255, 255, 0.72);
   --map-style: "positron";
+  --map-glyph: none;
   color-scheme: light;
 }
 
@@ -377,6 +378,7 @@
     --amber-fill: #e0a750;
     --sky-fill: #5e9ad8;
     --map-style: "dark-matter";
+    --map-glyph: invert(1);
 
     /* Shadow does almost nothing on a dark ground; depth comes from the
        lighter card surface instead, so these only deepen the separation. */
@@ -439,6 +441,10 @@
   --amber-fill: #e0a750;
   --sky-fill: #5e9ad8;
   --map-style: "dark-matter";
+  /* MapLibre draws the attribution toggle as a fixed dark SVG in its own
+     stylesheet. Inverting the glyph is the only thing a stylesheet can do to
+     a background-image, and the button carries no colour of its own to spoil. */
+  --map-glyph: invert(1);
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
   --sh-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
@@ -1832,6 +1838,31 @@ h1.brand {
 }
 .maplibregl-ctrl button {
   background-color: transparent !important;
+}
+/*
+ * The attribution, in the scheme.
+ *
+ * MapLibre hard-codes `background: #fff; color: #000` on it, so on the dark
+ * map it was a white bar with black text — the brightest object on the one
+ * surface in the product that is a photograph, and the only piece of chrome
+ * on the page that had not been told which scheme it is in. Restyled, not
+ * hidden: CARTO and OpenStreetMap require it to be visible, and it is more
+ * legible after this than before.
+ *
+ * Two class names so the compact variant, which MapLibre styles at its own
+ * specificity in a stylesheet that loads after this file, is covered too.
+ */
+.map-slot .maplibregl-ctrl-attrib,
+.map-slot .maplibregl-ctrl-attrib.maplibregl-compact {
+  background-color: var(--scrim);
+  color: var(--ink-2);
+}
+.map-slot .maplibregl-ctrl-attrib a {
+  color: var(--ink-2);
+}
+.map-slot .maplibregl-ctrl-attrib-button {
+  background-color: transparent;
+  filter: var(--map-glyph);
 }
 
 .sticky-bar {

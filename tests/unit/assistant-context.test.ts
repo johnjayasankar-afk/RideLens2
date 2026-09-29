@@ -83,7 +83,7 @@ describe("what the assistant is given", () => {
     /* The house format, exactly as the card shows it: one dollar sign, then
        "to". The prompt tells the model to quote it verbatim, so the answer
        and the card cannot disagree. */
-    expect(text).toContain("$69.95 to 71.45");
+    expect(text).toContain("$69.95 to\u00a0$71.45");
     expect(text).not.toContain("6995");
     expect(text).not.toContain("7145");
   });
@@ -287,7 +287,7 @@ describe("what a fare is made of", () => {
   it("never writes the total those parts add up to", () => {
     const text = renderBrief(buildBrief(session({ quotes: [priced()] })));
     expect(text).not.toContain("118.05");
-    expect(text).toContain("$103.73 to 112.37");
+    expect(text).toContain("$103.73 to\u00a0$112.37");
   });
 
   it("offers nothing to take apart when the source published no arithmetic", () => {

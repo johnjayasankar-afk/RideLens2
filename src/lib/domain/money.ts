@@ -17,9 +17,29 @@ export function formatMoneyMinor(minor: number, currency = "USD", locale = "en-U
   }).format(minorToDollars(minor));
 }
 
+/**
+ * A range of money carries the symbol on both ends.
+ *
+ * This stripped the second one — "$40.51 to 42.89" — and the bare figure at
+ * the end of the product's largest and most-read number reads as a quantity
+ * rather than as a price. /trips prints the same range as "$41.00 to $56.80"
+ * two clicks away, and the assistant was handed the stripped form as context,
+ * where the symbol is the only thing marking the second figure as a currency
+ * at all.
+ *
+ * It is also what the price column is for: right-aligned, tabular, and now
+ * with a currency symbol at both ends of every row.
+ *
+ * The space after "to" is non-breaking. "$77.80 to $79.30" does not fit on
+ * one line at 320px, and the default break put "to" at the end of the first
+ * one — a connector with nothing to connect, above a figure with nothing
+ * introducing it. There is one break opportunity in the string now, and it
+ * gives "to $79.30", which is a phrase. `text-wrap: pretty` was tried first
+ * and does not treat a full figure as an orphan.
+ */
 export function formatMoneyRange(minMinor: number, maxMinor: number, currency = "USD"): string {
   if (minMinor === maxMinor) return formatMoneyMinor(minMinor, currency);
-  return `${formatMoneyMinor(minMinor, currency)} to ${formatMoneyMinor(maxMinor, currency).replace(/^[^\d-]*/, "")}`;
+  return `${formatMoneyMinor(minMinor, currency)} to\u00a0${formatMoneyMinor(maxMinor, currency)}`;
 }
 
 /** Display-facing price. Never invent a midpoint for the user. */
