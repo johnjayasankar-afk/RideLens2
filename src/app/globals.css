@@ -3358,6 +3358,30 @@ h1.admin-title {
   }
   :root {
     --map-h: 380px;
+    /*
+     * 112, not the 64 the base block assumes.
+     *
+     * ┌────────────────────────────────────────────────────────────────────┐
+     * │ The sidebar arrives at exactly this breakpoint and takes 360px out │
+     * │ of the row `.sticky-bar` shares, so `.toolbar-actions` wraps onto  │
+     * │ a second line the moment Copy best and Copy all render. Measured   │
+     * │ across fifteen widths on a settled page: the bar is 112px at 960   │
+     * │ and 972, and 64px from 1000 up. The 104px override that covers the │
+     * │ wrap below this breakpoint lives in `@media (max-width: 959px)`,   │
+     * │ so at exactly 960 the reserve fell back to 64 while the bar it     │
+     * │ stands for grew to 112.                                            │
+     * │                                                                    │
+     * │ A focused control scrolled into view therefore landed 48px under   │
+     * │ the toolbar — the SC 2.4.11 failure this token exists to prevent,  │
+     * │ on the one side of the breakpoint nobody had measured. The test    │
+     * │ that should have caught it sampled the bar before the quotes       │
+     * │ landed, so it read the 64px version and passed.                    │
+     * └────────────────────────────────────────────────────────────────────┘
+     *
+     * A ceiling, like the 104 below: over-reserving costs nothing visible,
+     * and this must not go back to tracking one label's width.
+     */
+    --sticky-h: 112px;
   }
   .trip-stats {
     grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));

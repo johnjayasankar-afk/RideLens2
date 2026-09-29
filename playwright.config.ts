@@ -4,7 +4,27 @@ export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false,
   workers: 1,
+  /*
+   * Still none. A retry turns a red suite green without anyone learning why,
+   * and the two failures that prompted this investigation turned out to be
+   * real product defects a retry would have buried — a 48px scroll-reserve
+   * shortfall at 960px and a duplicate theme-color tag on every dark page.
+   */
   retries: 0,
+  /*
+   * Sixty seconds, because one test legitimately needs more than thirty here.
+   *
+   * "sets a threshold, reports when it is met, and survives a reload" runs
+   * two comparisons and a reload; it measures 2.4–10.0 s across ten runs and
+   * timed out once at 35.0 s with the machine at load 176. That is the clock
+   * being wrong about this machine, not the test being wrong — nothing in it
+   * waits on a condition that will never arrive.
+   *
+   * This is a budget for a slow machine, not a mask: every other per-test
+   * wait in the suite has its own explicit timeout, so a genuine hang still
+   * fails at its own gate rather than idling here for a minute.
+   */
+  timeout: 60_000,
   use: {
     baseURL: "http://127.0.0.1:3000",
     trace: "on-first-retry",

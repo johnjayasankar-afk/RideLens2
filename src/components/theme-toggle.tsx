@@ -68,8 +68,31 @@ function syncThemeColor(): void {
   const ground = getComputedStyle(document.documentElement).getPropertyValue("--ground").trim();
   if (!ground) return;
   const head = document.head;
-  for (const tag of head.querySelectorAll('meta[name="theme-color"][media]')) tag.remove();
-  let tag = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]:not([media])');
+  /*
+   * One tag, chosen here rather than assumed.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ `viewport.themeColor` in layout.tsx is React-managed metadata, and   │
+   * │ the inline script in <head> rewrites the content of the very tag     │
+   * │ React rendered. React will not adopt a tag whose content it did not  │
+   * │ write, so during hydration it appends its own copy — and on every    │
+   * │ dark-resolving load the head ends up holding two media-less          │
+   * │ theme-color tags: the script's #0d1511 and React's #f8f6f1 floor.    │
+   * │ Sampled every 40ms, the duplicate appears at ~240ms and stays for    │
+   * │ the rest of the page's life.                                         │
+   * │                                                                      │
+   * │ This loop removed only the media-keyed tags and then wrote to the    │
+   * │ first survivor, which was already correct — so the stale one was     │
+   * │ never anyone's to remove. Browsers honour the first, so the band     │
+   * │ looked right while the DOM stayed wrong.                             │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * So: keep one owner, drop everything else claiming the name, write the
+   * ground to it.
+   */
+  const tags = [...head.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
+  let tag: HTMLMetaElement | null = tags.find((t) => !t.media) ?? tags[0] ?? null;
+  for (const other of tags) if (other !== tag) other.remove();
   if (!tag) {
     tag = document.createElement("meta");
     tag.name = "theme-color";

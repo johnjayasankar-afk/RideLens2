@@ -170,6 +170,23 @@ test.describe("RideLens anonymous flow", () => {
         "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204",
       );
       await page.waitForSelector(".sticky-bar");
+      /*
+       * Measure the bar a reader actually scrolls under, not the one that
+       * exists for the first four hundred milliseconds.
+       *
+       * ┌──────────────────────────────────────────────────────────────────┐
+       * │ Copy best and Copy all render only once there is a hero and a    │
+       * │ ranked list. Until they do, the toolbar is one short row and the │
+       * │ bar is 64px at every width; when they land it can wrap, and at   │
+       * │ 960–972px it does, to 112px. `waitForSelector(".sticky-bar")`    │
+       * │ returns at ~70ms and the quotes arrive at ~400ms, so this        │
+       * │ sampled the empty bar on an idle machine and the real one under  │
+       * │ load — one assertion measuring two different objects. It passed  │
+       * │ roughly two runs in three while a live SC 2.4.11 failure sat     │
+       * │ behind it.                                                       │
+       * └──────────────────────────────────────────────────────────────────┘
+       */
+      await page.getByRole("button", { name: "Copy best" }).waitFor({ timeout: 30_000 });
 
       const { pinned, reserved } = await page.evaluate(() => {
         const topbar = document.querySelector(".topbar")!.getBoundingClientRect().height;
@@ -210,6 +227,29 @@ test.describe("RideLens anonymous flow", () => {
         const page = await ctx.newPage();
         await page.goto("/");
         await expect(page.locator(".theme-toggle")).toBeVisible();
+        /*
+         * Two gates on the page being ready, not retries of the assertion.
+         *
+         * The toggle is server-rendered, so it is on screen well before the
+         * effect that owns the meta tag has run. React appends its own copy
+         * of `viewport.themeColor` during hydration — measured at ~240ms —
+         * and `syncThemeColor` dedupes it in a mount effect. Sampling between
+         * those two points sees two tags, which is exactly what this failed
+         * on under load and passed on an idle machine.
+         *
+         * `[data-commands="ready"]` is the page saying its mount effects have
+         * run: it comes from a `useSyncExternalStore` whose server snapshot
+         * is false, so it flips on the first post-hydration render. And
+         * `--ground` is empty until the stylesheet applies — a colour cannot
+         * be compared against one the page has not resolved yet.
+         */
+        await page.waitForSelector('[data-commands="ready"]', { timeout: 30_000 });
+        await page.waitForFunction(
+          () =>
+            getComputedStyle(document.documentElement).getPropertyValue("--ground").trim() !== "",
+          null,
+          { timeout: 30_000 },
+        );
 
         const { metas, ground } = await page.evaluate(() => ({
           metas: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => ({
