@@ -136,7 +136,7 @@
   --rose-bg: #fbe5e1;
   --rose-t: #9a2f21;
 
-  --fresh: var(--mint-3);
+  --fresh: var(--mint-fill);
   --recent: var(--sky);
   --aging: var(--amber);
   --expired: var(--rose);
@@ -260,8 +260,24 @@
   --panel-min: 420px;
   --axis-name: 104px;
   --axis-value: 92px;
+  /*
+   * Fills, at fill luminance for the scheme they are in.
+   *
+   * --mint-3 is the bright mint the accent glows are mixed from, and it was
+   * also being used as a *fill* — the leader's band in Spread, the freshness
+   * dot, the pinned dot, the eyebrow's dot, the confidence steps. Measured
+   * against the tracks those sit in, in light, it is 1.7:1: the chart under
+   * the words "Is the cheapest actually cheaper?" drew the cheapest in a
+   * mint the track swallowed. The same is true of --amber-fill at 2.4:1.
+   * Both read in dark, which is where they were chosen.
+   *
+   * These clear 3:1 on every track in their own scheme, which is what WCAG
+   * 2.2 SC 1.4.11 asks of a part of a graphic you need in order to read it,
+   * and scripts/fill-audit.mjs holds them there.
+   */
+  --mint-fill: #0f9564;
   --ramp-2: #1f6b4a;
-  --amber-fill: #de8a2e;
+  --amber-fill: #b56a1b;
   --sky-fill: #3f7fc4;
   /* The top edge of a raised surface catching light. One pixel of inset
      highlight is the difference between a rectangle and an object; on the
@@ -356,6 +372,7 @@
     --on-surface: #2a5642;
     --on-surface-ink: #e9f1ec;
     --well: #101a15;
+    --mint-fill: #45dba6;
     --ramp-2: #15784f;
     --amber-fill: #e0a750;
     --sky-fill: #5e9ad8;
@@ -417,6 +434,7 @@
   --on-surface: #2a5642;
   --on-surface-ink: #e9f1ec;
   --well: #101a15;
+  --mint-fill: #45dba6;
   --ramp-2: #15784f;
   --amber-fill: #e0a750;
   --sky-fill: #5e9ad8;
@@ -976,7 +994,7 @@ code {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--mint-3);
+  background: var(--mint-fill);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 20%, transparent);
 }
 h1.brand {
@@ -1184,7 +1202,7 @@ h1.brand {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--mint-3);
+  background: var(--mint-fill);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 22%, transparent);
 }
 .place-suggestions {
@@ -1857,7 +1875,7 @@ h1.brand {
   display: block;
   width: 40%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, var(--mint-3), var(--forest-2), transparent);
+  background: linear-gradient(90deg, transparent, var(--mint-fill), var(--forest-2), transparent);
   animation: var(--dur-5) ease-in-out infinite refresh-slide;
 }
 
@@ -2480,7 +2498,7 @@ h1.brand {
   background: var(--ground-2);
 }
 .confidence-step[data-on="true"] {
-  background: linear-gradient(90deg, var(--mint-3), var(--forest-2));
+  background: linear-gradient(90deg, var(--mint-fill), var(--forest-2));
 }
 .confidence[data-decayed="true"] .confidence-step[data-on="true"] {
   background: var(--amber);
@@ -3563,7 +3581,7 @@ h1.admin-title {
 }
 .departure-band {
   fill: var(--mint-bg);
-  stroke: var(--mint-3);
+  stroke: var(--mint-fill);
   stroke-width: 1;
   stroke-opacity: 0.55;
 }
@@ -3859,7 +3877,7 @@ h1.admin-title {
 /* Sharing ground with the leader is the thing worth seeing, so it is the
    thing that gets the colour. */
 .axis-bar[data-overlaps="true"] {
-  background: linear-gradient(90deg, var(--mint-3), var(--ramp-2));
+  background: linear-gradient(90deg, var(--mint-fill), var(--ramp-2));
 }
 /*
  * A band that does not overlap the leader still represents a real price a
@@ -3870,7 +3888,10 @@ h1.admin-title {
  */
 .axis-bar[data-overlaps="false"] {
   background: var(--ink-3);
-  opacity: 0.55;
+  /* 0.55 measured 2.23:1 against the track in light and 2.74 in dark — the
+     same defect as the --line-2 version above, one step milder and therefore
+     harder to see. 0.8 is 3.54 and 4.43, still visibly the quieter band. */
+  opacity: 0.8;
 }
 .axis-value {
   text-align: right;
@@ -5629,6 +5650,20 @@ details[open] > summary::before {
 .comp-seg {
   height: 100%;
   transition: width var(--dur-3) var(--ease);
+}
+/*
+ * Where one slice ends.
+ *
+ * Two fills that meet with nothing between them have to carry the boundary
+ * in their own colours, and the ride slice measured 2.5:1 against the fees
+ * slice in dark — under the 3:1 SC 1.4.11 asks of a part of a graphic you
+ * need in order to read it. Chasing that in the palette would mean pulling
+ * --ramp-2 and --amber-fill apart until one of them stops reading against
+ * the track instead. A hairline in the card's own colour is what a stacked
+ * bar has always used, and it works for any pair.
+ */
+.comp-seg + .comp-seg {
+  border-left: 1px solid var(--paper);
 }
 .comp-seg[data-slice="metered"],
 .comp-dot[data-slice="metered"] {

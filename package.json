@@ -17,7 +17,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "playwright:install": "npx playwright install chromium",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run tokens && npm run test && npm run build && npm run budget",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run tokens && npm run scales && npm run test && npm run build && npm run budget",
     "eval": "tsx scripts/eval.ts",
     "budget": "tsx scripts/bundle-budget.ts",
     "vendor:map": "tsx scripts/vendor-map-worker.ts",
@@ -26,6 +26,8 @@
     "perf": "node scripts/perf.mjs",
     "contrast": "node scripts/contrast-audit.mjs",
     "tokens": "node scripts/css-tokens.mjs",
+    "scales": "node scripts/css-scales.mjs",
+    "fills": "node scripts/fill-audit.mjs",
     "snapshot:model": "tsx scripts/model-snapshot.ts"
   },
   "dependencies": {

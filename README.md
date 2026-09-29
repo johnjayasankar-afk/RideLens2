@@ -153,12 +153,14 @@ npm run test
 npm run verify        # format, lint, types, tokens, unit, build, budget
 ```
 
-Four standing guards, each written after the thing it catches shipped:
+Six standing guards, each written after the thing it catches shipped:
 
 ```bash
 npm run tokens          # dark blocks agree; no undefined or self-referential var()
+npm run scales          # how many distinct type sizes, radii, gaps and speeds
 npm run budget          # gzipped client JS, CSS, fonts, lazy map
 npm run contrast        # six OS x choice combinations at WCAG 2.2 AA
+npm run fills           # adjacent chart fills at WCAG 2.2 SC 1.4.11's 3:1
 npm run perf            # frame times and CLS while scrolling
 npm run snapshot:model  # rewrite the committed fares after an intended change
 ```
@@ -173,8 +175,16 @@ as the coefficient alone:
 soho→jfk | weekday_offpeak | uber/uberx   $81.00–87.40 → $81.67–86.73  (+0.67, +0.8%)
 ```
 
-`contrast` and `perf` need a running build (`npm run build && npm run start`).
-`contrast` seeds a trip log and opens the palette so the surfaces that only
-exist under some condition are measured too — and fails if one of them never
-rendered, because an audit of an empty page reports zero failures and means
-nothing.
+`contrast`, `fills` and `perf` need a running build (`npm run build && npm run
+start`). `contrast` seeds a trip log and opens the palette so the surfaces that
+only exist under some condition are measured too — and fails if one of them
+never rendered, because an audit of an empty page reports zero failures and
+means nothing.
+
+`contrast` walks text nodes, which is why `fills` exists: every guard here
+passed on a Breakdown bar whose ride slice measured 1.01:1 against its fees
+slice, because nothing was measuring a colour against the colour beside it.
+`fills` opens all eight deck panels and measures 762 pairs — the segments of a
+stacked bar against each other, and every band against the track it is drawn
+in — at the 3:1 SC 1.4.11 asks of a part of a graphic you need in order to
+read it.
