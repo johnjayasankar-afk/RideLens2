@@ -26,6 +26,26 @@ import { chromium } from "@playwright/test";
 const BASE = process.env.PERF_URL ?? "http://localhost:3000";
 const ROUTE = "/?from=40.7549,-73.9840,Midtown&to=40.6413,-73.7781,JFK&mode=cheapest&filter=ALL";
 
+/**
+ * Two viewports, because the app had only ever been measured on one.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This ran at 1440x900 and nothing else, and a rider opens this on a       │
+ * │ phone. The gap is not theoretical: `.mobile-compare-bar` is sticky,      │
+ * │ bottom-anchored, full width and carries `backdrop-filter: blur(10px)` —  │
+ * │ the exact pattern globals.css refuses by name for the topbar — and it    │
+ * │ lives inside `@media (max-width: 959px)`, so every run this harness has  │
+ * │ ever done was blind to it.                                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The phone's thresholds are its own. A 390px viewport paints far less per
+ * frame than a 1440px one, so holding it to the desktop numbers would be a
+ * ceiling nothing could ever reach — and holding the desktop to the phone's
+ * would be a ceiling nothing could ever break.
+ */
+const DESKTOP = { width: 1440, height: 900 };
+const PHONE = { width: 390, height: 844 };
+
 /** Measured on a 1440x900 desktop build; see docs/PERFORMANCE.md. */
 const BUDGET = {
   medianFrameMs: 12, // ~83 fps. Currently 8.3.
@@ -50,10 +70,23 @@ const BUDGET = {
   cls: 0.02,
 };
 
+/*
+ * Set at what a phone measures today, with the same slack the desktop budget
+ * uses. Deliberately not tighter: the point of a second viewport is to catch
+ * a regression that only exists there, not to fail on the noise of a machine
+ * whose load swings by an order of magnitude.
+ */
+const PHONE_BUDGET = {
+  medianFrameMs: 14,
+  p95FrameMs: 22,
+  framesOver33msShare: 0.03,
+  cls: 0.02,
+};
+
 const RUNS = 3;
 
-async function once(browser) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+async function once(browser, viewport) {
+  const page = await browser.newPage({ viewport });
   await page.addInitScript(() => {
     window.__cls = 0;
     try {
@@ -118,23 +151,42 @@ function median(xs) {
 }
 
 const browser = await chromium.launch();
-const runs = [];
-for (let i = 0; i < RUNS; i++) runs.push(await once(browser));
+
+/*
+ * Interleaved, not one viewport then the other. This machine's load swings by
+ * an order of magnitude over a few minutes, so three desktop runs followed by
+ * three phone runs measures the machine as much as the app. Alternating them
+ * puts both viewports under the same conditions.
+ */
+const desktopRuns = [];
+const phoneRuns = [];
+for (let i = 0; i < RUNS; i++) {
+  desktopRuns.push(await once(browser, DESKTOP));
+  phoneRuns.push(await once(browser, PHONE));
+}
 await browser.close();
 
-const got = Object.fromEntries(Object.keys(BUDGET).map((k) => [k, median(runs.map((r) => r[k]))]));
-
-console.log(`Performance (median of ${RUNS} runs, 1440x900)\n`);
 let failed = false;
-for (const [key, limit] of Object.entries(BUDGET)) {
-  const v = got[key];
-  const over = v > limit;
-  if (over) failed = true;
-  console.log(
-    `  ${over ? "OVER " : "ok   "} ${key.padEnd(20)} ${String(v).padStart(8)} / ${limit}`,
+
+function report(label, runs, budget) {
+  const got = Object.fromEntries(
+    Object.keys(budget).map((k) => [k, median(runs.map((r) => r[k]))]),
   );
+  console.log(`Performance (median of ${RUNS} runs, ${label})\n`);
+  for (const [key, limit] of Object.entries(budget)) {
+    const v = got[key];
+    const over = v > limit;
+    if (over) failed = true;
+    console.log(
+      `  ${over ? "OVER " : "ok   "} ${key.padEnd(20)} ${String(v).padStart(8)} / ${limit}`,
+    );
+  }
+  console.log(`\n  ~${(1000 / got.medianFrameMs).toFixed(0)} fps while scrolling\n`);
+  return got;
 }
-console.log(`\n  ~${(1000 / got.medianFrameMs).toFixed(0)} fps while scrolling`);
+
+const got = report(`${DESKTOP.width}x${DESKTOP.height}`, desktopRuns, BUDGET);
+report(`${PHONE.width}x${PHONE.height}`, phoneRuns, PHONE_BUDGET);
 
 if (failed) {
   console.error(

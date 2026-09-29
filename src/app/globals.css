@@ -1472,9 +1472,41 @@ h1.brand {
   background: var(--on-surface-ink);
   clip-path: polygon(14% 46%, 0 60%, 39% 100%, 100% 22%, 86% 8%, 38% 71%);
 }
+/*
+ * A status line that moved the page on its way out.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ .route-tools is `flex-wrap: wrap`, and this is a live region that says   │
+ * │ "Auto-refresh on: turn off anytime" at load and clears itself 3.2s       │
+ * │ later. At 390px those 205px of text wrapped the row to two lines; when   │
+ * │ the message cleared the row un-wrapped and everything below it — the     │
+ * │ map, the disclosure banner, the whole comparison — jumped up 29px.       │
+ * │                                                                          │
+ * │ Measured CLS on a phone was 0.0553 against a 0.02 budget, from that one  │
+ * │ shift. Every perf run this repo has ever done was at 1440x900, where     │
+ * │ the row has room and the message costs nothing. scripts/perf.mjs         │
+ * │ measures both viewports now.                                             │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * A grid, so the answer does not depend on how wide the message happens to
+ * be: the controls take row one and the status takes row two, reserved at its
+ * own height, at every width. It costs one line of space it was always going
+ * to need and it cannot move anything again.
+ */
+.route-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.route-tools .share-status {
+  grid-column: 1 / -1;
+  text-align: right;
+}
 .share-status {
-  min-height: 1.2em;
-  font-size: var(--t-4);
+  /* 1.2em was shorter than the line box the message actually draws, so the
+     reserve was 16px and the message 21 — a 5px step every time it cleared.
+     The reserve and the line height are one number now. */
+  min-height: 1.5em;
+  font: 400 var(--t-4) / 1.5 var(--font-body);
 }
 
 .banner {
@@ -2407,6 +2439,25 @@ h1.brand {
   flex-wrap: wrap;
   gap: var(--s-3);
 }
+/*
+ * The chip that grows, reserving its own growth.
+ *
+ * freshnessLine says "Fresh" while a quote is under five seconds old and
+ * "Fresh · 47 sec ago" after, and on a 390px card those extra characters
+ * wrapped the row from one line to two — 26px to 58px, on the hero and on
+ * every card, about three seconds after the prices landed. Six cards is
+ * 192px of the page moving under a reader who is already looking at it.
+ *
+ * The reserve is on the element that grows rather than on the row, so the
+ * row's wrap decision is made on the first frame and never revisited. The
+ * figures are tabular for the same reason at a smaller scale: a chip that
+ * ticks 8 to 9 should not change width to do it.
+ */
+.meta-chip.freshness {
+  min-width: 17ch;
+  justify-content: flex-start;
+  font-variant-numeric: tabular-nums;
+}
 .meta-chip {
   display: inline-flex;
   align-items: center;
@@ -2423,7 +2474,6 @@ h1.brand {
   background: var(--soft);
   font: 500 var(--t-3)/1 var(--font-body);
   color: var(--ink-2);
-  background: var(--ground-2);
 }
 .meta-chip.muted {
   color: var(--ink-3);

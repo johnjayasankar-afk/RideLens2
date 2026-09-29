@@ -432,7 +432,7 @@ function QuoteCard({
         <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
         <span className={`meta-chip ${tone.className}`}>{tone.label}</span>
         {showWeather ? <span className="meta-chip market-chip is-rain">Weather lift</span> : null}
-        <span className="meta-chip">
+        <span className="meta-chip freshness">
           <span className={statusDotClass(quote, now)} aria-hidden />
           {freshnessLine(quote, now)}
         </span>
