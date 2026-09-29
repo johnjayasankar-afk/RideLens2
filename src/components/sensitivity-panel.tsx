@@ -20,26 +20,22 @@
  * response is a real finding about a tariff and gets to stay visible.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
+import { openPanel } from "./use-panel";
 import { useWhenStill } from "./use-when-still";
+import { loadSensitivity, useSensitivity } from "./use-sensitivity";
 
 import { formatMoneyMinor } from "@/lib/domain/money";
 import type { SensitivityReport } from "@/lib/domain/sensitivity";
 
-type Loaded =
-  | { state: "loading" }
-  | { state: "ready"; report: SensitivityReport }
-  | { state: "none"; reason: string }
-  | { state: "failed" };
-
 /**
- * Fetched once per comparison, when the tab is opened.
+ * The chart, once the report the console already asked for arrives.
  *
- * Eight scenarios across every priced product is a few dozen runs of the fare
- * engine — cheap, and still not work to do on the way to a price nobody has
- * asked to interrogate yet. The deck only mounts this when it is chosen, and
- * the shared stillness gate keeps the response's render off a scrolling frame.
+ * The fetch lives in `use-sensitivity.ts` because two places read the same
+ * answer: this, and the one line of it the console shows above the fold. By
+ * the time a reader opens this tab the request has usually already been made
+ * and the panel draws immediately.
  */
 export function SensitivityStrip({
   sessionId,
@@ -49,37 +45,21 @@ export function SensitivityStrip({
   /**
    * The ids of the options currently on screen.
    *
-   * Sent so the ranking verdict is about the board the rider has, not the one
-   * the session was priced with — a comparison filtered to Standard shows
-   * three of six, and "the cheapest stays cheapest" is a different claim about
-   * each set.
+   * Part of the cache key as well as the request: a comparison filtered to
+   * Standard shows three of six, and "the cheapest stays cheapest" is a
+   * different claim about each set.
    */
   quoteIds: readonly string[];
 }) {
-  const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
-  const askedFor = useRef<string | null>(null);
-  const key = `${sessionId}|${quoteIds.join(",")}`;
-
+  const loaded = useSensitivity(sessionId, quoteIds);
   const load = useCallback(() => {
-    if (!sessionId || askedFor.current === key) return;
-    askedFor.current = key;
-    const only = quoteIds.length > 0 ? `&only=${encodeURIComponent(quoteIds.join(","))}` : "";
-    fetch(`/api/sensitivity?session=${encodeURIComponent(sessionId)}${only}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((body: { report: SensitivityReport | null; reason?: string }) => {
-        setLoaded(
-          body.report
-            ? { state: "ready", report: body.report }
-            : { state: "none", reason: body.reason ?? "There is nothing here to re-run." },
-        );
-      })
-      .catch(() => setLoaded({ state: "failed" }));
-  }, [sessionId, key, quoteIds]);
+    if (sessionId) loadSensitivity(sessionId, quoteIds);
+  }, [sessionId, quoteIds]);
 
   useWhenStill(null, Boolean(sessionId), load, { deadlineMs: Infinity });
 
   if (!sessionId) return null;
-  if (loaded.state === "loading") {
+  if (loaded.state === "idle" || loaded.state === "loading") {
     return (
       <p className="deck-empty muted" aria-live="polite">
         Re-running the model under eight scenarios…
@@ -101,6 +81,7 @@ function money(dollars: number): string {
   return formatMoneyMinor(Math.round(dollars * 100));
 }
 
+/** A delta as a reader would say it, including when it is not one. */
 function signed(dollars: number): string {
   if (Math.abs(dollars) < 0.005) return "no change";
   return `${dollars > 0 ? "+" : "−"}${money(Math.abs(dollars))}`;
@@ -237,5 +218,62 @@ function Arm({ delta, pos }: { delta: number; pos: (d: number) => number }) {
       data-dir={delta > 0 ? "up" : "down"}
       style={{ left: `${Math.min(a, b)}%`, width: `${Math.abs(b - a)}%` }}
     />
+  );
+}
+
+/**
+ * The one line of the report that belongs above the fold.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ "3 of 8 scenarios change which option is cheapest" is a warning about    │
+ * │ the recommendation this page is making. Behind a tab it is a curiosity;  │
+ * │ beside the takeaway it is the sentence that should change what somebody  │
+ * │ does. Burying it would repeat the mistake the deck was built to fix.     │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Reserved rather than revealed: the chip occupies its slot from the first
+ * paint whether or not the report has landed, because arriving into the
+ * console's status row is arriving on top of everything a reader is reading.
+ * It shares the fetch with the panel — see use-sensitivity.ts — so showing it
+ * costs nothing the tab did not already cost.
+ */
+export function RobustnessChip({
+  sessionId,
+  quoteIds,
+}: {
+  sessionId: string | null;
+  quoteIds: readonly string[];
+}) {
+  const loaded = useSensitivity(sessionId, quoteIds);
+  const load = useCallback(() => {
+    if (sessionId) loadSensitivity(sessionId, quoteIds);
+  }, [sessionId, quoteIds]);
+
+  useWhenStill(null, Boolean(sessionId), load, { deadlineMs: Infinity });
+
+  if (loaded.state !== "ready") return null;
+  const { ranking, subject } = loaded.report;
+
+  return (
+    <button
+      type="button"
+      className="robust"
+      data-stable={ranking.stable ? "true" : "false"}
+      onClick={() => {
+        openPanel("whatif");
+        window.requestAnimationFrame(() => {
+          document.querySelector(".deck")?.scrollIntoView({ block: "center" });
+        });
+      }}
+      title={
+        ranking.stable
+          ? `${subject} is the cheapest under all ${ranking.tested} scenarios tested.`
+          : ranking.upsets.join(" · ")
+      }
+    >
+      {ranking.stable
+        ? `Order holds under ${ranking.tested}/${ranking.tested}`
+        : `Order flips in ${ranking.upsets.length} of ${ranking.tested}`}
+    </button>
   );
 }

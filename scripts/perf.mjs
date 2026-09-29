@@ -32,13 +32,20 @@ const BUDGET = {
   p95FrameMs: 18, // Currently 9.3.
   framesOver33msShare: 0.02, // Currently ~0.
   /*
-   * Currently 0.0019, down from 0.0053 once the console's loading placeholder
-   * was made the same height as the row it stands in for.
+   * Currently ~0.002, down from 0.0053, in two steps.
    *
-   * The headroom stays, and it is not slack: a cold load occasionally sees a
-   * ~0.02 transient when the fallback face wraps the modeled-estimate banner
-   * to a third line and the web font unwraps it 15 ms later. Three runs and a
-   * median is what keeps that out of the number below.
+   * First the console's loading placeholder was made the same height as the
+   * row it stands in for. Then the refresh bar came out of the results grid:
+   * as a grid item it cost 2px of bar plus 16px of gap, so every auto-refresh
+   * pushed the comparison down 22px and pulled it back. That one only showed
+   * up when a refresh landed inside the five-second window, which made this
+   * check fail about one run in three for no reason anybody could see — and
+   * a guard that fails at random is a guard that gets ignored.
+   *
+   * (The first diagnosis blamed the web font wrapping the modeled-estimate
+   * banner to a third line. Measured with the font requests blocked, the
+   * banner is 61.5px either way. Worth saying so here, so nobody re-derives
+   * the wrong answer from the same symptom.)
    */
   cls: 0.02,
 };

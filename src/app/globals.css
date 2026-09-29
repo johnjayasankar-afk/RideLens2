@@ -1424,10 +1424,14 @@ h1.brand {
 .route-summary span[aria-hidden] {
   color: var(--ink-3);
 }
+/* Out of flow, against the sticky bar's bottom edge. See quote-results.tsx
+   for the 22px it used to cost every time a refresh landed. */
 .refresh-progress {
-  width: 100%;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
   height: 2px;
-  margin: -4px 0 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--line);
@@ -5261,4 +5265,44 @@ details[open] > summary::before {
 }
 .tor-upsets span {
   color: var(--amber-t);
+}
+
+/* The one line of the sensitivity report that belongs above the fold: whether
+   the ordering this page recommends survives its own assumptions. */
+.robust-slot {
+  display: inline-flex;
+  align-items: center;
+  min-width: 1px;
+  min-height: var(--pulse-chip-h);
+}
+.robust {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--pulse-chip-h);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  font: 500 12px/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: box-shadow 0.2s var(--ease);
+}
+.robust::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+.robust[data-stable="true"] {
+  color: var(--mint-t);
+  background: var(--mint-bg);
+}
+.robust[data-stable="false"] {
+  color: var(--amber-t);
+  background: var(--amber-bg);
+}
+.robust:hover {
+  box-shadow: 0 0 0 1px currentcolor;
 }

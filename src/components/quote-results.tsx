@@ -40,6 +40,7 @@ import { ProvenanceChip } from "@/components/provenance-chip";
 import { provenanceOf } from "@/lib/domain/provenance";
 import { explainWinner } from "@/lib/domain/why-this-one";
 import { InsightsDeck } from "./insights-deck";
+import { RobustnessChip } from "./sensitivity-panel";
 import { openPanel } from "./use-panel";
 import { WalkSuggestionCard } from "./walk-suggestion";
 import { useCountUpRange } from "./use-count-up";
@@ -950,12 +951,25 @@ export function QuoteResults({
             {loading && hero ? "Updating…" : "Refresh prices"}
           </button>
         </div>
+        {/*
+          Inside the toolbar, and out of flow.
+          ────────────────────────────────────
+          As a sibling it was a grid item: 2px of bar plus 16px of grid gap,
+          so every refresh pushed the whole comparison down 22px and pulled it
+          back when the prices landed. Auto-refresh runs every 55 seconds, so
+          it happened over and over — and because it happened only when a
+          refresh landed inside the measurement window, it made `npm run perf`
+          fail about one run in three for what looked like no reason.
+
+          Absolutely positioned against the sticky bar it costs no height at
+          all, and reads as what it is: that bar, loading.
+        */}
+        {loading && hero ? (
+          <div className="refresh-progress" aria-hidden>
+            <span />
+          </div>
+        ) : null}
       </div>
-      {loading && hero ? (
-        <div className="refresh-progress" aria-hidden>
-          <span />
-        </div>
-      ) : null}
 
       {/*
         An alert is not a reading, so it sits above the console rather than
@@ -1043,6 +1057,18 @@ export function QuoteResults({
               ) : (
                 <span className="muted">Clear conditions</span>
               )}
+              {/*
+                Whether the ordering this page is recommending survives its
+                own assumptions. It lands a moment after the prices do; the
+                slot holds its width from the first paint so it does not shove
+                the countdown when it arrives.
+              */}
+              <span className="robust-slot">
+                <RobustnessChip
+                  sessionId={session?.id ?? null}
+                  quoteIds={ranked.map((q) => q.id)}
+                />
+              </span>
               {tickLeft != null && tickLeft > 0 ? (
                 <span className="market-tick muted">
                   Prices reshape in <strong>{tickLeft}s</strong>
