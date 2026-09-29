@@ -233,10 +233,12 @@ export function InsightsDeck({
             {tab.id === "timing" ? (
               <DepartureStrip sessionId={sessionId} showProducts={showProducts} embedded />
             ) : null}
-            {tab.id === "split" ? <PartyPanel quotes={quotes} embedded /> : null}
+            {tab.id === "split" ? (
+              <PartyPanel quotes={quotes} seatPool={session?.quotes ?? quotes} embedded />
+            ) : null}
             {tab.id === "return" ? (
               session ? (
-                <ReturnLeg session={session} outbound={outbound} />
+                <ReturnLeg session={session} outbound={outbound} outboundAll={quotes} />
               ) : (
                 /* No panel may render blank — see insights-deck.spec.ts. */
                 <p className="deck-empty muted">

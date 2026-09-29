@@ -87,23 +87,35 @@ export function comparePrices(
     return { relation: "similar", label: "Similar price" };
   }
 
-  // Partial overlap — use ranking midpoints cautiously
+  /*
+   * Partial overlap: a direction, and deliberately no figure.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ These two returns used to carry `savingsMinor: delta`, the difference  │
+   * │ between two ranking midpoints, and QUOTE_SEMANTICS.md:40 forbids that  │
+   * │ exact quantity in this exact case: "If ranges overlap significantly,   │
+   * │ relation is `similar` or `unclear` ('Likely cheaper'), never a false   │
+   * │ precise '$X cheaper' claim from a midpoint alone."                     │
+   * │                                                                        │
+   * │ Shipping it anyway made every downstream reader a violation waiting to │
+   * │ happen, and two of them had happened: the Takeaway banner printed      │
+   * │ "Likely save ~$X" and why-this-one.ts offered "for $X less", both off  │
+   * │ overlapping bands. Withholding the number here fixes them at once and  │
+   * │ makes the next one impossible — a consumer cannot print a figure that  │
+   * │ is not in the object.                                                  │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * The midpoints still decide the *direction*, which is all "Likely cheaper"
+   * claims and all :40 permits. `savingsMinor` stays for `cheaper` and
+   * `more_expensive`, where :42 allows it and it is the gap between bounds.
+   */
   const delta = b.rankingPriceMinor - a.rankingPriceMinor;
   if (Math.abs(delta) < 200) {
     return { relation: "similar", label: "Similar price" };
   }
-  if (delta > 0) {
-    return {
-      relation: "unclear",
-      savingsMinor: delta,
-      label: "Likely cheaper",
-    };
-  }
-  return {
-    relation: "unclear",
-    savingsMinor: -delta,
-    label: "Price uncertain",
-  };
+  return delta > 0
+    ? { relation: "unclear", label: "Likely cheaper" }
+    : { relation: "unclear", label: "Price uncertain" };
 }
 
 function confidenceRank(c: ConfidenceClass): number {

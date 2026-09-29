@@ -844,7 +844,7 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
           hint: panel.question,
           keywords: panel.keywords,
           run: () => {
-            openPanel(panel.id);
+            openPanel(panel.id, { reveal: true });
             window.requestAnimationFrame(() => {
               document.querySelector(".deck")?.scrollIntoView({ block: "center" });
             });

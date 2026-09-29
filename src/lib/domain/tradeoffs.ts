@@ -24,6 +24,7 @@
  * routes, that is the honest finding and it is the useful one.
  */
 
+import { comparePrices } from "./ranking";
 import type { NormalizedQuote } from "./types";
 
 /**
@@ -43,14 +44,38 @@ export type TradeoffKind =
   /** Costs more, and the time difference is inside the model's resolution. */
   | "TOO_CLOSE"
   /** One of the two durations is missing. */
-  | "UNKNOWN";
+  | "UNKNOWN"
+  /**
+   * Its band overlaps the cheapest one, so there is no extra to weigh.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ The ledger used to compute `extraMinor` as one ranking midpoint minus  │
+   * │ another and then divide it by a real duration, presenting the result   │
+   * │ as "$31/hour". A fabricated numerator over a measured denominator is   │
+   * │ still fabricated, and dressing it as a rate makes it look derived.     │
+   * │ Live, the Spread panel showed Curb $16.37–$17.88 against Lyft          │
+   * │ $20.48–$22.02 while the ledger printed "Lyft +$4.12"; the gap between  │
+   * │ those bounds is $2.60. QUOTE_SEMANTICS.md:40 forbids the first figure  │
+   * │ and :42 permits only the second.                                       │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * So a row whose band overlaps the reference reports that, and reports no
+   * figure. "It might not cost more at all" is the honest answer to "what
+   * does paying more buy?" when the model cannot tell that you are paying
+   * more.
+   */
+  | "PRICE_OVERLAPS";
 
 export interface Tradeoff {
   quoteId: string;
   provider: string;
   productName: string;
   kind: TradeoffKind;
-  /** Minor units above the reference. Always positive — the reference is the cheapest. */
+  /**
+   * Minor units above the reference: the gap between the bounds, never
+   * between the midpoints. Zero on `PRICE_OVERLAPS`, where there is no
+   * defensible figure at all.
+   */
   extraMinor: number;
   /** Door to door: waiting for the car plus sitting in it. Null when unknown. */
   minutesSaved: number | null;
@@ -102,13 +127,35 @@ export function buildTradeoffs(quotes: readonly NormalizedQuote[]): TradeoffLedg
   const rows: Tradeoff[] = [];
   for (const q of quotes) {
     if (q.id === cheapest.id) continue;
-    const extraMinor = q.rankingPriceMinor - cheapest.rankingPriceMinor;
     /*
-     * A tie on price is not a trade-off — there is nothing to weigh, and
-     * dividing by it gives an infinite rate. Skipped rather than shown with
-     * a dash, because the table is a list of things the extra buys.
+     * The extra, from `comparePrices` — the same overlap-aware helper the
+     * cards and the console register go through. It yields a figure only
+     * where the two bands are clear of each other, and computes it from the
+     * bounds.
      */
-    if (extraMinor <= 0) continue;
+    const against = comparePrices(q, cheapest);
+    /*
+     * Two cases are not trade-offs at all and keep their old treatment of
+     * being left out: a price level with the reference buys nothing and
+     * would divide by zero, and a row that is *cheaper* by its bounds is not
+     * something anybody is paying extra for — the reference is picked by
+     * ranking midpoint, so a wider band can sit below it.
+     */
+    if (against.relation === "cheaper") continue;
+    if (against.relation === "similar" && against.savingsMinor === 0) continue;
+    if (against.relation !== "more_expensive" || !against.savingsMinor) {
+      rows.push({
+        quoteId: q.id,
+        provider: q.provider,
+        productName: label(q),
+        kind: "PRICE_OVERLAPS",
+        extraMinor: 0,
+        minutesSaved: null,
+        dollarsPerHour: null,
+      });
+      continue;
+    }
+    const extraMinor = against.savingsMinor;
 
     const door = doorToDoorSeconds(q);
     if (referenceDoor === null || door === null) {

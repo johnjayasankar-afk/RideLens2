@@ -274,3 +274,70 @@ describe("filtering", () => {
     }
   });
 });
+
+/**
+ * The figure, and when there may not be one.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ QUOTE_SEMANTICS.md draws one line twice. ":23 Never show a fabricated   │
+ * │ midpoint to users. Midpoint/p50 is ranking-only." And ":40 If ranges     │
+ * │ overlap significantly, relation is `similar` or `unclear` ('Likely      │
+ * │ cheaper'), never a false precise '$X cheaper' claim from a midpoint     │
+ * │ alone" — with ":42 Non-overlapping ranges may assert cheaper/more       │
+ * │ expensive using the gap between bounds."                                 │
+ * │                                                                          │
+ * │ `comparePrices` returned `savingsMinor` on its `unclear` branch anyway,  │
+ * │ computed as one ranking midpoint minus the other, and every reader of    │
+ * │ that field was a violation waiting to be written. Two had been: the      │
+ * │ Takeaway banner's "Likely save ~$X" and why-this-one's "for $X less".   │
+ * │                                                                          │
+ * │ So the rule is asserted on the object rather than on the six places      │
+ * │ that render it. A figure that is not there cannot be printed.            │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
+describe("a money figure is only ever the gap between bounds", () => {
+  it("never offers a saving across bands that overlap", () => {
+    const r = rng(90210);
+    for (let i = 0; i < SAMPLES; i += 1) {
+      const a = quote(r);
+      const b = quote(r);
+      const cmp = comparePrices(a, b);
+      const overlapping = a.priceMaxMinor >= b.priceMinMinor && b.priceMaxMinor >= a.priceMinMinor;
+      if (!overlapping) continue;
+      /*
+       * Two exact prices that happen to differ are not an overlap in the
+       * sense :40 means — both bands are a single point, and :42's gap
+       * between bounds is simply their difference.
+       */
+      const bothExact = a.priceMinMinor === a.priceMaxMinor && b.priceMinMinor === b.priceMaxMinor;
+      if (bothExact && a.confidenceClass === "HIGH" && b.confidenceClass === "HIGH") continue;
+      expect(
+        cmp.savingsMinor ?? 0,
+        `${a.priceMinMinor}-${a.priceMaxMinor} vs ${b.priceMinMinor}-${b.priceMaxMinor}`,
+      ).toBe(0);
+    }
+  });
+
+  it("gives no figure at all on an unclear relation", () => {
+    const r = rng(1337);
+    for (let i = 0; i < SAMPLES; i += 1) {
+      const cmp = comparePrices(quote(r), quote(r));
+      if (cmp.relation === "unclear") expect(cmp.savingsMinor).toBeUndefined();
+    }
+  });
+
+  it("computes a stated saving from the bounds, never from the midpoints", () => {
+    const r = rng(4242);
+    for (let i = 0; i < SAMPLES; i += 1) {
+      const a = quote(r);
+      const b = quote(r);
+      const cmp = comparePrices(a, b);
+      if (cmp.relation === "cheaper" && a.priceMaxMinor < b.priceMinMinor) {
+        expect(cmp.savingsMinor).toBe(b.priceMinMinor - a.priceMaxMinor);
+      }
+      if (cmp.relation === "more_expensive" && b.priceMaxMinor < a.priceMinMinor) {
+        expect(cmp.savingsMinor).toBe(a.priceMinMinor - b.priceMaxMinor);
+      }
+    }
+  });
+});

@@ -59,14 +59,54 @@ const AIRPORTS: Airport[] = [
 ];
 
 /**
- * The area these tariffs actually describe: a rail journey into the city.
+ * The area these tariffs actually describe: the subway network itself.
  *
- * An AirTrain-plus-subway fare is the price of getting from the airport to
- * the subway network. It does not describe JFK to Montauk, and quoting it
- * for one would be worse than saying nothing.
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ WHAT WAS WRONG                                                           │
+ * │                                                                          │
+ * │ This was a 22 km circle drawn around Midtown, and a circle drawn around  │
+ * │ Manhattan reaches across the Hudson. Measured with this file's own       │
+ * │ haversine: Hoboken 4.3 km, Jersey City 6.5 km, downtown Newark 16.0 km,  │
+ * │ Tompkinsville on Staten Island 16.3 km, Yonkers 20.9 km — every one      │
+ * │ inside the radius, and every one served the "AirTrain + subway $11.75"   │
+ * │ row.                                                                     │
+ * │                                                                          │
+ * │ All five are false. Hoboken and Jersey City need PATH on top, Newark     │
+ * │ needs PATH or NJ Transit, Yonkers is Metro-North at a distance-based     │
+ * │ fare, and Staten Island has no subway at all. The product that widens a  │
+ * │ band rather than overstate a fare was quoting a price for a journey that │
+ * │ cannot be made at that price — a worse failure than the empty panel      │
+ * │ beside it, and a quieter one, because a figure that is merely wrong      │
+ * │ looks exactly like a figure that is right.                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * So the test is the network, not a distance. These bounds are deliberately
+ * tight: they under-claim at the edges — a Brooklyn waterfront address west
+ * of the line gets no row — because the failure directions are not equal.
+ * Saying nothing is already this module's documented behaviour and is not a
+ * claim that transit is unavailable. Saying $11.75 is a claim, and a wrong
+ * one puts a number in front of a rider that no journey can honour.
+ *
+ * Replacing these with the publisher's own station positions would be
+ * strictly better and is the right next step; it needs the MTA's station
+ * dataset read and dated the way tariffs.ts reads a fare page, rather than
+ * recalled.
  */
-const CITY_CENTRE: Point = { lat: 40.7549, lng: -73.984 };
-const CITY_RADIUS_KM = 22;
+const SUBWAY_SERVED = {
+  /* 40.92 is just north of the city line; Yonkers begins at 40.93. */
+  latMin: 40.55,
+  latMax: 40.92,
+  /* Far Rockaway is the eastern end of the network. */
+  lngMax: -73.7,
+  /*
+   * The Hudson, which moves west as it goes south. At Manhattan and Bronx
+   * latitudes New Jersey begins around -74.02; south of that, Brooklyn's own
+   * shore reaches -74.05 and Bayonne lies beyond it.
+   */
+  lngMinNorth: -74.02,
+  lngMinSouth: -74.05,
+  splitLat: 40.7,
+} as const;
 
 export function haversineKm(a: Point, b: Point): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -86,8 +126,12 @@ export function airportAt(point: Point): Airport | null {
   return null;
 }
 
-function withinCity(point: Point): boolean {
-  return haversineKm(point, CITY_CENTRE) <= CITY_RADIUS_KM;
+/** Is this point somewhere one subway fare can actually reach? */
+export function subwayServed(point: Point): boolean {
+  const { latMin, latMax, lngMax, lngMinNorth, lngMinSouth, splitLat } = SUBWAY_SERVED;
+  if (point.lat < latMin || point.lat > latMax) return false;
+  if (point.lng > lngMax) return false;
+  return point.lng >= (point.lat >= splitLat ? lngMinNorth : lngMinSouth);
 }
 
 function toAlternative(tariff: TransitTariff, airportName: string): TransitAlternative {
@@ -127,7 +171,7 @@ export function transitAlternativeFor(
   if (!airport) return null;
 
   const other = fromAirport ? destination : pickup;
-  if (!withinCity(other)) return null;
+  if (!subwayServed(other)) return null;
 
   const tariff = TARIFFS[airport.tariffId];
   if (!tariff) return null;

@@ -20,6 +20,7 @@ import { z } from "zod";
 
 import { getEnv } from "@/lib/config";
 import { ASSISTANT_SYSTEM_PROMPT, buildBrief, renderBrief } from "@/lib/assistant/context";
+import { answerLocally } from "@/lib/assistant/local";
 import { ASSISTANT_TOOLS, describeAction, toAction } from "@/lib/assistant/actions";
 import { getSession } from "@/lib/quotes/orchestrator";
 import { rateLimit, rateLimitKey } from "@/lib/quotes/rate-limit";
@@ -60,20 +61,43 @@ function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+/**
+ * Which assistant is answering — and it is never "none".
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This returned `available: false` with no key, and the client rendered    │
+ * │ nothing at all: no chat, no button, no explanation. On a fresh clone, in │
+ * │ CI, and on the owner's own build, the assistant was simply missing, and  │
+ * │ missing in a way that looked like it had never been built.               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * `mode` is reported rather than hidden because the two answerers are not the
+ * same thing and the rider is owed the difference. `local` recognises a
+ * question and quotes the brief; it cannot compose, and it cannot invent.
+ * `model` is Claude, working under the same brief and eight hard rules.
+ * Calling the first one AI would be the kind of small lie this product spends
+ * the rest of its surface area refusing to tell.
+ */
 export async function GET() {
-  /* Lets the client decide whether to render the assistant at all. */
-  return NextResponse.json({ available: Boolean(getEnv().ANTHROPIC_API_KEY) });
+  return NextResponse.json({
+    available: true,
+    mode: getEnv().ANTHROPIC_API_KEY ? "model" : "local",
+  });
 }
 
 export async function POST(req: NextRequest) {
   const apiKey = getEnv().ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "The assistant is not configured." }, { status: 503 });
-  }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  /* Tighter than the other routes: every call costs real money. */
-  const limit = rateLimit(rateLimitKey({ ip, action: "ask" }), 20, 300);
+  /*
+   * Tighter than the other routes when a call costs real money, ordinary when
+   * it does not. The local answerer reaches nothing and spends nothing, so
+   * rate-limiting it at twenty per five minutes would be throttling a pure
+   * function.
+   */
+  const limit = apiKey
+    ? rateLimit(rateLimitKey({ ip, action: "ask" }), 20, 300)
+    : rateLimit(rateLimitKey({ ip, action: "ask-local" }), 120, 300);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: "Too many questions just now.", retryAfter: limit.retryAfterSeconds },
@@ -96,12 +120,47 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const brief = renderBrief(
-    buildBrief(session, (parsed.trips ?? []) as TripRecord[], MODEL_VERSION),
-  );
-
-  const client = new Anthropic({ apiKey });
+  const briefData = buildBrief(session, (parsed.trips ?? []) as TripRecord[], MODEL_VERSION);
   const encoder = new TextEncoder();
+
+  /*
+   * No key: answer from the brief directly.
+   *
+   * The same SSE shape as the model path, so the client is identical either
+   * way — it has never needed to know which one replied, only the surface
+   * that labels the assistant does. Sent in word groups rather than one blob
+   * because the client renders a stream; there is no artificial delay, so it
+   * arrives as fast as it can rather than pretending to think.
+   */
+  if (!apiKey) {
+    const last = [...parsed.messages].reverse().find((m) => m.role === "user");
+    const reply = answerLocally(last?.content ?? "", briefData);
+    const local = new ReadableStream({
+      start(controller) {
+        const send = (event: string, data: unknown) =>
+          controller.enqueue(encoder.encode(sse(event, data)));
+        const words = reply.text.split(" ");
+        for (let i = 0; i < words.length; i += 6) {
+          send("text", { text: (i === 0 ? "" : " ") + words.slice(i, i + 6).join(" ") });
+        }
+        if (reply.action) {
+          send("action", { action: reply.action, said: describeAction(reply.action) });
+        }
+        send("done", { stopReason: reply.refused ? "no_match" : "end_turn" });
+        controller.close();
+      },
+    });
+    return new Response(local, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  const brief = renderBrief(briefData);
+  const client = new Anthropic({ apiKey });
 
   const stream = new ReadableStream({
     async start(controller) {

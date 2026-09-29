@@ -39,9 +39,19 @@ const TIPS = [0, 15, 18, 20, 25] as const;
 
 export function PartyPanel({
   quotes,
+  seatPool,
   embedded,
 }: {
   quotes: readonly NormalizedQuote[];
+  /**
+   * The board before the category filter, for the crossover only.
+   *
+   * The rows a rider reads stay the ones they chose. But "at five people one
+   * XL beats two sedans" is a fact about a vehicle the default filter has
+   * already removed, so searching for it inside the filtered list found it
+   * zero times across nine party sizes and two routes.
+   */
+  seatPool?: readonly NormalizedQuote[];
   /**
    * Rendered inside the insights deck, which supplies the heading.
    *
@@ -55,7 +65,7 @@ export function PartyPanel({
   const [tip, setTip] = useState<number>(0);
   if (quotes.length === 0) return null;
 
-  const { rows, crossover } = splitBoard(quotes, party);
+  const { rows, crossover } = splitBoard(quotes, party, seatPool);
   const clamp = (n: number) => Math.max(1, Math.min(MAX_PARTY, n));
   const tipped = (minor: number) => Math.round(minor * (1 + tip / 100));
 
@@ -128,7 +138,23 @@ export function PartyPanel({
                 {row.perPersonHighMinor !== row.perPersonLowMinor
                   ? `–${formatMoneyMinor(tipped(row.perPersonHighMinor))}`
                   : ""}
-                <span className="muted"> {party === 1 ? "out the door" : "each"}</span>
+                {/*
+                  "Out the door" is a claim about a total, and at tip 0 the
+                  total is missing the one line this file's own header calls
+                  the largest thing standing between the number on this page
+                  and the number on somebody's statement. The phrase is
+                  earned once a tip is on, and not before.
+                */}
+                <span className="muted">
+                  {" "}
+                  {tip > 0
+                    ? party === 1
+                      ? "out the door"
+                      : "each"
+                    : party === 1
+                      ? "before tip"
+                      : "each, before tip"}
+                </span>
               </span>
             )}
           </li>
@@ -137,7 +163,8 @@ export function PartyPanel({
 
       {party === 1 ? (
         <p className="party-hint muted">
-          Add people to see the cost per head, and where a bigger car starts winning.
+          Add people to see the cost per head, and where a bigger car starts winning. Add a tip to
+          see what actually leaves your account.
         </p>
       ) : null}
 

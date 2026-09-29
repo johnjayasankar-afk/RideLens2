@@ -320,7 +320,12 @@ describe("what the dearer options buy, in the brief", () => {
           cheap(),
           quote({
             providerProductName: "UberX",
-            rankingPriceMinor: 10005,
+            /* $100.80 low against the reference's $80.80 high: a $20.00 gap
+               between the bounds, which is the only difference :42 allows a
+               sentence to state. */
+            priceMinMinor: 10080,
+            priceMaxMinor: 10230,
+            rankingPriceMinor: 10155,
             pickupEtaSeconds: 180,
             tripDurationSeconds: 1020,
           }),
@@ -344,7 +349,9 @@ describe("what the dearer options buy, in the brief", () => {
           cheap(),
           quote({
             providerProductName: "Lyft",
-            rankingPriceMinor: 12005,
+            priceMinMinor: 12000,
+            priceMaxMinor: 12150,
+            rankingPriceMinor: 12075,
             pickupEtaSeconds: 420,
             tripDurationSeconds: 2400,
           }),
@@ -362,7 +369,9 @@ describe("what the dearer options buy, in the brief", () => {
           cheap(),
           quote({
             providerProductName: "Uber Comfort",
-            rankingPriceMinor: 12005,
+            priceMinMinor: 12000,
+            priceMaxMinor: 12150,
+            rankingPriceMinor: 12075,
             pickupEtaSeconds: 180,
             tripDurationSeconds: 2160,
           }),

@@ -341,7 +341,12 @@
      The panels measure 303, 328, 416 and 738px. */
   --panel-min: 420px;
   --axis-name: 104px;
-  --axis-value: 92px;
+  /* Wide enough for a three-figure band — "$160.13–$180.22" is 15 characters
+     of 11.5px mono, about 104px. At 92px those bands overflowed their own
+     grid column and gave the tabpanel 9px of horizontal scroll, and the
+     column stopped being a column. `.axis-scale` pads by this same token, so
+     it has to stay a fixed length rather than become max-content. */
+  --axis-value: 108px;
   /*
    * Fills, at fill luminance for the scheme they are in.
    *
@@ -6462,6 +6467,13 @@ details[open] > summary::before {
 .ret-headline strong {
   font-variant-numeric: tabular-nums;
 }
+/* The board's own count, under the headline about one product of it. */
+.ret-board {
+  margin: 0;
+  font-size: var(--t-3);
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
 .ret-legs {
   display: grid;
   gap: 1px;
@@ -6895,7 +6907,7 @@ details[open] > summary::before {
 @media (max-width: 560px) {
   :root {
     --axis-name: 72px;
-    --axis-value: 84px;
+    --axis-value: 100px;
   }
 }
 

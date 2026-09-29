@@ -319,6 +319,7 @@ function QuoteCard({
   quote,
   hero,
   deltaMinor,
+  deltaNote,
   waitDeltaSec,
   index = 0,
   now,
@@ -327,7 +328,14 @@ function QuoteCard({
 }: {
   quote: NormalizedQuote;
   hero?: boolean;
+  /**
+   * How much dearer than the top pick — only ever the gap between bounds.
+   *
+   * Undefined whenever the two bands overlap, because there is no figure to
+   * print. `deltaNote` carries the words for that case.
+   */
   deltaMinor?: number;
+  deltaNote?: string;
   waitDeltaSec?: number;
   sessionId?: string;
   index?: number;
@@ -335,9 +343,27 @@ function QuoteCard({
   animate?: boolean;
 }) {
   const handoff = quote.bookingHandoff;
-  const dollarsPerMile =
-    quote.distanceMeters && quote.distanceMeters > 0
-      ? quote.rankingPriceMinor / 100 / (quote.distanceMeters / 1609.344)
+  /*
+   * The rate is a band, because the price is.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ This divided `rankingPriceMinor` — the fabricated midpoint — by the    │
+   * │ distance, so a card reading "$83.28 to $90.22" three lines above then  │
+   * │ printed "$4.98/mi": a single-point rate for a price the product had    │
+   * │ just refused to state as a point. QUOTE_SEMANTICS.md:23 says the       │
+   * │ midpoint is ranking-only, and dividing it does not launder it.         │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * Both bounds divided by the same distance is the same band in another
+   * unit, which states nothing the card does not already state. Where the
+   * band is a point — an upfront quote — the two ends agree and it renders
+   * as one figure on its own.
+   */
+  const miles =
+    quote.distanceMeters && quote.distanceMeters > 0 ? quote.distanceMeters / 1609.344 : null;
+  const perMile =
+    miles != null
+      ? { low: quote.priceMinMinor / 100 / miles, high: quote.priceMaxMinor / 100 / miles }
       : null;
 
   const pickupSec = quote.pickupEtaSeconds;
@@ -421,8 +447,12 @@ function QuoteCard({
               <CountingPrice quote={quote} animate={animate} />
             </span>
           </p>
-          {dollarsPerMile != null ? (
-            <p className="per-mile muted">${dollarsPerMile.toFixed(2)}/mi</p>
+          {perMile != null ? (
+            <p className="per-mile muted">
+              {perMile.low.toFixed(2) === perMile.high.toFixed(2)
+                ? `$${perMile.low.toFixed(2)}/mi`
+                : `$${perMile.low.toFixed(2)}–$${perMile.high.toFixed(2)}/mi`}
+            </p>
           ) : null}
         </div>
       </header>
@@ -476,9 +506,30 @@ function QuoteCard({
         ) : null}
       </div>
 
-      {!hero && deltaMinor != null && deltaMinor > 0 ? (
+      {/*
+        ┌──────────────────────────────────────────────────────────────────┐
+        │ This printed `q.rankingPriceMinor - hero.rankingPriceMinor` —    │
+        │ one fabricated midpoint minus another — and QUOTE_SEMANTICS.md   │
+        │ forbids both halves by name: ":23 Never show a fabricated        │
+        │ midpoint to users. Midpoint/p50 is ranking-only", and ":40 never │
+        │ a false precise '$X cheaper' claim from a midpoint alone".       │
+        │                                                                  │
+        │ It was caught contradicting the app on one screen. The Spread    │
+        │ panel read "2 options are the same price, within their ranges"   │
+        │ for Curb $76.80–$78.30 and Lyft $75.68–$81.52, while the Lyft    │
+        │ card underneath read "+$1.05 vs best" — for a pair whose bands   │
+        │ overlap almost entirely, and where Lyft's low is the lower of    │
+        │ the two. Two elements, one viewport, opposite claims.            │
+        └──────────────────────────────────────────────────────────────────┘
+        The figure now comes from `comparePrices`, which only yields one
+        across bands that do not overlap and computes it from the bounds —
+        exactly what ":42 may assert cheaper/more expensive using the gap
+        between bounds" permits. Where they overlap there is no number, so
+        the card says so in words.
+      */}
+      {!hero && (deltaMinor != null || deltaNote) ? (
         <p className="delta muted">
-          +{formatMoneyMinor(deltaMinor)} vs best
+          {deltaMinor != null ? `+${formatMoneyMinor(deltaMinor)} vs best` : deltaNote}
           {waitDeltaSec != null && waitDeltaSec > 30 ? (
             <span> · +{Math.round(waitDeltaSec / 60)} min wait</span>
           ) : null}
@@ -525,6 +576,30 @@ function QuoteCard({
  * this exists to replace. Non-ident characters are folded out because
  * `view-transition-name` is a custom-ident, not a string.
  */
+/**
+ * What a card may say about the top pick, and what it may not.
+ *
+ * A figure only where the bands are clear of each other, and then only the
+ * gap between the bounds. Everywhere else the honest output is a sentence,
+ * because `savingsMinor` on a `similar`/`unclear` comparison is the midpoint
+ * delta — the very quantity that must never reach a reader.
+ */
+function deltaFor(
+  quote: NormalizedQuote,
+  hero: NormalizedQuote | null | undefined,
+): { minor?: number; note?: string } {
+  if (!hero || hero === quote) return {};
+  const against = comparePrices(quote, hero);
+  if (against.relation === "more_expensive" && against.savingsMinor) {
+    return { minor: against.savingsMinor };
+  }
+  if (against.relation === "cheaper" && against.savingsMinor) {
+    return { note: `${formatMoneyMinor(against.savingsMinor)} less than the top pick` };
+  }
+  /* Overlapping bands. The ruler in the Spread panel says the same thing. */
+  return { note: "The same price as the top pick, within their ranges" };
+}
+
 function transitionName(
   quote: Pick<NormalizedQuote, "provider" | "providerProductId" | "providerProductName">,
 ): string {
@@ -691,27 +766,36 @@ export function QuoteResults({
     return out.slice(0, 4);
   }, [hero, ranked, mapRoute]);
 
+  /** Returns false when the intent could not be carried out, so the
+      transcript can say so rather than claiming it happened. */
   const runAssistantAction = useCallback(
-    (action: AssistantAction) => {
+    (action: AssistantAction): boolean => {
       switch (action.action) {
         case "refresh":
           onRefresh();
-          return;
+          return true;
         case "swap":
           onReverseTrip?.();
-          return;
+          return true;
         case "rank":
           onModeChange(action.mode);
-          return;
+          return true;
         case "filter":
           onFilterChange(action.category);
-          return;
+          return true;
         case "watch": {
-          if (!watchContext) return;
+          /*
+           * Reported honestly, including the failure. The transcript printed
+           * "Watching this trip for $40.00 or less" from a string the server
+           * wrote before anything ran, so a watch dropped here for want of a
+           * route still read as done. An assistant that reports actions it
+           * did not perform is worse than one that cannot act.
+           */
+          if (!watchContext) return false;
           priceWatches.set(
             makeWatch(watchContext.from, watchContext.to, Math.round(action.threshold * 100)),
           );
-          return;
+          return true;
         }
         case "panel": {
           /*
@@ -719,11 +803,25 @@ export function QuoteResults({
            * reads it from. The assistant sits above the deck in the tree and
            * could not reach its state even if it were allowed to.
            */
+          /*
+           * Opened, and deliberately not scrolled to.
+           *
+           * ┌──────────────────────────────────────────────────────────────┐
+           * │ This called `scrollIntoView({ block: "center" })`, and       │
+           * │ measured from a real conversation the page jumped 1,404px:   │
+           * │ the `.ask` panel's bottom edge ended at −650px, so the       │
+           * │ answer the rider had just asked for was off screen before    │
+           * │ they could read it. The deck is the thing they will look at  │
+           * │ second.                                                      │
+           * └──────────────────────────────────────────────────────────────┘
+           *
+           * The transcript's own line — "Opened Breakdown below — Where does
+           * the money go?" — is the affordance, and it is true: the deck is
+           * below. The palette reveals because it closes over nothing; a
+           * conversation has something worth staying on.
+           */
           openPanel(action.panel);
-          window.requestAnimationFrame(() => {
-            document.querySelector(".deck")?.scrollIntoView({ block: "center" });
-          });
-          return;
+          return true;
         }
       }
     },
@@ -777,6 +875,22 @@ export function QuoteResults({
   const isPartial =
     session?.status === "PARTIAL" || (Boolean(hero) && failures.length > 0 && succeeded.length > 0);
   const failedEmpty = Boolean(session) && !loading && (session?.quotes.length ?? 0) === 0;
+  /*
+   * Out of coverage is not a network fault.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ A London route comes back FAILED with one source failure whose code is │
+   * │ NO_RATE_CARD_FOR_AREA and whose message already says the right thing:  │
+   * │ the nearest market this model holds is 5,264 km away, too far to price │
+   * │ from, so nothing is shown rather than a number borrowed from another   │
+   * │ city. That is the honest refusal this product is built to give — and   │
+   * │ the banner threw it away for "Check your connection and try again", in │
+   * │ role="alert", printed over the top of the correct sentence, beside a   │
+   * │ retry button that cannot succeed until the coverage does.              │
+   * └────────────────────────────────────────────────────────────────────────┘
+   */
+  const uncovered =
+    failures.length > 0 && failures.every((f) => f.code === "NO_RATE_CARD_FOR_AREA");
   const filterEmpty =
     Boolean(session) && !loading && (session?.quotes.length ?? 0) > 0 && ranked.length === 0;
 
@@ -1519,7 +1633,8 @@ export function QuoteResults({
                 index={i + 1}
                 now={now}
                 animate={animateEntrance}
-                deltaMinor={hero ? q.rankingPriceMinor - hero.rankingPriceMinor : undefined}
+                deltaMinor={deltaFor(q, hero).minor}
+                deltaNote={deltaFor(q, hero).note}
                 waitDeltaSec={
                   hero?.pickupEtaSeconds != null && q.pickupEtaSeconds != null
                     ? q.pickupEtaSeconds - hero.pickupEtaSeconds
@@ -1556,17 +1671,27 @@ export function QuoteResults({
       ) : null}
 
       {failedEmpty ? (
-        <div className="banner danger empty-filter" role="alert">
+        <div
+          className={uncovered ? "banner warn empty-filter" : "banner danger empty-filter"}
+          role={uncovered ? "status" : "alert"}
+        >
           <p>
-            {session?.status === "FAILED"
-              ? "We couldn’t pull estimates for this route. Check your connection and try again."
-              : "No estimates came back for this route. Refresh or try a nearby pin."}
+            {uncovered
+              ? (failures[0]?.message ??
+                "RideLens has no rate data for this area yet, so nothing is shown rather than a number borrowed from another city.")
+              : session?.status === "FAILED"
+                ? "We couldn’t pull estimates for this route. Check your connection and try again."
+                : "No estimates came back for this route. Refresh or try a nearby pin."}
           </p>
-          <div className="empty-filter-actions">
-            <button type="button" className="ghost" onClick={onRefresh}>
-              Retry comparison
-            </button>
-          </div>
+          {/* No retry where retrying cannot help — the answer will not change
+              until the model covers the area. */}
+          {uncovered ? null : (
+            <div className="empty-filter-actions">
+              <button type="button" className="ghost" onClick={onRefresh}>
+                Retry comparison
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
 

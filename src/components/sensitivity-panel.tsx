@@ -178,7 +178,12 @@ function SensitivityChart({ report }: { report: SensitivityReport }) {
         <div>
           <dt>Does the order hold?</dt>
           <dd>
-            {report.ranking.stable ? (
+            {!report.ranking.comparable ? (
+              <>
+                There is only one option on the board, so there is no order to hold. Widen the
+                filter above to test whether the choice between them survives.
+              </>
+            ) : report.ranking.stable ? (
               <>
                 {report.subject} is the cheapest under all {report.ranking.tested} scenarios. The
                 choice is not resting on an assumption.
@@ -258,24 +263,28 @@ export function RobustnessChip({
     <button
       type="button"
       className="robust"
-      data-stable={ranking.stable ? "true" : "false"}
+      data-stable={!ranking.comparable ? "n-a" : ranking.stable ? "true" : "false"}
       onClick={() => {
-        openPanel("whatif");
+        openPanel("whatif", { reveal: true });
         window.requestAnimationFrame(() => {
           document.querySelector(".deck")?.scrollIntoView({ block: "center" });
         });
       }}
       title={
-        ranking.stable
-          ? `${subject} is the cheapest under all ${ranking.tested} scenarios tested.`
-          : ranking.upsets.join(" · ")
+        !ranking.comparable
+          ? "Only one option is on the board, so there is no ordering to test."
+          : ranking.stable
+            ? `${subject} is the cheapest under all ${ranking.tested} scenarios tested.`
+            : ranking.upsets.join(" · ")
       }
     >
       {/* Short, because it is a cell in a status strip. The whole sentence is
           on the title, and the panel a click away says it in full. */}
-      {ranking.stable
-        ? `Order holds ${ranking.tested}/${ranking.tested}`
-        : `Order flips ${ranking.upsets.length}/${ranking.tested}`}
+      {!ranking.comparable
+        ? "One option — no order"
+        : ranking.stable
+          ? `Order holds ${ranking.tested}/${ranking.tested}`
+          : `Order flips ${ranking.upsets.length}/${ranking.tested}`}
     </button>
   );
 }

@@ -12,19 +12,37 @@ import { RESOLUTION_MINUTES, buildTradeoffs, doorToDoorSeconds } from "@/lib/dom
 import type { NormalizedQuote } from "@/lib/domain/types";
 
 let seq = 0;
+/**
+ * Prices are exact here unless a test asks for a band.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This fixture pinned every quote to the same 5000–5400 band and let tests │
+ * │ vary `rankingPriceMinor` alone. That made the midpoint the only thing    │
+ * │ separating two options — which is exactly the quantity the ledger is now │
+ * │ forbidden to subtract, so every case was written on the one input that   │
+ * │ may not be used.                                                         │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * An exact price has no midpoint to fabricate: the band is a point, the two
+ * are clear of each other, and `comparePrices` returns their difference from
+ * the bounds. Every case below keeps the figure it was written for, and now
+ * keeps it for a reason the contract allows. The overlapping case gets its
+ * own tests at the bottom, where it belongs.
+ */
 function quote(over: Partial<NormalizedQuote> = {}): NormalizedQuote {
   seq += 1;
+  const exact = over.rankingPriceMinor ?? 5200;
   return {
     id: `q${seq}`,
     provider: "uber",
     providerProductId: "uberx",
     providerProductName: "UberX",
     normalizedCategory: "STANDARD",
-    priceType: "ESTIMATE_RANGE",
-    priceMinMinor: 5000,
-    priceMaxMinor: 5400,
-    displayPriceMinor: 5000,
-    rankingPriceMinor: 5200,
+    priceType: "UPFRONT_QUOTE",
+    priceMinMinor: exact,
+    priceMaxMinor: exact,
+    displayPriceMinor: exact,
+    rankingPriceMinor: exact,
     currency: "USD",
     pickupEtaSeconds: 180,
     tripDurationSeconds: 1800,
@@ -38,7 +56,7 @@ function quote(over: Partial<NormalizedQuote> = {}): NormalizedQuote {
     expiresAt: null,
     freshness: "LIVE",
     bookingHandoff: null,
-    confidenceClass: "MEDIUM",
+    confidenceClass: "HIGH",
     metadata: {},
     ...over,
   };
@@ -167,5 +185,66 @@ describe("what the extra buys", () => {
     ])!;
     expect(ledger.headline).toContain("Lyft");
     expect(ledger.headline).toContain("$24 an hour");
+  });
+});
+
+/**
+ * The case the ledger used to answer with a number it had invented.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Captured live before the fix: the Spread panel showed Curb $16.37–$17.88 │
+ * │ and Lyft $20.48–$22.02 for one session, while the ledger printed "Lyft   │
+ * │ +$4.12" — one ranking midpoint minus the other. The gap between those    │
+ * │ bounds is $2.60. Worse, that fabricated figure was then divided by a     │
+ * │ real duration and rendered as "$X/hour", which reads as derived.         │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
+describe("when the model cannot tell that you are paying more", () => {
+  const band = (
+    name: string,
+    min: number,
+    max: number,
+    trip: number,
+  ): Parameters<typeof buildTradeoffs>[0][number] =>
+    quote({
+      providerProductName: name,
+      priceType: "ESTIMATE_RANGE",
+      confidenceClass: "MEDIUM",
+      priceMinMinor: min,
+      priceMaxMinor: max,
+      rankingPriceMinor: Math.round((min + max) / 2),
+      tripDurationSeconds: trip,
+    });
+
+  it("reports the overlap instead of an extra, and offers no rate", () => {
+    const ledger = buildTradeoffs([
+      band("Curb Taxi", 1637, 1788, 1800),
+      band("Lyft", 1600, 2202, 1200),
+    ])!;
+    const row = ledger.rows.find((r) => r.productName === "Lyft")!;
+    expect(row.kind).toBe("PRICE_OVERLAPS");
+    expect(row.extraMinor).toBe(0);
+    expect(row.dollarsPerHour).toBeNull();
+  });
+
+  it("still states an extra where the bands are clear of each other", () => {
+    const ledger = buildTradeoffs([
+      band("Curb Taxi", 1637, 1788, 1800),
+      band("Lyft", 2048, 2202, 1200),
+    ])!;
+    const row = ledger.rows.find((r) => r.productName === "Lyft")!;
+    /* $20.48 − $17.88 = $2.60, the gap between the bounds. Never $4.12. */
+    expect(row.extraMinor).toBe(2048 - 1788);
+    expect(row.kind).toBe("BUYS_TIME");
+  });
+
+  it("never divides a rate out of an extra it does not have", () => {
+    const ledger = buildTradeoffs([
+      band("Curb Taxi", 1637, 1788, 1800),
+      band("Lyft", 1600, 2202, 600),
+    ])!;
+    for (const row of ledger.rows) {
+      if (row.dollarsPerHour != null) expect(row.extraMinor).toBeGreaterThan(0);
+    }
   });
 });

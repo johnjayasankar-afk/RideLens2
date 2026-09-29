@@ -31,28 +31,55 @@ interface Turn {
 interface Props {
   sessionId: string | undefined;
   trips: readonly TripRecord[];
-  onAction: (action: AssistantAction) => void;
+  /** Runs the intent. False when it could not be carried out. */
+  onAction: (action: AssistantAction) => boolean;
   /** Questions worth offering before anyone has typed anything. */
   suggestions: string[];
 }
 
 export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
   const [available, setAvailable] = useState<boolean | null>(null);
+  /*
+   * Which of the two answerers is behind the box.
+   *
+   * `model` is Claude under the brief and its eight hard rules. `local` is a
+   * matcher that recognises a question and quotes the brief, and it is not an
+   * AI — calling it one in the footer would be the sort of small lie the rest
+   * of this product spends its surface area refusing to tell.
+   */
+  const [mode, setMode] = useState<"model" | "local" | null>(null);
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  /*
+   * Closing the panel used to leave the request running. With a key that is
+   * a model call that keeps generating and keeps billing for an answer
+   * nobody will see; without one it is a stream written into a closed tab.
+   */
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
-  /* Hidden entirely when unconfigured: a chat box that cannot answer is
-     worse than no chat box. */
+  /*
+   * There is always an assistant now.
+   *
+   * This used to hide the whole feature when `ANTHROPIC_API_KEY` was unset,
+   * on the reasoning that a chat box which cannot answer is worse than none.
+   * That reasoning was right about the box and wrong about the premise: the
+   * server answers without a key now, from the same brief, so the box is not
+   * empty — it is differently sourced, and the footer says which.
+   */
   useEffect(() => {
     let cancelled = false;
     fetch("/api/ask")
       .then((r) => r.json())
-      .then((d: { available?: boolean }) => {
-        if (!cancelled) setAvailable(Boolean(d.available));
+      .then((d: { available?: boolean; mode?: "model" | "local" }) => {
+        if (cancelled) return;
+        setAvailable(Boolean(d.available));
+        setMode(d.mode === "model" || d.mode === "local" ? d.mode : null);
       })
       .catch(() => {
         if (!cancelled) setAvailable(false);
@@ -64,7 +91,38 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+    else triggerRef.current?.focus();
   }, [open]);
+
+  /*
+   * Escape closes it, from wherever focus happens to be.
+   *
+   * This was a React `onKeyDown` on the section, which only sees keys from
+   * inside its own subtree — and the submit button disables itself the
+   * instant the draft empties, so focus was on <body> by the time anyone
+   * pressed Escape. Measured: the panel stayed open and `document
+   * .activeElement` was BODY. A document listener has no such blind spot.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  /*
+   * Focus comes back to the input when the answer lands.
+   *
+   * Sending by Enter keeps it (the input is `readOnly`, not `disabled`), but
+   * sending by pressing the button does not: the button disables itself when
+   * the draft empties, and a disabled element cannot hold focus. Either way
+   * the rider's next action is to type again.
+   */
+  useEffect(() => {
+    if (open && !busy) inputRef.current?.focus();
+  }, [open, busy]);
 
   /* Follow the answer as it streams, without stealing focus. */
   useEffect(() => {
@@ -80,13 +138,25 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
       setDraft("");
       setBusy(true);
 
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "content-type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             sessionId,
-            messages: history.map((t) => ({ role: t.role, content: t.content })),
+            /*
+             * The last few exchanges, not all of them. The server caps the
+             * array at twelve and rejects anything longer as malformed, so
+             * the seventh question in a session — and every one after it —
+             * used to come back "The assistant could not answer that." A
+             * long conversation should forget its oldest turn, not die.
+             */
+            messages: history.slice(-10).map((t) => ({ role: t.role, content: t.content })),
             trips,
           }),
         });
@@ -138,8 +208,13 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
                */
               const parsed = actionSchema.safeParse(action);
               if (parsed.success) {
-                did.push(said);
-                onAction(parsed.data);
+                /*
+                 * The line is written from what happened, not from what was
+                 * asked. `said` is composed server-side before anything runs,
+                 * so a watch that could not be set — no route in hand — still
+                 * printed "Watching this trip for $40.00 or less".
+                 */
+                did.push(onAction(parsed.data) ? said : "That one did not go through.");
               }
             } else if (event === "error") {
               text = (payload as { message: string }).message;
@@ -154,7 +229,13 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
             did: did.length > 0 ? did : undefined,
           }),
         );
-      } catch {
+      } catch (err) {
+        /*
+         * An abort is this component tidying up after itself — the rider
+         * closed the panel or left — and is not a failure worth reporting
+         * into a transcript they are no longer reading.
+         */
+        if ((err as { name?: string } | null)?.name === "AbortError") return;
         setTurns((t) =>
           replaceLast(t, { role: "assistant", content: "Could not reach the assistant." }),
         );
@@ -169,7 +250,7 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
 
   if (!open) {
     return (
-      <button type="button" className="ask-open" onClick={() => setOpen(true)}>
+      <button type="button" ref={triggerRef} className="ask-open" onClick={() => setOpen(true)}>
         <span className="ask-open-glyph" aria-hidden>
           ✦
         </span>
@@ -197,7 +278,12 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
         </button>
       </header>
 
-      <div className="ask-log" ref={logRef} role="log" aria-live="polite" aria-busy={busy}>
+      {/*
+        `aria-live="off"`: with "polite" a screen reader re-announced the whole
+        log on every streamed chunk, which is the answer read aloud a few
+        dozen times. The finished reply is announced once, below the form.
+      */}
+      <div className="ask-log" ref={logRef} role="log" aria-live="off" aria-busy={busy}>
         {turns.length === 0 ? (
           <div className="ask-suggestions">
             {suggestions.map((s) => (
@@ -244,7 +330,15 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
           placeholder="Why is Uber more expensive?"
           aria-label="Ask about this comparison"
           maxLength={400}
-          disabled={busy}
+          /*
+           * `readOnly`, not `disabled`. A disabled input is removed from the
+           * tab order, so pressing Enter moved focus to <body> on every
+           * single message and never gave it back — measured:
+           * `document.activeElement` was BODY after each send. `ask()`
+           * already refuses to re-enter while busy, so the guard was doing
+           * nothing that was not already done.
+           */
+          readOnly={busy}
         />
         <button type="submit" className="chip" disabled={busy || draft.trim().length === 0}>
           {busy ? "…" : "Ask"}
@@ -252,13 +346,22 @@ export function Assistant({ sessionId, trips, onAction, suggestions }: Props) {
       </form>
 
       {/*
+        The finished answer, announced once. The log above is `aria-live="off"`
+        precisely so this can be the only thing that speaks.
+      */}
+      <p className="sr-only" aria-live="polite">
+        {busy ? "" : (turns.at(-1)?.role === "assistant" ? turns.at(-1)?.content : "") || ""}
+      </p>
+
+      {/*
         Said once, under the box, rather than on every reply — a mark on each
         message reads as a disclaimer nobody finishes. This says what it is
         and what it cannot do.
       */}
       <p className="ask-foot muted fine">
-        Generated from the figures on this page. It cannot see live provider prices, and it will not
-        invent one.
+        {mode === "local"
+          ? "No language model is configured, so this reads your question and answers from the figures on this page. It recognises a question or says it does not — it cannot write prose, and it cannot invent a number."
+          : "Generated from the figures on this page. It cannot see live provider prices, and it will not invent one."}
       </p>
     </section>
   );

@@ -113,6 +113,14 @@ export interface SensitivityReport {
     tested: number;
     /** The ones that changed who wins, in words. Empty when stable. */
     upsets: string[];
+    /**
+     * Whether there was an order to hold in the first place.
+     *
+     * `stable` is true with one option on the board, because nothing can
+     * overturn an ordering of one — which made "Order holds 8/8" the app's
+     * most confident claim in the case with the least behind it.
+     */
+    comparable: boolean;
   };
   headline: string;
 }
@@ -348,8 +356,16 @@ export function buildSensitivity(
       stable: upsets.length === 0,
       tested: PERTURBATIONS.length,
       upsets,
+      comparable: subjects.length >= 2,
     },
-    headline: headlineFor(levers, cheapest.label, upsets.length, PERTURBATIONS.length, insideBand),
+    headline: headlineFor(
+      levers,
+      cheapest.label,
+      upsets.length,
+      PERTURBATIONS.length,
+      insideBand,
+      subjects.length,
+    ),
   };
 }
 
@@ -359,6 +375,7 @@ function headlineFor(
   upsets: number,
   tested: number,
   insideBand: boolean,
+  optionCount: number,
 ): string {
   const top = levers[0];
   /*
@@ -368,10 +385,27 @@ function headlineFor(
   if (!top || top.swingDollars < 0.5) {
     return `Nothing tested here moves ${subject} by more than fifty cents. The estimate rests on the tariff, not on the conditions.`;
   }
+  /*
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ With one option on the board this said "Curb Taxi stays the cheapest │
+   * │ under all 8. The choice is not resting on an assumption" — a         │
+   * │ robustness claim about an ordering that does not exist. It is        │
+   * │ vacuously true and reads as reassurance, and the same route with the │
+   * │ filter cleared said "3 of 8 scenarios change who wins". One tap      │
+   * │ moved the app between two opposite claims, and the more confident of │
+   * │ them was the one with less behind it.                                │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * Nothing being able to overturn an order of one is not evidence. What the
+   * scenarios do still say about a single option is how far its own fare
+   * moves, which is the rest of this sentence and is real.
+   */
   const order =
-    upsets === 0
-      ? `${subject} stays the cheapest under all ${tested}.`
-      : `${upsets} of ${tested} scenarios change which option is cheapest.`;
+    optionCount < 2
+      ? "There is only one option on the board, so there is no ordering to overturn."
+      : upsets === 0
+        ? `${subject} stays the cheapest under all ${tested}.`
+        : `${upsets} of ${tested} scenarios change which option is cheapest.`;
   const reach = insideBand
     ? "which the band on the card already covers"
     : "further than the band on the card goes";

@@ -290,3 +290,124 @@ test.describe("the insights deck", () => {
     expect(overflow, "the deck pushed the page sideways on a phone").toBeLessThanOrEqual(0);
   });
 });
+
+/**
+ * The paths that do not scroll.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The suite above opens every tab and asserts every panel says something,  │
+ * │ and it passed for months while the Timing panel rendered nothing at all. │
+ * │ Playwright's `.click()` scrolls its target into view first — measured,   │
+ * │ scrollY 0 → 1835 on desktop — and the forecast was gated on exactly that │
+ * │ scroll. The guard and the bug cancelled out.                             │
+ * │                                                                          │
+ * │ A shared link, a reload on one, and Back are the paths with no scroll in │
+ * │ them, and they are what `use-panel.ts` exists to serve. So these never   │
+ * │ touch the page: they navigate straight to `?panel=` and read what is     │
+ * │ there. A refusal is a pass. An empty box is not.                         │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
+const PANEL_IDS = [
+  "spread",
+  "breakdown",
+  "whatif",
+  "tradeoffs",
+  "timing",
+  "split",
+  "return",
+  "transit",
+] as const;
+
+test.describe("every panel answers on a deep link, without being scrolled to", () => {
+  for (const id of PANEL_IDS) {
+    test(`${id} puts something on screen`, async ({ page }) => {
+      /*
+       * Two of these panels fetch — the forecast re-runs the fare engine a
+       * few hundred times server-side — so the budget has to cover a real
+       * round trip plus the comparison that precedes it. At the default 30s
+       * the test expired at exactly the moment the poll did, and reported the
+       * poll rather than the clock.
+       */
+      test.setTimeout(90_000);
+      await page.goto(`${DEEP_LINK}&panel=${id}`);
+      await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+
+      const panel = page.locator(".deck-panel:not([hidden])");
+      await expect(panel).toBeVisible();
+
+      /*
+       * The test itself never scrolls, which is the whole point — `.click()`
+       * would, and that is how this failure hid for months. (The app does
+       * scroll to the results on a phone, which is its own behaviour and not
+       * what is under test here.)
+       *
+       * Polled as one measurement rather than two: an earlier version waited
+       * for the text and then sampled the shape in a separate call, and
+       * caught mid-render states where the text had landed and the elements
+       * had not.
+       */
+      const ready = () =>
+        panel.evaluate((el) => {
+          const text = ((el as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim();
+          /* Its own furniture does not count as an answer — that is exactly
+             what the Timing panel rendered for fifteen seconds while broken. */
+          const said = text
+            .replace(/Model projection · not a quote|Does waiting help\?/g, "")
+            .trim();
+          /*
+           * One element is enough when that element is a refusal. Under the
+           * fixture source the Breakdown panel correctly says "These prices
+           * arrived from their sources as totals. There is no arithmetic
+           * behind them to take apart", and What-if says a partner's price is
+           * theirs to explain — both a single <p>, both the right answer.
+           * What the words say is the test; how many boxes carried them is
+           * not.
+           */
+          return el.querySelectorAll("*").length >= 1 && said.length > 20;
+        });
+      await expect.poll(ready, { timeout: 45_000 }).toBe(true);
+
+      const shape = await panel.evaluate((el) => {
+        const text = ((el as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim();
+        return {
+          elements: el.querySelectorAll("*").length,
+          said: text.replace(/Model projection · not a quote|Does waiting help\?/g, "").trim(),
+          text,
+        };
+      });
+      expect(shape.elements, `${id} rendered no elements`).toBeGreaterThan(0);
+      expect(
+        shape.said.length,
+        `${id} rendered only its own furniture: "${shape.text}"`,
+      ).toBeGreaterThan(20);
+    });
+  }
+});
+
+/**
+ * One option on the board is a real state — one tap on a category chip
+ * reaches it — and two panels answered it badly: Spread rendered no DOM at
+ * all, and What-if announced that the ordering was robust under all eight
+ * scenarios, which is a claim about an ordering that does not exist.
+ */
+test.describe("a board narrowed to a single option", () => {
+  for (const id of ["spread", "whatif"] as const) {
+    test(`${id} says something true rather than nothing or too much`, async ({ page }) => {
+      await page.goto(`${DEEP_LINK}&filter=TAXI&panel=${id}`);
+      await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+      const panel = page.locator(".deck-panel:not([hidden])");
+
+      await expect
+        .poll(async () => (await panel.innerText()).trim().length, { timeout: 25_000 })
+        .toBeGreaterThan(20);
+
+      const cards = await page.locator(".quote-card").count();
+      if (cards > 1) return; // The filter did not narrow to one here.
+
+      const text = (await panel.innerText()).toLowerCase();
+      /* Never a robustness claim when there is nothing to be robust about. */
+      expect(text).not.toContain("stays the cheapest under all");
+      expect(text).not.toContain("not resting on an assumption");
+    });
+  }
+});

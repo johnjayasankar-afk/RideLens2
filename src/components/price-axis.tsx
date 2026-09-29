@@ -31,7 +31,29 @@ export function PriceAxis({
   embedded?: boolean;
 }) {
   const axis = buildPriceAxis(quotes);
-  if (!axis) return null;
+  if (!axis) {
+    /*
+     * ┌──────────────────────────────────────────────────────────────────────┐
+     * │ `buildPriceAxis` returns null below two options, and this returned   │
+     * │ null with it — so one tap on the Taxi or Premium chip left the       │
+     * │ Spread tab rendering literally nothing: innerHTML "", no children, a │
+     * │ 420px blank box on desktop and a 0px one on a phone. The tab was     │
+     * │ still there, still selected, still labelled "Is the cheapest         │
+     * │ actually cheaper?", and answering with an empty rectangle.           │
+     * └──────────────────────────────────────────────────────────────────────┘
+     *
+     * A ruler with one mark on it is not a ruler, so the panel cannot draw
+     * one — but "cannot draw one" is a sentence, and a reader who narrowed
+     * the board to a single option is one tap from the answer.
+     */
+    if (!embedded) return null;
+    return (
+      <p className="deck-empty muted">
+        A ruler compares options against each other, and there is only one on the board. Widen the
+        filter above and this fills in.
+      </p>
+    );
+  }
 
   const overlapping = axis.indistinguishableCount;
 

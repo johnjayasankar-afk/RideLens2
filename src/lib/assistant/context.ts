@@ -32,7 +32,7 @@ import { confidenceLabel } from "@/lib/domain/confidence";
 import { formatMoneyMinor, formatQuotePrice } from "@/lib/domain/money";
 import { buildTradeoffs, formatMinutes, RESOLUTION_MINUTES } from "@/lib/domain/tradeoffs";
 import { provenanceOf } from "@/lib/domain/provenance";
-import { rankQuotes } from "@/lib/domain/ranking";
+import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
 import { historyForRoute, routeKeyFor, type TripRecord } from "@/lib/history/trip-log";
 import { personalAccuracy } from "@/lib/history/outcome";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
@@ -69,6 +69,23 @@ export interface AssistantBrief {
   options: BriefOption[];
   /** The marketplace state these prices were produced under. */
   market: { demand: string; weather: string | null; modelVersion: string };
+  /**
+   * Whether the ordering means anything, in one sentence.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ Rule 3 of the system prompt — never say which is cheaper when two      │
+   * │ ranges overlap — was the only rule with nothing in the brief behind    │
+   * │ it. The options arrive ranked, and a ranked list is an invitation to   │
+   * │ read the first row as the winner. Both the model and the local         │
+   * │ answerer were being asked to hold a line the brief did not draw.       │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * So the comparison is made here, once, by `comparePrices` — the same
+   * overlap-aware helper the console register uses — and the result arrives
+   * as a sentence rather than as two bands to compare. There is nothing left
+   * to get wrong downstream.
+   */
+  ordering: string;
   /**
    * What the dearer options buy, one sentence each, or nothing when there is
    * nothing to weigh. Pre-written rather than left to the model, because the
@@ -197,14 +214,39 @@ export function buildBrief(
    * whether or not the inputs can carry one; handed the sentence, it has
    * nothing left to compute.
    */
+  /*
+   * The ordering, as a claim the brief is willing to stand behind.
+   *
+   * `comparePrices` returns "unclear" when the top two bands overlap, and
+   * that is the common case rather than the edge: two modeled estimates of
+   * the same trip usually do overlap, which is exactly why naming a winner
+   * from a sorted list is the wrong instinct.
+   */
+  const ordering = ((): string => {
+    const first = ranked[0];
+    const second = ranked[1];
+    if (!first) return "There are no options on screen.";
+    /* The product name already carries the brand; the provider id does not. */
+    const name = first.providerProductName || first.provider;
+    if (!second) return `${name} is the only option on screen.`;
+    const against = comparePrices(first, second);
+    const runnerUp = second.providerProductName || second.provider;
+    return against.relation === "cheaper"
+      ? `${name} is cheaper than ${runnerUp}: their ranges do not overlap.`
+      : `${name} and ${runnerUp} overlap in price, so this comparison does not separate them.`;
+  })();
+
   const ledger = buildTradeoffs(ranked);
   const tradeoffs = (ledger?.rows ?? []).map((row) => {
     const head = `${row.productName} is ${formatMoneyMinor(row.extraMinor)} more than ${ledger!.referenceName}`;
+    /* No head for a row with no extra — the sentence below stands alone. */
     switch (row.kind) {
       case "BUYS_TIME":
         return `${head} and arrives ${formatMinutes(row.minutesSaved!)} sooner — $${row.dollarsPerHour!.toFixed(0)} an hour for the time saved.`;
       case "BUYS_NOTHING":
         return `${head} and arrives no sooner. The extra buys nothing.`;
+      case "PRICE_OVERLAPS":
+        return `${row.productName}'s range overlaps ${ledger!.referenceName}'s, so it may not cost more at all and there is no extra to weigh.`;
       case "TOO_CLOSE":
         return `${head}, and the difference in arrival time is under ${RESOLUTION_MINUTES} minutes — smaller than this model can resolve, so there is no rate to quote.`;
       default:
@@ -243,6 +285,7 @@ export function buildBrief(
       weather: typeof weather === "string" && weather ? weather : null,
       modelVersion: modelVersion || "unknown",
     },
+    ordering,
     tradeoffs,
     yourHistory,
     limits: [
@@ -286,6 +329,8 @@ export function renderBrief(brief: AssistantBrief): string {
       );
     }
   }
+  lines.push("");
+  lines.push(`WHETHER THE ORDER MEANS ANYTHING: ${brief.ordering}`);
   if (brief.tradeoffs.length > 0) {
     lines.push("");
     lines.push("WHAT THE DEARER OPTIONS BUY:");

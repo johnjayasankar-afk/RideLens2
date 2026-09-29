@@ -88,9 +88,23 @@ export function AlternativesRow({
   if (data.state !== "ready") {
     if (!embedded) return null;
     return data.state === "none" ? (
+      /*
+       * A claim about this app's coverage, not a claim about the world.
+       *
+       * ┌──────────────────────────────────────────────────────────────────┐
+       * │ This said "Nothing here gets you there without a car", which is  │
+       * │ a statement that no transit exists on the route — and the module │
+       * │ that produced the empty array says the opposite in its own       │
+       * │ header: "the absence of a row on a cross-town trip is not a      │
+       * │ claim that transit is unavailable". The panel was making exactly │
+       * │ the claim the library refused to make, on a route where the      │
+       * │ subway plainly runs.                                             │
+       * └──────────────────────────────────────────────────────────────────┘
+       */
       <p className="deck-empty muted">
-        Nothing here gets you there without a car — no transit alternative is modeled for this
-        route.
+        RideLens only shows a way without a car where a published fare covers the whole journey —
+        today that is the three New York airport runs. It has nothing for this route, which is not
+        the same as there being nothing.
       </p>
     ) : (
       <p className="deck-empty muted" aria-live="polite">
@@ -124,7 +138,14 @@ export function AlternativesRow({
                     {alt.durationSeconds != null ? (
                       <span>{minutes(alt.durationSeconds)}</span>
                     ) : (
-                      /* Rendered as absent, not filled in. */
+                      /*
+                       * Rendered as absent, not filled in — and now with the
+                       * reason the library already wrote. `durationNote` was
+                       * built at alternatives.ts, typed at types.ts under the
+                       * comment "Why the duration is missing, when it is",
+                       * shipped in every API response, and read by nothing.
+                       * A stated absence is worth more with its reason.
+                       */
                       <span>Journey time not modeled</span>
                     )}
                     {saving != null ? (
@@ -140,6 +161,18 @@ export function AlternativesRow({
                     <p className="alternative-note">
                       Does not include {alt.unmodeled} — the real total is higher.
                     </p>
+                  ) : null}
+                  {/*
+                    Why the journey time is missing, in the library's own
+                    words. It was constructed in alternatives.ts, declared in
+                    types.ts under the comment "Why the duration is missing,
+                    when it is", shipped in every API response — and read by
+                    nothing, so the panel said "not modeled" and never said
+                    why. It goes in the visible note rather than a `title`,
+                    which no keyboard and no touch screen can reach.
+                  */}
+                  {alt.durationSeconds == null && alt.durationNote ? (
+                    <p className="alternative-note muted">{alt.durationNote}</p>
                   ) : null}
                   {alt.sources.length > 0 ? (
                     <p className="alternative-sources muted">

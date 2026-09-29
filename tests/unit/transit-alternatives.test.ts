@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   airportAt,
+  subwayServed,
   transitAlternativeFor,
   walkAlternative,
   WALKABLE_MAX_SECONDS,
@@ -118,5 +119,64 @@ describe("walking", () => {
     expect(walkAlternative(null)).toBeNull();
     expect(walkAlternative(0)).toBeNull();
     expect(walkAlternative(Number.NaN)).toBeNull();
+  });
+});
+
+/**
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The tariff row used to be gated on a 22 km circle around Midtown, and a │
+ * │ circle around Manhattan crosses the Hudson. Every place below was inside │
+ * │ it and was told an AirTrain-plus-one-subway-swipe would get them there  │
+ * │ for $11.75. None of them can be reached that way: PATH, NJ Transit,     │
+ * │ Metro-North and the Staten Island ferry are all separate journeys at    │
+ * │ separate fares.                                                          │
+ * │                                                                          │
+ * │ Fourteen tests passed throughout, because none of them asked.            │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
+describe("where one subway fare can actually reach", () => {
+  const OFF_THE_NETWORK = {
+    "downtown Newark": { lat: 40.7357, lng: -74.1724 },
+    "Jersey City": { lat: 40.7178, lng: -74.0431 },
+    Hoboken: { lat: 40.7439, lng: -74.0324 },
+    Yonkers: { lat: 40.9312, lng: -73.8988 },
+    "Tompkinsville, Staten Island": { lat: 40.6265, lng: -74.0776 },
+    Montauk: { lat: 41.0359, lng: -71.9545 },
+  };
+
+  const ON_THE_NETWORK = {
+    Midtown: { lat: 40.7549, lng: -73.984 },
+    Williamsburg: { lat: 40.7081, lng: -73.9571 },
+    "Coney Island": { lat: 40.5755, lng: -73.9707 },
+    "Fordham, the Bronx": { lat: 40.8618, lng: -73.8896 },
+    "Howard Beach": { lat: 40.6607, lng: -73.8306 },
+  };
+
+  for (const [name, point] of Object.entries(OFF_THE_NETWORK)) {
+    it(`quotes no airport fare to ${name}, which no subway reaches`, () => {
+      expect(subwayServed(point)).toBe(false);
+      expect(transitAlternativeFor(JFK, point)).toBeNull();
+      /* Symmetric: the same journey the other way round is the same claim. */
+      expect(transitAlternativeFor(point, JFK)).toBeNull();
+    });
+  }
+
+  for (const [name, point] of Object.entries(ON_THE_NETWORK)) {
+    it(`still quotes the airport fare to ${name}`, () => {
+      expect(subwayServed(point)).toBe(true);
+      const alt = transitAlternativeFor(JFK, point);
+      expect(alt?.fareMinor).toBe(tariffTotalMinor(TARIFFS["jfk-subway"]!));
+    });
+  }
+
+  /*
+   * The direction this is allowed to be wrong in. An absent row is already
+   * documented as not being a claim that transit is unavailable; a wrong
+   * fare is a claim, and there is no wording that repairs it.
+   */
+  it("errs toward saying nothing rather than toward a fare that cannot be honoured", () => {
+    /* West of the Hudson at any latitude the network does not cross. */
+    expect(subwayServed({ lat: 40.75, lng: -74.03 })).toBe(false);
+    expect(subwayServed({ lat: 40.6, lng: -74.06 })).toBe(false);
   });
 });

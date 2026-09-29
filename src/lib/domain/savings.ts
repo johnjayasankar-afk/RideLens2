@@ -20,19 +20,27 @@ export function defaultBaseline(
 export function computeSavings(
   best: NormalizedQuote,
   baseline: NormalizedQuote | null,
-): { text: string; savingsMinor: number } | null {
+): { text: string; savingsMinor: number | null } | null {
   if (!baseline) return null;
   const cmp = comparePrices(best, baseline);
   if (cmp.relation !== "cheaper" && cmp.relation !== "unclear") return null;
-  if (!cmp.savingsMinor || cmp.savingsMinor <= 0) return null;
 
-  // Only assert firm savings when comparison is clear
+  /*
+   * Overlapping bands get the direction and no figure.
+   *
+   * This read "Likely save ~$X" off a midpoint difference, which is the case
+   * QUOTE_SEMANTICS.md:40 names outright. The tilde was doing the work of an
+   * honest sentence and not doing it: "~$4" is a number a reader will repeat,
+   * and no bound in the comparison supports it.
+   */
   if (cmp.relation === "unclear") {
     return {
-      savingsMinor: cmp.savingsMinor,
-      text: `Likely save ~${formatMoneyMinor(cmp.savingsMinor)} vs ${baseline.providerProductName}`,
+      savingsMinor: null,
+      text: `Likely cheaper than ${baseline.providerProductName}, though the ranges overlap`,
     };
   }
+
+  if (!cmp.savingsMinor || cmp.savingsMinor <= 0) return null;
 
   const name =
     baseline.provider === "uber"

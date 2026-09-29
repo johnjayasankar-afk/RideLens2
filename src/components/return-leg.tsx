@@ -29,6 +29,7 @@ import { useCallback, useRef, useState } from "react";
 import { useWhenStill } from "./use-when-still";
 
 import { formatMoneyMinor } from "@/lib/domain/money";
+import { comparePrices } from "@/lib/domain/ranking";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
 
 type State =
@@ -51,6 +52,24 @@ interface Props {
    * one exists, and the fallback says so.
    */
   outbound: NormalizedQuote | null;
+  /**
+   * The whole outbound board, so the panel can describe the trip rather than
+   * one product of it.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ The headline was read off `outbound` alone — the cheapest on the board │
+   * │ — and on a Manhattan comparison the cheapest is the yellow cab, whose  │
+   * │ JFK fare is a published flat rate charged identically in both          │
+   * │ directions. So the panel measured the one product that cannot be       │
+   * │ asymmetric and reported "Both directions price the same, within what   │
+   * │ this model can tell apart" while holding a reverse board where UberX,  │
+   * │ Lyft, Uber Comfort, Lyft XL and UberXL were all materially cheaper     │
+   * │ coming back. Reversing the same trip in the form made Lyft the         │
+   * │ cheapest, and the identical panel then said "$19.59 more": one round   │
+   * │ trip, two contradictory answers.                                       │
+   * └────────────────────────────────────────────────────────────────────────┘
+   */
+  outboundAll?: readonly NormalizedQuote[];
 }
 
 function cheapest(quotes: readonly NormalizedQuote[]): NormalizedQuote | null {
@@ -62,7 +81,7 @@ function shortLabel(address: string): string {
   return address.split(",")[0] ?? address;
 }
 
-export function ReturnLeg({ session, outbound }: Props) {
+export function ReturnLeg({ session, outbound, outboundAll }: Props) {
   const [data, setData] = useState<State>({ state: "loading" });
   /* Priced once per comparison. Re-running it on every tab visit would
      double the cost of the page for a number that has not changed. */
@@ -137,24 +156,65 @@ export function ReturnLeg({ session, outbound }: Props) {
         ) ?? null);
   const back = sameProduct ?? cheapest(data.quotes)!;
   const likeForLike = sameProduct !== null;
+  /* Shown as "from $X", which is what a band's low is. */
   const backLow = back.priceMinMinor;
-  const delta = outbound != null && likeForLike ? backLow - outbound.priceMinMinor : null;
   /*
-   * Under a dollar the two directions are the same price as far as anything
-   * here can tell, and "$0.40 more" invites a reader to believe a precision
-   * the band around each figure does not support.
+   * The two directions, compared the way everything else in this app is.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ This subtracted one band's low from the other's low, ignored both      │
+   * │ maxes, and called anything over a dollar material. So $16.37–$17.88    │
+   * │ against $17.57–$19.15 — bands that overlap across most of their width  │
+   * │ — printed "Coming back costs $1.20 more than going", a directional     │
+   * │ claim the overlap does not support. The $1.00 floor was doing the job  │
+   * │ of an overlap test and could not do it: two bands can differ by $1.20  │
+   * │ at the low end and still be indistinguishable.                         │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * `comparePrices` is that test, already written and already property-tested,
+   * and it yields a figure only where the bands are clear of each other —
+   * which is the one case QUOTE_SEMANTICS.md:42 lets a direction be asserted.
    */
-  const material = delta != null && Math.abs(delta) >= 100;
+  const against = outbound != null && likeForLike ? comparePrices(back, outbound) : null;
+  const delta =
+    against && (against.relation === "more_expensive" || against.relation === "cheaper")
+      ? (against.savingsMinor ?? null)
+      : null;
+  const material = delta != null && delta > 0;
+
+  /*
+   * The same comparison, run over every product that came back — so one
+   * flat-rate fare cannot speak for a board that disagrees with it.
+   */
+  const board = (() => {
+    if (!outboundAll || outboundAll.length === 0) return null;
+    let dearer = 0;
+    let cheaper = 0;
+    let level = 0;
+    for (const out of outboundAll) {
+      const ret = data.quotes.find(
+        (q) => q.provider === out.provider && q.providerProductId === out.providerProductId,
+      );
+      if (!ret) continue;
+      const rel = comparePrices(ret, out).relation;
+      if (rel === "more_expensive") dearer += 1;
+      else if (rel === "cheaper") cheaper += 1;
+      else level += 1;
+    }
+    const paired = dearer + cheaper + level;
+    return paired >= 2 ? { dearer, cheaper, level, paired } : null;
+  })();
 
   return (
     <div className="ret">
       <p className="ret-headline">
         {material ? (
           <>
-            Coming back costs <strong>{formatMoneyMinor(Math.abs(delta!))}</strong>{" "}
-            {delta! > 0 ? "more" : "less"} than going, on {back.providerProductName}.
+            Coming back costs <strong>{formatMoneyMinor(delta!)}</strong>{" "}
+            {against!.relation === "more_expensive" ? "more" : "less"} than going, on{" "}
+            {back.providerProductName}.
           </>
-        ) : delta != null ? (
+        ) : against != null ? (
           <>Both directions price the same, within what this model can tell apart.</>
         ) : (
           /* Nothing to subtract from: either no outbound to compare, or the
@@ -162,6 +222,17 @@ export function ReturnLeg({ session, outbound }: Props) {
           <>Here is the reverse route, priced on its own.</>
         )}
       </p>
+
+      {board && board.dearer + board.cheaper > 0 ? (
+        <p className="ret-board muted">
+          Across the {board.paired} options priced both ways,{" "}
+          {board.cheaper > 0 ? `${board.cheaper} come back cheaper` : null}
+          {board.cheaper > 0 && board.dearer > 0 ? " and " : null}
+          {board.dearer > 0 ? `${board.dearer} come back dearer` : null}
+          {board.level > 0 ? `; the other ${board.level} price the same within their ranges` : null}
+          .
+        </p>
+      ) : null}
 
       <ul className="ret-legs">
         <li className="ret-leg">

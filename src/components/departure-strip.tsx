@@ -92,7 +92,6 @@ export function DepartureStrip({
   showProducts?: ReadonlySet<string>;
 }) {
   const [loaded, setLoaded] = useState<Loaded>({ state: "idle" });
-  const hostRef = useRef<HTMLDivElement | null>(null);
   const askedFor = useRef<string | null>(null);
 
   /*
@@ -124,13 +123,35 @@ export function DepartureStrip({
    * to see a map; nobody is waiting on this, and forcing it mid-scroll cost
    * 46 fps and a 142 ms 95th-percentile frame. It loads when the page is
    * still, which is when somebody is actually looking at it.
+   *
+   * ── Why there is no visibility gate ────────────────────────────────────
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ Inside the deck this never loaded at all. Measured: with `?panel=      │
+   * │ timing` on a 1000px viewport, `.departure` sits at top 2299 and        │
+   * │ `scrollY` is 0, so the observer correctly reported `isIntersecting:    │
+   * │ false` and — with no deadline — waited forever. The panel rendered its │
+   * │ heading and the words "Model projection · not a quote" over an empty   │
+   * │ 240px box, on every route, for anyone who arrived by link, by the      │
+   * │ command palette, or by asking the assistant to open it.                │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * A panel only mounts once its tab has been chosen, and choosing it is a
+   * clearer statement of intent than scrolling near it ever was — the deck's
+   * own header comment says exactly this, and the five other panels were all
+   * moved to `null` when it was written. This one was missed, and it is the
+   * only `useWhenStill` caller in the app still passing a host.
+   *
+   * Dropping the host keeps the half of the gate that bought the frame time:
+   * the 475 ms frame came from fetching *during a scroll*, which the quiet
+   * window still prevents, not from fetching off-screen.
    */
-  useWhenStill(hostRef, Boolean(sessionId), load, { deadlineMs: Infinity });
+  useWhenStill(null, Boolean(sessionId), load, { deadlineMs: Infinity });
 
   if (!sessionId) return null;
 
   return (
-    <section className="departure" ref={hostRef} aria-labelledby="departure-heading">
+    <section className="departure" aria-labelledby="departure-heading">
       <div className="departure-head">
         <h2 id="departure-heading" className={embedded ? "sr-only" : undefined}>
           Does waiting help?

@@ -161,16 +161,38 @@ export function findCrossover(rows: readonly PerPersonQuote[], party: number): C
   };
 }
 
-/** Per-head rows for a whole board, cheapest first, refusals last. */
+/**
+ * Per-head rows for a whole board, cheapest first, refusals last.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ `seatPool` exists because the crossover could not fire on the board      │
+ * │ anybody actually sees. The default category filter is `standard`, which  │
+ * │ drops every vehicle seating more than four — so the one finding this     │
+ * │ panel is built to surface, that a single XL beats two sedans, was being  │
+ * │ searched for in a list guaranteed to contain no XL. Driven 1→9 on two    │
+ * │ routes it fired zero times on the default filter, and twice (at five and │
+ * │ six) the moment the filter was cleared.                                  │
+ * │                                                                          │
+ * │ The rows stay filtered, because the rows are the rider's chosen board.   │
+ * │ The crossover looks wider, because "a bigger car would be cheaper" is    │
+ * │ information about a car they have filtered out and is the entire point   │
+ * │ of asking.                                                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
 export function splitBoard(
   quotes: readonly NormalizedQuote[],
   party: number,
+  seatPool?: readonly NormalizedQuote[],
 ): { rows: PerPersonQuote[]; crossover: Crossover | null } {
-  const rows = quotes.map((q) => perPerson(q, party));
-  rows.sort((a, b) => {
+  const order = (a: PerPersonQuote, b: PerPersonQuote) => {
     if (a.refusal && !b.refusal) return 1;
     if (!a.refusal && b.refusal) return -1;
     return a.perPersonLowMinor - b.perPersonLowMinor;
-  });
-  return { rows, crossover: findCrossover(rows, party) };
+  };
+  const rows = quotes.map((q) => perPerson(q, party)).sort(order);
+  const wider =
+    seatPool && seatPool.length > quotes.length
+      ? seatPool.map((q) => perPerson(q, party)).sort(order)
+      : rows;
+  return { rows, crossover: findCrossover(wider, party) };
 }

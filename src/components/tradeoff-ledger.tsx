@@ -34,7 +34,9 @@ export function TradeoffLedger({ quotes }: { quotes: readonly NormalizedQuote[] 
         {ledger.rows.map((row) => (
           <li className="ledger-row" key={row.quoteId} data-kind={row.kind}>
             <span className="ledger-name">{row.productName}</span>
-            <span className="ledger-extra">+{formatMoneyMinor(row.extraMinor)}</span>
+            <span className="ledger-extra">
+              {row.kind === "PRICE_OVERLAPS" ? "—" : `+${formatMoneyMinor(row.extraMinor)}`}
+            </span>
             <span className="ledger-verdict">
               {row.kind === "BUYS_TIME" ? (
                 <>
@@ -42,12 +44,25 @@ export function TradeoffLedger({ quotes }: { quotes: readonly NormalizedQuote[] 
                   <span className="muted"> for {formatMinutes(row.minutesSaved!)} saved</span>
                 </>
               ) : row.kind === "BUYS_NOTHING" ? (
+                /*
+                 * The number, not the word. `minutesSaved` is computed
+                 * door-to-door and is negative here, and the row printed
+                 * "and arrives later" over the top of it — the one figure
+                 * that tells a reader whether "later" means ninety seconds
+                 * or a quarter of an hour, thrown away at the last step.
+                 */
                 <span className="muted">
-                  and arrives {row.minutesSaved === 0 ? "at the same time" : "later"}
+                  {row.minutesSaved === 0 || row.minutesSaved == null
+                    ? "and arrives at the same time"
+                    : `and arrives ${formatMinutes(Math.abs(row.minutesSaved))} later`}
                 </span>
               ) : row.kind === "TOO_CLOSE" ? (
                 <span className="muted">
                   for a gap under {RESOLUTION_MINUTES} min — smaller than the model can resolve
+                </span>
+              ) : row.kind === "PRICE_OVERLAPS" ? (
+                <span className="muted">
+                  its range overlaps the cheapest — it may not cost more at all
                 </span>
               ) : (
                 <span className="muted">no duration to compare</span>

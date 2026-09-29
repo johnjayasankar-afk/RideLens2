@@ -65,14 +65,52 @@ if (typeof window !== "undefined") {
   if (initial) visited.add(initial);
 }
 
-/** Open a panel from anywhere: the deck, the palette, the assistant. */
-export function openPanel(id: string): void {
+/**
+ * Bring the deck under the reader's eye.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Opening a panel only ever rewrote the URL, and the deck sits about 2,300 │
+ * │ pixels down a results page. So the command palette's "open Trade-offs"   │
+ * │ closed the palette and left the screen looking identical, and the        │
+ * │ assistant said "Opened Breakdown below" about something the reader could │
+ * │ not see. An assistant that reports an action it did not visibly perform  │
+ * │ is worse than one that cannot act.                                       │
+ * │                                                                          │
+ * │ Measured: `.departure` sat at top 2299 in a 1000px viewport at scrollY   │
+ * │ 0. The timing panel never even loaded, because its fetch waits for the   │
+ * │ strip to be near the viewport and it never was.                          │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * A frame later than the event, so the panel React is about to swap in is the
+ * one that ends up in view rather than the one leaving. `scroll-padding-top`
+ * on the root already reserves for both pinned bars, and `scrollIntoView`
+ * honours it, so the deck lands below the chrome rather than under it.
+ */
+function revealDeck(): void {
+  requestAnimationFrame(() => {
+    const deck = document.querySelector(".deck");
+    if (!deck) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    deck.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+  });
+}
+
+/**
+ * Open a panel from anywhere: the deck, the palette, the assistant.
+ *
+ * `reveal` is for the callers the reader is not already looking at the deck
+ * for — the palette, the assistant, a cross-link from another panel. A tab
+ * click passes it up: they are looking straight at the thing, and scrolling
+ * the page under a control somebody just pressed is its own defect.
+ */
+export function openPanel(id: string, options: { reveal?: boolean } = {}): void {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.set(PARAM, id);
   window.history.replaceState({}, "", url.toString());
   visited.add(id);
   window.dispatchEvent(new Event(EVENT));
+  if (options.reveal) revealDeck();
 }
 
 /**
