@@ -81,7 +81,11 @@ const LADDERS = {
     ["--dur-3", 320],
     ["--dur-4", 520],
     ["--dur-5", 1100],
-    ["--dur-6", 2400],
+    /* No `--dur-6`. It was listed here at 2400 and globals.css has never
+       defined it, so this row was a standing instruction to rewrite a literal
+       into a `var()` that resolves to nothing — a transition silently dropped
+       by the tool meant to tidy it. A mapping may only name a token the
+       stylesheet actually declares. */
   ],
 };
 

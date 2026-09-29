@@ -219,6 +219,20 @@ const AUDIT = () => {
 const browser = await chromium.launch();
 const worst = new Map();
 let pairs = 0;
+/*
+ * How few pairs mean the page never rendered.
+ *
+ * Both waits below end in `.catch(() => {})`, because a panel that is empty
+ * on one theme is not a failure. But that same swallow lets a run where the
+ * app never booted — a dead server, a hydration throw — walk past every wait,
+ * measure three pairs, find nothing under 3:1 and print a pass. A guard that
+ * can succeed by measuring nothing is not a guard.
+ *
+ * Six combinations have measured 127 pairs each on every run. A floor at a
+ * third of that is far below any real variation and far above a broken boot.
+ */
+const MIN_PAIRS = 40;
+const short = [];
 
 for (const os of ["light", "dark"]) {
   for (const choice of [null, "light", "dark"]) {
@@ -278,6 +292,7 @@ for (const os of ["light", "dark"]) {
       if (!prev || f.ratio < prev.ratio) worst.set(key, { ...f, where: label });
     }
     console.log(`  ${label}  ${String(found.length).padStart(4)} fill pairs measured`);
+    if (found.length < MIN_PAIRS) short.push(`${label}  ${found.length}`);
     await ctx.close();
   }
 }
@@ -288,6 +303,15 @@ const rows = [...worst.values()].sort((x, y) => x.ratio - y.ratio);
 const fails = rows.filter((f) => f.ratio < NEED && !exempt(f));
 
 console.log(`\n${pairs} fill pairs measured across six scheme combinations.`);
+
+if (short.length > 0) {
+  console.error(
+    `\nMeasured too little to mean anything — under ${MIN_PAIRS} pairs in:\n` +
+      short.map((l) => `  ${l}`).join("\n") +
+      `\n\nThe page did not render. This is not a pass.\n`,
+  );
+  process.exit(1);
+}
 console.log(`The ten closest, worst first — ${NEED}:1 is WCAG 2.2 SC 1.4.11:\n`);
 for (const f of rows.slice(0, 10)) {
   const flag = f.ratio < NEED ? (exempt(f) ? "allowed" : "UNDER  ") : "ok     ";

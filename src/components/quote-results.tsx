@@ -23,6 +23,7 @@ import {
 } from "@/lib/domain/freshness";
 import { categoryLabel } from "@/lib/domain/taxonomy";
 import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
+import { withTransition } from "@/lib/view-transition";
 import { computeSavings, defaultBaseline, joinSentences } from "@/lib/domain/savings";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Assistant } from "@/components/assistant";
@@ -450,9 +451,25 @@ function QuoteCard({
         <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
         <span className={`meta-chip ${tone.className}`}>{tone.label}</span>
         {showWeather ? <span className="meta-chip market-chip is-rain">Weather lift</span> : null}
-        <span className="meta-chip freshness">
-          <span className={statusDotClass(quote, now)} aria-hidden />
-          {freshnessLine(quote, now)}
+        {/*
+          The reserve is on the slot, not on the pill.
+          ──────────────────────────────────────────
+          Reserving width on the chip itself held the row open — which was the
+          point, the text grows from "Fresh" to "Fresh · 47 sec ago" a few
+          seconds after the prices land and used to wrap the row — but the
+          chip is the element that paints a background, so the app drew a
+          153px pill with 42px of word in it and twelve characters of empty
+          grey after it. Once per card, six or seven times a screen.
+
+          An unpainted wrapper holds the same width and the pill hugs its
+          text, so the row's wrap decision is still made on the first frame
+          and nothing paints emptiness.
+        */}
+        <span className="freshness-slot">
+          <span className="meta-chip freshness">
+            <span className={statusDotClass(quote, now)} aria-hidden />
+            {freshnessLine(quote, now)}
+          </span>
         </span>
         {expiry && liveFreshness(quote, now) !== "LIVE" ? (
           <span className="meta-chip muted">{expiry}</span>
@@ -508,32 +525,27 @@ function QuoteCard({
  * this exists to replace. Non-ident characters are folded out because
  * `view-transition-name` is a custom-ident, not a string.
  */
-function transitionName(quote: Pick<NormalizedQuote, "provider" | "providerProductId">): string {
-  return `q-${`${quote.provider}-${quote.providerProductId}`.replace(/[^A-Za-z0-9_-]+/g, "-")}`;
-}
-
-/**
- * Re-sort with a transition where the browser has one.
- *
- * Changing the ranking or the filter reorders the list under the reader's
- * eye. Without this the rows teleport and you lose which card you were
- * reading; with it, the same card is visibly the same card in a new place.
- *
- * Feature-detected rather than assumed, and skipped when the reader has
- * asked for less motion — in both cases the update happens exactly as it
- * did before, just without the tween.
- */
-function withTransition(run: () => void): void {
-  const doc = document as Document & {
-    startViewTransition?: (cb: () => void) => unknown;
-  };
-  const wants =
-    typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (wants && typeof doc.startViewTransition === "function") {
-    doc.startViewTransition(run);
-    return;
-  }
-  run();
+function transitionName(
+  quote: Pick<NormalizedQuote, "provider" | "providerProductId" | "providerProductName">,
+): string {
+  /*
+   * The same hedge the React key uses, and for the same reason.
+   *
+   * `providerProductId` is untrusted API data — `raw.product_id` for Uber,
+   * `c.ride_type` for Lyft, where the schema is `z.string()`, so an empty
+   * string passes validation. Two empties from one provider both fold to
+   * `q-lyft-`, and the sanitiser can fold `a.b` and `a b` together as well.
+   * A duplicate `view-transition-name` does not throw — `startViewTransition`
+   * rejects with InvalidStateError, the DOM update still applies, and because
+   * the promise is discarded it surfaces as an unhandled rejection.
+   *
+   * The position is deliberately NOT in this name. The whole point is that
+   * the same card keeps the same name when its rank changes; adding the index
+   * would rename every row that moved, which is the crossfade this exists to
+   * replace.
+   */
+  const id = quote.providerProductId || quote.providerProductName;
+  return `q-${`${quote.provider}-${id}`.replace(/[^A-Za-z0-9_-]+/g, "-")}`;
 }
 
 export function QuoteResults({
@@ -837,6 +849,16 @@ export function QuoteResults({
             ? Math.min(...drives)
             : null,
       bestFrom: hero?.priceMinMinor ?? null,
+      /*
+       * "from" is a hedge, and a hedge on an upfront fare is its own kind of
+       * dishonesty. docs/QUOTE_SEMANTICS.md:17 — an UPFRONT_QUOTE is displayed
+       * as the exact amount, no "Est." — and for one of those priceMin equals
+       * priceMax, so "BEST, FROM $24.80" would make the instrument look less
+       * certain than it is on the one quote type it can actually stand behind.
+       * Not reachable on today's fixtures, which are all modelled; the code
+       * path is live.
+       */
+      bestIsPoint: hero != null && hero.priceMinMinor === hero.priceMaxMinor,
       versusNext:
         against?.relation === "cheaper" && against.savingsMinor ? against.savingsMinor : null,
       /*
@@ -1252,8 +1274,9 @@ export function QuoteResults({
                 )}
               </span>
               {/* "From", because it is the low end of a band and not a figure
-                  anybody was quoted. The card below prints the whole band. */}
-              <span className="stat-label">Best, from</span>
+                  anybody was quoted — unless the band is a point, in which
+                  case it is the fare. The card below prints the whole band. */}
+              <span className="stat-label">{tripStats?.bestIsPoint ? "Best" : "Best, from"}</span>
             </div>
             <div className="trip-stat-desktop">
               <span className={`stat-value${tripStats?.versusNextNote ? " is-relation" : ""}`}>
@@ -1261,6 +1284,17 @@ export function QuoteResults({
                   formatMoneyMinor(tripStats.versusNext)
                 ) : tripStats?.versusNextNote ? (
                   tripStats.versusNextNote
+                ) : hero ? (
+                  /*
+                   * There is a hero and no runner-up — one option survived the
+                   * filter — so there is nothing to compare against and there
+                   * never will be. This cell used to fall through to the
+                   * loading shimmer, which runs `infinite`: a placeholder
+                   * pulsing under "VS NEXT" forever, promising a figure that
+                   * is not coming. An em dash is what an instrument prints
+                   * for no reading.
+                   */
+                  <span aria-label="nothing to compare against">—</span>
                 ) : (
                   <span className="sk-line w60" />
                 )}

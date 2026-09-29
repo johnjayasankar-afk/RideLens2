@@ -400,6 +400,9 @@
   --lit-ring: rgba(31, 107, 74, 0.5);
   --lit-cast: rgba(19, 36, 27, 0.5);
   --paper-lo: #fcfbf8;
+  /* The map's height, once. The shell reserves it and the canvas takes it;
+     they were two expressions that drifted apart by 61px at 320px. */
+  --map-h: max(260px, min(40vh, 400px));
   --map-style: "positron";
   --map-glyph: none;
   color-scheme: light;
@@ -829,7 +832,28 @@ code {
   top: 0;
   z-index: 40;
   padding-top: env(safe-area-inset-top);
-  background: rgba(var(--scrim-rgb), 0.96);
+  /*
+   * Opaque, because it is translucent over nothing.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ This was 0.96 and the results toolbar 0.92, both with no             │
+   * │ backdrop-filter — deliberately, because a sticky full-width blur is  │
+   * │ the exact cost docs/PERFORMANCE.md prohibits. But translucency with  │
+   * │ nothing behind it is not glass, it is a leak: 4% and 8% of the       │
+   * │ scrolling content prints straight through, unsoftened, in every      │
+   * │ scrolled frame at every width.                                       │
+   * │                                                                      │
+   * │ At 320px the toolbar lands across the hero's price and leaves        │
+   * │ "to $78.30" legible with "$76.80" ghosted behind the bar — the low   │
+   * │ end of a band, which is the number this product exists to lead with, │
+   * │ erased by chrome, and the band left reading as a point. That is the  │
+   * │ trap arriving through the furniture rather than through a figure.    │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * An opaque bar costs nothing, composites faster than a translucent one,
+   * and is what the surface was always pretending to be.
+   */
+  background: var(--ground);
   box-shadow: 0 1px 0 var(--line);
   transition: background-color var(--dur-2);
 }
@@ -1417,7 +1441,17 @@ h1.brand {
   background: var(--mint-fill);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--mint-3) 22%, transparent);
 }
+/*
+ * The first thing anybody does in this app, and it had no motion at all.
+ *
+ * The listbox appeared instantly under the field and the active row's
+ * highlight teleported as you arrowed through it. `cmdk-rise` is already in
+ * the file for the command palette — the same gesture, a list arriving under
+ * something you typed — so this costs the reference and nothing else.
+ */
 .place-suggestions {
+  animation: cmdk-rise var(--dur-2) var(--ease) both;
+  transform-origin: top center;
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -1958,14 +1992,25 @@ h1.brand {
 .map-slot {
   position: relative;
 }
+/*
+ * The reserve has to be the height the canvas actually takes.
+ *
+ * The shell held a flat 300px so the map's slot exists before MapLibre does,
+ * while the canvas below is `min(40vh, 400px)` and, under 960px,
+ * `min(42vh, 300px)`. At 320x568 that resolves to 239px inside a 300px
+ * shell: a 61px band of empty ground under the map, on the narrowest phone,
+ * which reads as a map that failed to fill its frame.
+ *
+ * One expression for both, so the reserve cannot drift from the thing it is
+ * reserving for again.
+ */
 .route-map-shell {
   position: relative;
-  min-height: 300px;
+  min-height: var(--map-h);
 }
 .route-map-canvas {
   width: 100%;
-  height: min(40vh, 400px);
-  min-height: 260px;
+  height: var(--map-h);
 }
 .route-map-shell.is-loading .route-map-canvas {
   filter: saturate(0.9);
@@ -2126,8 +2171,9 @@ h1.brand {
   padding: var(--s-5) 0;
   /* No backdrop-filter: it is sticky, it moves on every scroll frame, and it
      sits over a colour within a few percent of its own. The exact case the
-     performance budget exists to catch. */
-  background: var(--scrim);
+     performance budget exists to catch — and without one, 8% of the page
+     printed through it. See .topbar above. */
+  background: var(--ground);
   box-shadow: 0 1px 0 var(--line);
 }
 .route-summary {
@@ -2260,7 +2306,7 @@ h1.brand {
 }
 .stat-value {
   overflow: hidden;
-  font: 400 clamp(20px, 1.8vw, 24px)/1 var(--font-body);
+  font: 470 clamp(20px, 1.8vw, 24px)/1 var(--font-body);
   letter-spacing: -0.04em;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -2274,7 +2320,18 @@ h1.brand {
  * arrive. It is also the truthful answer when two bands overlap, which is
  * most of the time, so it has to look like an answer rather than a gap.
  */
-.stat-value.is-relation {
+/*
+ * `.console` in the selector, because the rule it has to beat has it too.
+ *
+ * This was `.stat-value.is-relation` at (0,2,0) and `.console .stat-value
+ * { font-size: var(--t-8) }` is also (0,2,0), 4,600 lines later — so the
+ * size lost and only the colour landed. The word stayed in the 26px numeral
+ * slot, and `.stat-value` is `nowrap; overflow: hidden; text-overflow:
+ * ellipsis` in a 78px cell, so "Unclear" measured 91px and rendered as
+ * "Unclear…". A rule written to stop a word being set as a figure was doing
+ * half of its job and truncating the word with the other half.
+ */
+.console .stat-value.is-relation {
   font: 500 var(--t-5)/1 var(--font-body);
   letter-spacing: -0.012em;
   color: var(--ink-2);
@@ -2624,9 +2681,29 @@ h1.brand {
 .price-block {
   text-align: right;
 }
+/*
+ * Weight is the fourth level, and it was the one channel nobody used.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The money was `font: 400` and the wait value directly beneath it on the  │
+ * │ same card was `font-weight: 500`. So "$39.43 to $42.27" was the same     │
+ * │ colour as "7 to 9 min" and a step LIGHTER than it: the fare was the      │
+ * │ lightest-weight thing on its own card, and the only separators were      │
+ * │ point size and a bit of tracking.                                        │
+ * │                                                                          │
+ * │ Weight appears 36 times in this file and every one of them is a label or │
+ * │ an emphasis — never once to tell a figure from prose. Inter is loaded as │
+ * │ a variable font at 100–900 (layout.tsx), so the axis is already paid     │
+ * │ for and this costs nothing.                                             │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * 520, not 600. A figure with authority, not a heading that is shouting —
+ * and nowhere near enough to make a modelled band read as more certain than
+ * it is. The correction here is an inversion, not an emphasis.
+ */
 .price {
   margin: 0;
-  font: 400 var(--t-8)/1 var(--font-body);
+  font: 520 var(--t-8)/1 var(--font-body);
   letter-spacing: -0.04em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -2659,7 +2736,8 @@ h1.brand {
 }
 .wait-value {
   font-size: var(--t-5);
-  font-weight: 500;
+  /* 450: a reading, and quieter than the money above it. */
+  font-weight: 450;
   letter-spacing: -0.012em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -2683,9 +2761,32 @@ h1.brand {
  * figures are tabular for the same reason at a smaller scale: a chip that
  * ticks 8 to 9 should not change width to do it.
  */
+/*
+ * The chip that grows, reserving its own growth — on a slot that paints
+ * nothing, not on the pill.
+ *
+ * 19ch, measured rather than guessed: injecting each status this chip can
+ * hold and reading the box back gives Fresh 70px, "Fresh · 9 sec ago" 137,
+ * "Fresh · 59 sec ago" 145, "Aging · 12 min ago" 147, and the longest,
+ * "Recent · 59 min ago", **153**. The first reserve was 17ch = 137px: enough
+ * for the string the page shows in its first minute and sixteen pixels short
+ * of the one it settles on, which is a reserve that works exactly until
+ * somebody looks at the page for a while.
+ *
+ * Putting it on the chip held the row open and made the app paint a 153px
+ * pill around 42px of the word "Fresh". The slot holds the width; the pill
+ * hugs its text.
+ */
+.freshness-slot {
+  display: inline-flex;
+  /* `ch` is the width of a zero in the element's OWN font, and the slot
+     inherits the body's 16px while the chip sets --t-3. Without this the
+     reserve resolves against the wrong face and holds 192px where 153 is
+     needed. */
+  font-size: var(--t-3);
+  min-width: 19ch;
+}
 .meta-chip.freshness {
-  min-width: 17ch;
-  justify-content: flex-start;
   font-variant-numeric: tabular-nums;
 }
 .meta-chip {
@@ -2714,6 +2815,16 @@ h1.brand {
   height: 7px;
   border-radius: 50%;
   background: var(--aging);
+  /*
+   * A quote ages from fresh through recent to expired, and the dot jumped
+   * between those colours mid-read. This is the rare motion that makes a
+   * reader *less* certain as it runs, which is the direction this product
+   * wants — so it is the one piece of continuous motion here that is not
+   * about something the reader just did.
+   */
+  transition:
+    background-color var(--dur-3) var(--ease),
+    box-shadow var(--dur-3) var(--ease);
 }
 .status-dot.is-fresh {
   background: var(--fresh);
@@ -2847,7 +2958,17 @@ h1.brand {
   letter-spacing: -0.012em;
   color: var(--forest-2);
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--lit-ring);
+  /*
+   * `--forest-2`, not `--lit-ring`.
+   *
+   * With the fill gone this ring is the only thing that says "control", and
+   * WCAG 2.2 SC 1.4.11 asks 3:1 of exactly that. `--lit-ring` is the accent
+   * at 0.42–0.5 alpha, which measured **2.23:1** in light and **2.43:1** in
+   * dark against the card. Neither guard could see it: contrast-audit walks
+   * text, which passes at 6.1 and 7.4, and fill-audit measures chart fills.
+   * The solid accent is 5.96:1 in light and 6.9 in dark.
+   */
+  box-shadow: inset 0 0 0 1px var(--forest-2);
 }
 @media (hover: hover) and (pointer: fine) {
   .book:hover {
@@ -3230,8 +3351,8 @@ h1.admin-title {
     position: sticky;
     top: calc(var(--topbar-h) + var(--space-3));
   }
-  .route-map-canvas {
-    height: 380px;
+  :root {
+    --map-h: 380px;
   }
   .trip-stats {
     grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
@@ -3250,9 +3371,31 @@ h1.admin-title {
   .lede {
     max-width: none;
   }
-  .route-map-canvas {
-    height: min(42vh, 300px);
-    min-height: 220px;
+  /*
+   * On a phone, with the route already known, the hero is in the way.
+   * See the note in compare-form.tsx. The wordmark stays — it is the only
+   * thing telling a reader which app they are in — at a size that reads as
+   * a header rather than a billboard.
+   */
+  .hero-panel.is-compact .lede,
+  .hero-panel.is-compact .provider-strip,
+  .hero-panel.is-compact .eyebrow,
+  /*
+   * And the shortcuts, which are six ways to fill a field that is already
+   * filled. Measured on a phone they are 156px of the 1,949 above the first
+   * fare, and the condition is the one they already carried: `is-compact` is
+   * set exactly when both endpoints are known.
+   */
+  .hero-panel.is-compact .quick-picks {
+    display: none;
+  }
+  .hero-panel.is-compact .brand {
+    margin-bottom: var(--s-5);
+    font-size: var(--t-9);
+    letter-spacing: -0.03em;
+  }
+  :root {
+    --map-h: max(220px, min(42vh, 300px));
   }
   .results-empty {
     display: block;
@@ -3408,13 +3551,32 @@ h1.admin-title {
   }
 }
 @media (max-width: 520px) {
-  .wait-row {
+  .wait-row,
+  /*
+   * The stand-in wraps the way the thing it stands in for wraps.
+   *
+   * .sk-row was four columns at every width while .wait-row above becomes
+   * two below 520px, and .sk-head kept the price column the header gives up.
+   * Measured on a phone: four skeleton cards reserved 1,135px for 2,532px of
+   * real ones — less than half — so the loading-to-loaded swap moved the page
+   * by 218px a card and put the phone's CLS at 0.0124 against a 0.02 budget.
+   *
+   * These selectors sit beside the rules they mirror, so the next person to
+   * change one changes both.
+   */
+  .sk-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: var(--s-5);
   }
-  .quote-card-header {
+  .quote-card-header,
+  .sk-head {
     grid-template-columns: 40px minmax(0, 1fr);
     align-items: start;
+  }
+  .sk-price {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: var(--s-1);
   }
   .price-block {
     grid-column: 1 / -1;
@@ -4426,6 +4588,10 @@ details[open] > summary::before {
   .party-stepper .ghost,
   .comp-more,
   .pending-chip,
+  /* All eight of them, measured at 35.5px — the primary navigation of the
+     entire analysis section, 8.5px short of the floor every other control
+     here clears. */
+  .deck-tab,
   .theme-toggle {
     min-height: var(--ctl-xl);
   }
@@ -4664,7 +4830,11 @@ details[open] > summary::before {
   display: flex;
   align-items: stretch;
   gap: var(--s-2);
-  background: var(--paper-grad);
+  /* Flat, not --paper-grad: these rows are 59px and the falloff is 140, so
+     each one restarted at --paper-hi and got 42% of the way down before the
+     next began — a 2.2 L* sawtooth in dark, repeating under every hairline.
+     The enclosure around them already carries the light. */
+  background: var(--paper);
 }
 .recent-trip + .recent-trip {
   border-top: 1px solid var(--line);
@@ -5792,6 +5962,34 @@ details[open] > summary::before {
   overflow-x: auto;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
+  /*
+   * And it says so. Eight tabs are 770px of content in a 322px strip at
+   * 390px and 252px at 320 — 58% and 67% hidden — rendered as
+   * "SPREAD 1 BREAKDOWN 2 WHAT IF 3 T", which reads as broken text rather
+   * than as a row you can push. The filter row and the console's status line
+   * have carried the scroll-driven edge mask for a while; this is the third
+   * row that scrolls sideways and it was the one without it.
+   */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 var(--scroll-fade-l, 0px),
+    #000 calc(100% - var(--scroll-fade-r, 28px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 var(--scroll-fade-l, 0px),
+    #000 calc(100% - var(--scroll-fade-r, 28px)),
+    transparent 100%
+  );
+}
+@supports (animation-timeline: scroll()) {
+  .deck-tabstrip {
+    animation: scroll-fade-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
 }
 .deck-tabstrip::-webkit-scrollbar {
   display: none;
@@ -6369,7 +6567,13 @@ details[open] > summary::before {
  * which reads as disabled. The ring is the one part of the recipe that
  * belongs inside a track.
  */
-.segmented .chip.active {
+.segmented .chip.active,
+/*
+ * ...and the quick-fill target, which has its own (0,3,0) rule and so kept
+ * `--sh-2` — a black cast that this work made *heavier* (two layers to
+ * three) on exactly the element type it set out to lift off the card.
+ */
+.quick-target .chip.active {
   box-shadow: var(--lit-0);
 }
 .segmented .chip:not(.active) {
@@ -6508,6 +6712,20 @@ details[open] > summary::before {
 }
 .tor-bar[data-dir="down"] {
   background: var(--ramp-2);
+}
+/*
+ * Where the two arms meet is where zero is.
+ *
+ * Each lever draws an arm for its low scenario and one for its high, both
+ * anchored at `pos(0)`. When both move the price the same way both arms take
+ * the same fill and meet at the centre with nothing between them — measured
+ * by scripts/fill-audit.mjs at **1:1**, which is a bar a reader cannot find
+ * the middle of. A hairline in the card's own colour is the same answer the
+ * stacked breakdown bar uses, and here it lands on the one x-position that
+ * carries meaning.
+ */
+.tor-bar + .tor-bar {
+  border-left: 1px solid var(--paper);
 }
 .tor-arms {
   grid-column: 2;
@@ -6834,8 +7052,29 @@ details[open] > summary::before {
 .console .trip-stats > div {
   align-content: start;
 }
+/*
+ * The register's figure is fluid, like every other figure in the app.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ This was a flat `var(--t-8)` — 26px — inside an `auto-fit` cell whose    │
+ * │ inner box falls to 78px at a 1024px window. `.stat-value` is `nowrap;    │
+ * │ overflow: hidden; text-overflow: ellipsis`, so the register printed the  │
+ * │ best price as `$76.80` cut to `$76.…` from 1056px down, and `30 min` as  │
+ * │ `30 mi…` from 1032px down. Every review of this work ran at 1280px and   │
+ * │ none of them saw it.                                                     │
+ * │                                                                          │
+ * │ An ellipsised price is not a polish defect. It is the instrument         │
+ * │ misstating the one number the product exists to report.                  │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * `.stat-value` already sizes itself `clamp(20px, 1.8vw, 24px)`; the console
+ * was the one place that opted out of the system and pinned a literal. The
+ * same coefficient with the register's own ceiling keeps 26px wherever 26px
+ * fits and gives the number back its room where it does not. Measured over
+ * 480–1200px in 8px steps: zero overflow on every value this app formats.
+ */
 .console .stat-value {
-  font-size: var(--t-8);
+  font-size: clamp(var(--t-7), 1.8vw, var(--t-8));
   line-height: 1;
   letter-spacing: -0.03em;
 }
@@ -6879,6 +7118,11 @@ details[open] > summary::before {
   .trips-empty,
   .results-empty,
   .map-slot,
+  /* Added by the same work that wrote this block, and missed by it: the
+     trust page's register, its seven status pills, and the assistant. */
+  .sources-list,
+  .source-status,
+  .ask,
   .place-field input,
   .chip,
   .ghost,

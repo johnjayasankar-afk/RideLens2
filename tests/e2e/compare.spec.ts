@@ -728,3 +728,47 @@ test.describe("the assistant", () => {
     expect([400, 503]).toContain(status);
   });
 });
+
+/*
+ * The register states a number or it states nothing.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ `.console .stat-value` pinned a flat 26px inside an `auto-fit` cell that │
+ * │ narrows with the window. `.stat-value` is `nowrap; overflow: hidden;     │
+ * │ text-overflow: ellipsis`, so between roughly 970 and 1060 pixels the     │
+ * │ best price rendered as `$76.…` and the drive time as `30 mi…`. Five      │
+ * │ separate reviews missed it because every one of them worked from a       │
+ * │ 1280px frame, and the failure lives in a band no reviewer thought to     │
+ * │ open.                                                                    │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * An ellipsis on a price is not a cosmetic defect — it is the instrument
+ * reporting a number that is not the number. So the widths below are chosen
+ * to sit inside the band that failed rather than at the round sizes a person
+ * reaches for, and the assertion is on overflow rather than on appearance:
+ * whatever the type scale becomes later, a figure in this register must
+ * never be cut.
+ */
+test.describe("the console register never truncates a figure", () => {
+  const LINK = "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204";
+
+  for (const width of [1440, 1180, 1056, 1024, 992, 960, 768, 390, 320]) {
+    test(`no figure is clipped at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(LINK);
+      await page.waitForSelector(".console .stat-value");
+
+      const clipped = await page.$$eval(".console .stat-value", (els) =>
+        els
+          .map((el) => ({
+            text: (el.textContent ?? "").trim(),
+            overflow: Math.round((el.scrollWidth - el.clientWidth) * 10) / 10,
+          }))
+          /* Sub-pixel rounding is not a truncation; a whole pixel is. */
+          .filter((r) => r.overflow >= 1),
+      );
+
+      expect(clipped, `figures cut off at ${width}px`).toEqual([]);
+    });
+  }
+});

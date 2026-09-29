@@ -938,7 +938,27 @@ export function CompareForm({ liveCapable }: { liveCapable: boolean }) {
   return (
     <div className="compare-root" data-commands={palette.ready ? "ready" : undefined}>
       <CommandPalette open={palette.open} onClose={palette.close} commands={palette.commands} />
-      <section className="hero-panel" aria-labelledby="brand-heading">
+      {/*
+        The landing hero stands down once a route is known.
+        ───────────────────────────────────────────────────
+        Measured on a phone, on the deep link this product's share button
+        produces: the first fare is at y=1966 of a 6268px page at 390px, and
+        y=2162 of 6732px at 320 — two and a half to nearly four screens of
+        scrolling to reach the one thing the reader came for. Above it sit a
+        72px wordmark, a three-to-five-line paragraph naming four providers,
+        and four provider chips: a landing page, shown to somebody who
+        arrived with the route already in the URL.
+
+        The copy is not deleted and nothing moves in the DOM — reading order
+        and the tab sequence are untouched, and on a wide screen where the
+        rail has its own column none of this is in the way. It is only the
+        marketing half that stands down, and only on a phone, and only once
+        the reader has told us where they are going.
+      */}
+      <section
+        className={`hero-panel${pickup && destination ? " is-compact" : ""}`}
+        aria-labelledby="brand-heading"
+      >
         <p className="eyebrow">{timeEyebrow}</p>
         <h1 className="brand" id="brand-heading">
           RideLens

@@ -54,7 +54,24 @@ export const metadata: Metadata = {
 
 export const viewport = {
   /*
-   * No `themeColor` here, and that is the fix rather than an omission.
+   * One tag, no `media`, and the script below rewrites its content.
+   *
+   * A media-keyed pair answers the OS and cannot answer the reader: someone
+   * on a dark machine who chooses Light got a porcelain page under a
+   * #0d1511 chrome band, and with `appleWebApp.capable` that band is the iOS
+   * standalone status bar on every screen.
+   *
+   * Removing it outright was the first fix and it went too far: the inline
+   * script opens with `localStorage.getItem`, and where that throws — "block
+   * all site data", a sandboxed frame, some privacy modes — the catch
+   * swallowed everything before the tag was ever created, so the page
+   * shipped with no theme colour at all. With JavaScript off, the same.
+   *
+   * So the server emits the light value as a floor, the script rewrites it
+   * before first paint when it can read the choice, and theme-toggle.tsx
+   * keeps it true afterwards. The worst case is a porcelain band over a dark
+   * page for a reader who has turned off both storage and script, which is
+   * what every visitor had before any of this.
    *
    * A media-keyed pair answers the OS and cannot answer the reader: someone
    * on a dark machine who chooses Light got a porcelain page under a
@@ -68,6 +85,7 @@ export const viewport = {
    * owner. The script in <head> writes it synchronously before first paint
    * and theme-toggle.tsx keeps it true afterwards.
    */
+  themeColor: "#f8f6f1",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -131,7 +149,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("ridelens.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++)m[i].remove();var e=document.createElement("meta");e.name="theme-color";e.content=d?"#0d1511":"#f8f6f1";document.head.appendChild(e)}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("ridelens.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var m=document.querySelectorAll('meta[name="theme-color"]');var e=null;for(var i=0;i<m.length;i++){if(m[i].media)m[i].remove();else e=m[i]}if(!e){e=document.createElement("meta");e.name="theme-color";document.head.appendChild(e)}e.content=d?"#0d1511":"#f8f6f1"}catch(e){}`,
           }}
         />
       </head>

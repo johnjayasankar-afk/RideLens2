@@ -16,6 +16,8 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
+import { withTransition } from "@/lib/view-transition";
+
 export type ThemeChoice = "system" | "light" | "dark";
 
 export const THEME_KEY = "ridelens.theme";
@@ -77,10 +79,25 @@ function syncThemeColor(): void {
 }
 
 export function applyTheme(choice: ThemeChoice): void {
-  const root = document.documentElement;
-  if (choice === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", choice);
-  syncThemeColor();
+  /*
+   * The largest cut in the app, tweened.
+   *
+   * Flipping the scheme repaints every pixel — the ground, ten enclosures,
+   * the map's basemap — and it did it as a hard swap. globals.css has styled
+   * `::view-transition-old(root)` and `::view-transition-new(root)` all
+   * along; the only thing ever calling `startViewTransition` was the re-sort,
+   * so the rule was written for the change that needed it least.
+   *
+   * The attribute write stays synchronous inside the callback, so a browser
+   * without view transitions and a reader who asked for less motion both get
+   * exactly what they got before.
+   */
+  withTransition(() => {
+    const root = document.documentElement;
+    if (choice === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", choice);
+    syncThemeColor();
+  });
   try {
     if (choice === "system") localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, choice);
