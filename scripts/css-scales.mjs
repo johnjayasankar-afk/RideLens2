@@ -33,13 +33,18 @@ const FILE = "src/app/globals.css";
  * a cleanup, never by exempting a rule.
  */
 const CEILINGS = {
-  "font-size": 8,
-  "border-radius": 6,
-  padding: 10,
-  gap: 8,
+  /* Set at what the file measures after scripts/apply-scales.mjs ran, with no
+     slack: 0.92em on <code>, the 30px mobile hero price, the map HUD's two
+     absolute offsets, three rem insets and a handful of structural values the
+     migration deliberately left alone. Every one is named in that script's
+     output. There is no room here for a new stray, which is the point. */
+  "font-size": 2,
+  "border-radius": 1,
+  padding: 8,
+  gap: 1,
   /* Durations, however they are written: `transition`, `animation`, or the
      longhand. A motion system is a handful of speeds, not a hundred. */
-  duration: 6,
+  duration: 1,
 };
 
 /** Values that are structural rather than scale choices. */
