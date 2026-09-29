@@ -52,6 +52,26 @@ export const SUBWAY_LEG: TariffLeg = {
 };
 
 export const TARIFFS: Record<string, TransitTariff> = {
+  /*
+   * A trip that stays on the network is one swipe.
+   *
+   * The MTA charges a flat fare with free transfers between subway and local
+   * bus inside a two-hour window, so the price of a journey from one served
+   * point to another is this leg and nothing else — regardless of distance,
+   * line or how many times you change. That is a published rule, not a
+   * model, which is why it can be stated for a trip nobody has routed.
+   *
+   * What it does not say, and must never be read as saying: that a sensible
+   * subway route exists between these two particular points, or how long one
+   * would take. Both need a routing engine reading a schedule, and there is
+   * no `TransitRoutingSource` configured — see types.ts.
+   */
+  "nyc-subway": {
+    id: "nyc-subway",
+    label: "Subway or local bus",
+    legs: [SUBWAY_LEG],
+    unmodeled: null,
+  },
   "jfk-subway": {
     id: "jfk-subway",
     label: "AirTrain + subway",

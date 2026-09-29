@@ -78,8 +78,18 @@ describe("where a tariff applies", () => {
     expect(transitAlternativeFor(JFK, LGA)).toBeNull();
   });
 
-  it("stays silent on an ordinary city trip", () => {
-    expect(transitAlternativeFor(MIDTOWN, BROOKLYN)).toBeNull();
+  /*
+   * This asserted silence, and the silence was deliberate: there was no
+   * general city fare model and the module declined to invent one. What
+   * changed is not that standard but what is known — the MTA's flat fare
+   * with free transfers is a published rule, already in tariffs.ts with a
+   * source and a date, so the price of a journey between two served points
+   * needs no routing. The journey itself still does, and is still absent.
+   */
+  it("prices an ordinary city trip at the one published fare", () => {
+    const alt = transitAlternativeFor(MIDTOWN, BROOKLYN)!;
+    expect(alt.fareMinor).toBe(SUBWAY_LEG.fareMinor);
+    expect(alt.durationSeconds).toBeNull();
   });
 });
 
@@ -178,5 +188,59 @@ describe("where one subway fare can actually reach", () => {
     /* West of the Hudson at any latitude the network does not cross. */
     expect(subwayServed({ lat: 40.75, lng: -74.03 })).toBe(false);
     expect(subwayServed({ lat: 40.6, lng: -74.06 })).toBe(false);
+  });
+});
+
+/**
+ * The trip that is one swipe.
+ *
+ * The MTA charges a flat fare with free transfers, so the price of a journey
+ * between two served points is that one leg whatever the distance — a
+ * published rule rather than a model, which is what lets it be stated for a
+ * trip nobody has routed. What stays unstated is everything that needs a
+ * schedule: whether a sensible route connects these two points, and how long
+ * it takes.
+ */
+describe("a trip that stays on the network", () => {
+  const SOHO = { lat: 40.7233, lng: -74.003 };
+  const WILLIAMSBURG = { lat: 40.7081, lng: -73.9571 };
+
+  it("prices an intra-city trip at the one published fare", () => {
+    const alt = transitAlternativeFor(SOHO, WILLIAMSBURG)!;
+    expect(alt.fareMinor).toBe(SUBWAY_LEG.fareMinor);
+    expect(alt.label).toBe("Subway or local bus");
+  });
+
+  it("carries the fare's source and the date it was read", () => {
+    const alt = transitAlternativeFor(SOHO, WILLIAMSBURG)!;
+    expect(alt.sources).toHaveLength(1);
+    expect(alt.sources[0]!.url).toBe(SUBWAY_LEG.source);
+    expect(alt.sources[0]!.verifiedOn).toBe(SUBWAY_LEG.verifiedOn);
+  });
+
+  it("states no journey time, and says why", () => {
+    const alt = transitAlternativeFor(SOHO, WILLIAMSBURG)!;
+    expect(alt.durationSeconds).toBeNull();
+    expect(alt.durationNote).toMatch(/not modeled/);
+    /* The claim is about the tariff, never about a route existing. */
+    expect(alt.durationNote).toMatch(/whether a route connects/i);
+  });
+
+  it("needs both ends on the network, not one", () => {
+    const jerseyCity = { lat: 40.7178, lng: -74.0431 };
+    expect(transitAlternativeFor(SOHO, jerseyCity)).toBeNull();
+    expect(transitAlternativeFor(jerseyCity, SOHO)).toBeNull();
+  });
+
+  it("leaves the airport runs to their own, more specific tariff", () => {
+    const alt = transitAlternativeFor(MIDTOWN, JFK)!;
+    expect(alt.id).toBe("jfk-subway");
+    expect(alt.fareMinor).toBeGreaterThan(SUBWAY_LEG.fareMinor);
+  });
+
+  it("says nothing at all outside the city", () => {
+    const la = { lat: 34.0407, lng: -118.2468 };
+    const hollywood = { lat: 34.0928, lng: -118.3287 };
+    expect(transitAlternativeFor(la, hollywood)).toBeNull();
   });
 });

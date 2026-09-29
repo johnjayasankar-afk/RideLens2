@@ -168,7 +168,8 @@ export function transitAlternativeFor(
   if (fromAirport && toAirport) return null;
 
   const airport = fromAirport ?? toAirport;
-  if (!airport) return null;
+  /* No airport at either end: a trip inside the city is one flat fare. */
+  if (!airport) return subwayAlternativeFor(pickup, destination);
 
   const other = fromAirport ? destination : pickup;
   if (!subwayServed(other)) return null;
@@ -176,6 +177,46 @@ export function transitAlternativeFor(
   const tariff = TARIFFS[airport.tariffId];
   if (!tariff) return null;
   return toAlternative(tariff, airport.name);
+}
+
+/**
+ * A trip that begins and ends on the subway network.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ The panel answered "Is there a way without one?" with "RideLens has      │
+ * │ nothing for this route" on any trip that was not an airport run — which  │
+ * │ is most trips, and most of them are one subway ride. The fare was        │
+ * │ already in the tree, sourced to mta.info and dated, and already treated  │
+ * │ as covering an arbitrary city-wide journey by the airport tariffs that   │
+ * │ bundle it.                                                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The line this draws, precisely: the MTA's flat fare with free transfers is
+ * a published rule, so "one fare" is a fact about the tariff and needs no
+ * routing. Whether a sensible route exists between these two points, and how
+ * long it takes, are facts about a schedule — and there is no schedule source
+ * here, so both are stated as absent rather than estimated. Estimating a
+ * subway time from road distance was considered and rejected: it is a
+ * function of line topology, transfers and headway, and off-peak the wait
+ * alone can exceed the whole drive.
+ */
+function subwayAlternativeFor(pickup: Point, destination: Point): TransitAlternative | null {
+  if (!subwayServed(pickup) || !subwayServed(destination)) return null;
+  const tariff = TARIFFS["nyc-subway"];
+  if (!tariff) return null;
+  return {
+    id: tariff.id,
+    label: tariff.label,
+    kind: "transit",
+    fareMinor: tariffTotalMinor(tariff),
+    durationSeconds: null,
+    durationNote:
+      "One fare, with free transfers. No schedule source is configured, so whether a " +
+      "route connects these two points, and how long it would take, are not modeled here.",
+    unmodeled: tariff.unmodeled,
+    tariff,
+    sources: tariff.legs.map((l) => ({ label: l.label, url: l.source, verifiedOn: l.verifiedOn })),
+  };
 }
 
 /** A walk is worth offering only when it is actually walkable. */
