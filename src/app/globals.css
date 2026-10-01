@@ -7834,11 +7834,23 @@ em {
 .comp-more {
   grid-column: -1;
 }
-/* Narrow: three columns of a three-word label and a figure do not fit in
-   358px, and the measured wrap was the thing that put a figure left of the
-   one before it. Two columns, so a row is a label and its money. */
+/* Narrow: one column, so a row is a label and its money.
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ Two columns were tried first and measured worse than they looked. Each   │
+   │ card's legend is its own grid, so a `minmax(0,1fr) auto` pair sizes its  │
+   │ second column to that card's own content: the money right-edges came     │
+   │ back [94,284] on the hero row and [94,195,356] below it, and the Explain │
+   │ control sat at two x again. One column removes the degree of freedom.    │
+   └──────────────────────────────────────────────────────────────────────────┘
+   The control takes the full width on its own row rather than `-1`, which in
+   a one-column grid would stack it under the last figure at a different
+   inset on every card. */
 @media (max-width: 560px) {
   .comp-legend {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .comp-more {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
