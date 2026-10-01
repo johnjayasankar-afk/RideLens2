@@ -264,8 +264,21 @@
   --status-h: 32px;
   /* One register cell, fixed for the same reason. */
   --reg-row: 60px;
-  /* One inset for every label and rule in the results column. */
-  --pad-x: 18px;
+  /*
+   * One inset for every label and rule in the results column — and it is the
+   * deck's and the card's inset, not an inset of its own.
+   *
+   * At 18 it was neither. Measured at 1440: the console register's labels
+   * start at x=558 and the deck's tab strip and the card content both start
+   * at x=560. One object out of three, two pixels off its neighbours, down
+   * the full height of the column — close enough to read as a mistake rather
+   * than as a margin.
+   *
+   * `--s-7` is 20px and is the rung the other two already use. Narrowing each
+   * cell by 4px is safe: measured across five widths, the tightest register
+   * cell has 14.8px of slack at 1024 and 28.8px at 1440.
+   */
+  --pad-x: var(--s-7);
   /* The small-caps key in a readout is tracked further than in a caption. */
   --key-track: 0.13em;
   /* Every figure in the product right-aligns inside this. 11.5ch of IBM Plex
@@ -7744,5 +7757,88 @@ em {
      the press. */
   .quote-list > .quote-card:not(.hero) .book:hover {
     box-shadow: inset 0 0 0 1px var(--forest-2);
+  }
+}
+
+/* ── The masthead stands down ──────────────────────────────────────────────
+   A magazine prints its name on the cover and a running head on the spread.
+
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ `is-compact` is set in compare-form.tsx whenever both endpoints are      │
+   │ known — at every width — but the block that honours it lives inside      │
+   │ `@media (max-width: 959px)`. So on a phone the hero stood down and on a  │
+   │ 1440px screen it did not: measured, `.hero-panel` is 1,094.8px tall and  │
+   │ `h1.brand` resolves to 64px from `clamp(44px, 5.4vw, 64px)` while the    │
+   │ reader is comparing six prices beside it. The desktop half of the rule   │
+   │ was never written.                                                       │
+   └──────────────────────────────────────────────────────────────────────────┘
+
+   `--t-7` rather than a new rung: the scale clusters at its small end and the
+   answer to that is to climb to the end it already has, not to extend it.
+
+   `h1.brand` stays in the DOM — `.hero-panel` is `aria-labelledby=
+   "brand-heading"`, so hiding the heading would strip the section's
+   accessible name. The eyebrow stays: it is the only place the page says what
+   time of day it is modelling. The quick-picks stay: on a wide screen the
+   sidebar has room, and they are how a reader changes destination without
+   typing. Only the two things that introduce the product to someone who is
+   already using it go. */
+@media (min-width: 960px) {
+  .hero-panel.is-compact .lede,
+  .hero-panel.is-compact .provider-strip {
+    display: none;
+  }
+  .hero-panel.is-compact h1.brand {
+    margin-bottom: var(--s-7);
+    font-size: var(--t-7);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ── The breakdown legend is a table ───────────────────────────────────────
+   This panel compares the same three quantities six times, and drew them with
+   `flex-wrap`.
+
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ Measured at 1440 in light: the money figures land at x=[652,871] on the  │
+   │ hero row and [652,871,1062] below it, and the identical "Explain"        │
+   │ control sits at two distinct x — 919 and 1117 — down one list. At 390    │
+   │ the third figure wraps to x=170, which is *left* of the second at 197,   │
+   │ so the columns read in the wrong order.                                  │
+   └──────────────────────────────────────────────────────────────────────────┘
+
+   Three equal columns and a fixed fourth put every quantity on one vertical.
+
+   `grid-column: -1` rather than `4`: the hero row has two slices and the rest
+   have three, so a fixed fourth column would put the hero's control in the
+   third slice's column — the exact misalignment this rule exists to remove.
+
+   `.comp-figure` is not touched: it lives in `.comp-top`, not in here. */
+.comp-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  column-gap: var(--s-6);
+  row-gap: var(--s-2);
+}
+.comp-key {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+.comp-key strong {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.comp-more {
+  grid-column: -1;
+}
+/* Narrow: three columns of a three-word label and a figure do not fit in
+   358px, and the measured wrap was the thing that put a figure left of the
+   one before it. Two columns, so a row is a label and its money. */
+@media (max-width: 560px) {
+  .comp-legend {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
