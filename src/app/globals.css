@@ -2498,6 +2498,52 @@ h1.brand {
   overflow: clip;
   border-radius: var(--radius);
   box-shadow: var(--surface-1);
+  position: relative;
+}
+/*
+ * One light crossing the panel, instead of sixty bars that shine.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Measured on a throttled load: 63 running animations, 60 of them the      │
+ * │ skeleton's own bars, every one animating `backgroundPositionX` — a       │
+ * │ property no compositor can take, so it is sixty gradient repaints a      │
+ * │ frame on the one screen where nothing else is happening yet.             │
+ * │                                                                          │
+ * │ Worse under `prefers-reduced-motion`, where the global rule stops them   │
+ * │ at `background-position: 0% 0%`. On a 200%-wide gradient that renders    │
+ * │ every bar as a left-to-right ramp: sixty progress bars, all frozen at    │
+ * │ the same place, reporting a progress nothing is measuring.               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The bars are recessed channels now — the same language as every other
+ * track in the product — and the panel takes one pass of light to say a
+ * reading is being made. One element, one transform, which the compositor
+ * can take; and the global reduced-motion rule stops it honestly, because a
+ * still panel of empty channels claims nothing.
+ *
+ * `.skeletons` is already in the forced-colors enclosure list, so the
+ * gradient is dropped there for free.
+ */
+.skeletons::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Mixed from the accent rather than written as a literal: the rule this
+     replaces carried a comment about exactly that mistake. */
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--forest-2) 16%, transparent) 50%,
+    transparent
+  );
+  transform: translate3d(-60%, 0, 0);
+  animation: sk-scan var(--dur-5) linear infinite;
+}
+@keyframes sk-scan {
+  to {
+    transform: translate3d(160%, 0, 0);
+  }
 }
 .skeleton-card {
   display: grid;
@@ -2554,26 +2600,7 @@ h1.brand {
 }
 .sk-price,
 .sk-cta {
-  background: linear-gradient(90deg, var(--soft), var(--line-2), var(--soft));
-  background-size: 200% 100%;
-  animation: var(--dur-5) linear infinite shimmer;
-}
-/* Staggered, so four cards read as four things arriving rather than one
-   flashing block. */
-.skeleton-card:nth-child(2) .sk-line,
-.skeleton-card:nth-child(2) .sk-price,
-.skeleton-card:nth-child(2) .sk-cta {
-  animation-delay: var(--dur-1);
-}
-.skeleton-card:nth-child(3) .sk-line,
-.skeleton-card:nth-child(3) .sk-price,
-.skeleton-card:nth-child(3) .sk-cta {
-  animation-delay: var(--dur-2);
-}
-.skeleton-card:nth-child(4) .sk-line,
-.skeleton-card:nth-child(4) .sk-price,
-.skeleton-card:nth-child(4) .sk-cta {
-  animation-delay: var(--dur-3);
+  background: var(--soft);
 }
 /* .quote-card-header's own track list, not an approximation of it. */
 .sk-head {
@@ -2590,12 +2617,9 @@ h1.brand {
 .sk-line {
   height: 12px;
   border-radius: 999px;
-  /* Tokens, so the sweep is dark-on-light and light-on-dark. Written as
-     forest literals it was a dark shimmer on a dark ground — every loading
-     state in dark mode was a blank space. */
-  background: linear-gradient(90deg, var(--soft), var(--line-2), var(--soft));
-  background-size: 200% 100%;
-  animation: var(--dur-5) linear infinite shimmer;
+  /* A recessed bar, not a shining one. See `.skeletons::after` for why the
+     sweep moved off the sixty bars and onto the one panel. */
+  background: var(--soft);
 }
 .w40 {
   width: 40%;
@@ -3399,14 +3423,6 @@ h1.admin-title {
     transform: none;
   }
 }
-@keyframes shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: -100% 0;
-  }
-}
 @keyframes refresh-slide {
   0% {
     transform: translateX(-120%);
@@ -3739,6 +3755,38 @@ h1.admin-title {
   *::after {
     transition: none !important;
     animation: none !important;
+  }
+
+  /*
+   * The three rows that scroll sideways keep their edge fades.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ A scroll-driven animation is not motion. Nothing moves by itself:    │
+   * │ the mask reports where the reader has already scrolled to. Switching │
+   * │ it off froze all three at their declared values, which are the       │
+   * │ opposite of the truth at the end of a row.                           │
+   * │                                                                      │
+   * │ Measured at 390 with the console strip pushed to scrollLeft 343 of   │
+   * │ 343: without a preference, `--scroll-fade-l` is 28px and             │
+   * │ `--scroll-fade-r` is 0 — correct, there is content behind you and    │
+   * │ none ahead. With `reduce`, it reads 0 and 28px, and ten running      │
+   * │ animations become zero. The reader who asked for less motion is told │
+   * │ "there is more this way" at the end of the row, which is exactly the │
+   * │ failure the fade was written to fix.                                 │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * Both longhands have to be restated. `animation: none !important` above
+   * resets animation-*name* as well as the timeline, so restating the timeline
+   * alone is a silent no-op: it leaves the name at `none` and the fade frozen
+   * at its declared 0px/28px, which is the state measured.
+   */
+  @supports (animation-timeline: scroll()) {
+    .console .market-pulse,
+    .deck-tabstrip,
+    .filters {
+      animation: scroll-fade-edges linear both !important;
+      animation-timeline: scroll(self inline) !important;
+    }
   }
 }
 
