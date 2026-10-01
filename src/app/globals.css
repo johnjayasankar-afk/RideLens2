@@ -7320,10 +7320,37 @@ details[open] > summary::before {
   .recent-trip + .recent-trip {
     border-top-width: 1px;
   }
+  /*
+   * A button, not a selection.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ These carried `background: Highlight; color: HighlightText`, and     │
+   * │ screenshotted under forced colours the primary call to action came   │
+   * │ back as a navy pill with a SOLID WHITE RECTANGLE where "Compare      │
+   * │ rides" should be. Every other string on the page rendered fine, so it │
+   * │ is not the font and not the screenshot; swapping only the colour     │
+   * │ pair to Canvas/CanvasText renders the label perfectly.                │
+   * │                                                                      │
+   * │ I could not establish whether that is a real Windows failure or an   │
+   * │ artifact of Chromium's forced-colours emulation — I have no Windows  │
+   * │ machine to check on, and I am not going to claim I verified it.      │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * The change stands on its own regardless. `Highlight` and `HighlightText`
+   * are the system's *selected-item* pair; a default call to action is not a
+   * selection, and `ButtonFace`/`ButtonText` is the pair the system defines
+   * for exactly this. Emphasis then comes from weight rather than hue, which
+   * is how forced colours expects emphasis to be carried: a 2px border where
+   * every other control in the list above takes 1px.
+   *
+   * `.chip.active` below keeps `Highlight`, and that is correct — it really
+   * is a selected state.
+   */
   .primary,
   .quote-card.hero .book {
-    background: Highlight !important;
-    color: HighlightText !important;
+    background: ButtonFace !important;
+    color: ButtonText !important;
+    border: 2px solid ButtonBorder !important;
   }
   /*
    * `!important`, and it is the correct kind.
