@@ -7953,3 +7953,57 @@ em {
     grid-column: 1 / -1;
   }
 }
+
+/* ── One structural interval ───────────────────────────────────────────────
+   The results column is one rhythm. `.results` is `gap: var(--space-2)` — 16px
+   — and everything in it sits at that one interval, so a reader cannot tell
+   the gap between two parts of the same thing from the gap between the
+   apparatus, the answer and the working.
+
+   `--s-12` is the 4px grid's next structural step. The margin is the
+   *difference*, so nothing else on the column moves and the three joints that
+   are actually joints read 64.
+
+   `margin` is not one of the six properties css-scales counts, and the value
+   is a calc of two tokens rather than a literal. Static, present at first
+   paint, so no layout moves after load. */
+.hero-quote,
+.all-options {
+  margin-top: calc(var(--s-12) - var(--space-2));
+}
+
+/* ── The deck's plate ──────────────────────────────────────────────────────
+   Nothing to report is a reading; so is an instrument's own serial number.
+
+   `--panel-min` reserves 420px so switching tabs cannot yank the page, and it
+   cannot be lowered — Timing measures 746px. Measured against that reserve,
+   Spread fills 217px, Return 249, Split 338 and Transit 88, which leaves the
+   thinnest panel ending in 332px of nothing. This reclaims 52 of them and is
+   honest about the rest: the remaining void is a content problem, not a CSS
+   one, and papering over it with a taller plate would be furniture.
+
+   Engraved rather than ruled, and that is deliberate: four of the eight panels
+   already render a `.deck-foot` with its own `border-top`, so a second ruled
+   footnote beneath them would be two stacked rules. A recessed plate is a
+   different object — chassis, not commentary. */
+.deck-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3) var(--s-6);
+  min-height: var(--ctl-md);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-2);
+  background: var(--well);
+  box-shadow:
+    var(--well-1),
+    inset 0 0 0 1px var(--line);
+  font: 500 var(--t-1) / var(--ctl-md) var(--font-mono);
+  letter-spacing: var(--key-track);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.deck-plate b {
+  font-weight: 500;
+  color: var(--ink-2);
+}

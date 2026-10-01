@@ -43,6 +43,8 @@ import { TradeoffLedger } from "./tradeoff-ledger";
 import { openPanel, usePanel } from "./use-panel";
 
 import { PANELS as TABS, type PanelId as TabId } from "@/lib/domain/panels";
+import { RATE_CARD_VERIFIED_ON } from "@/lib/sources/ratecard/freshness";
+import { MODEL_VERSION } from "@/lib/sources/ratecard/model-params";
 import type { NormalizedQuote, QuoteSession } from "@/lib/domain/types";
 
 export function InsightsDeck({
@@ -250,6 +252,38 @@ export function InsightsDeck({
           </div>
         ) : null,
       )}
+      {/*
+        The instrument's own plate.
+
+        Four figures the session already carries: nothing here is computed for
+        display and nothing is estimated. `sourcesSucceeded` over
+        `sourcesExpected` is the honest pair rather than a count — a run where
+        one source failed prints 3/4, which is the thing worth knowing.
+
+        It also gives the thinnest panels a floor to end on. Measured against
+        the 420px reserve, Transit fills 88px; this reclaims 52 of the 332
+        that were left over. The rest is a content problem and is left visible
+        rather than padded.
+      */}
+      <p className="deck-plate">
+        <span>
+          Model <b>{MODEL_VERSION}</b>
+        </span>
+        <span>
+          Rate cards <b>{RATE_CARD_VERIFIED_ON}</b>
+        </span>
+        {session ? (
+          <span>
+            Sources{" "}
+            <b>
+              {session.coverage.sourcesSucceeded.length}/{session.coverage.sourcesExpected.length}
+            </b>
+          </span>
+        ) : null}
+        <span>
+          Options <b>{quotes.length}</b>
+        </span>
+      </p>
     </section>
   );
 }
