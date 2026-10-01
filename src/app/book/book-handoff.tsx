@@ -138,7 +138,12 @@ function BookInner() {
           </div>
         ) : null}
         <div>
-          <dt className="muted">Observed estimate</dt>
+          {/*
+            "Observed" is the one word this product may never use about its own
+            figure, and it was on the last screen before the rider leaves. The
+            string appeared exactly once in src/.
+          */}
+          <dt className="muted">Modeled estimate</dt>
           <dd className="book-price">{price}</dd>
         </div>
       </dl>

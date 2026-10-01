@@ -812,3 +812,53 @@ test.describe("the console register never truncates a figure", () => {
     });
   }
 });
+
+/**
+ * A shared link is a page, not a thumbnail.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Every link the Share button produced was a dead page under a correct     │
+ * │ preview image. `GET /c/<id>` answered **200** and rendered "This         │
+ * │ comparison is not here", while `/api/quotes/<id>` returned the whole     │
+ * │ session and `/c/<id>/opengraph-image` rendered a PNG of the real prices. │
+ * │                                                                          │
+ * │ Next compiles route handlers and React Server Components into separate   │
+ * │ server graphs, so the module-scope session cache was constructed twice   │
+ * │ in one process and neither copy saw the other's writes. The OG image is  │
+ * │ a handler — same graph as the writer — which is why it worked.           │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The page answering 200 is why this survived: a status assertion passes on a
+ * page that says the thing does not exist. So this asserts the prices.
+ */
+test.describe("a comparison somebody was sent", () => {
+  test("renders the prices it previews, and re-runs the same ranking", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    let sessionId: string | null = null;
+    page.on("response", (r) => {
+      const url = r.url();
+      if (url.includes("/api/walk?session=")) sessionId = new URL(url).searchParams.get("session");
+    });
+
+    /* `fastest`, because the re-run link used to drop the ranking entirely. */
+    await page.goto(
+      "/?from=40.7225,-73.9945,14%20Prince%20St&to=40.6446,-73.7797,JFK%20Terminal%204&mode=fastest",
+    );
+    await expect(page.locator(".quote-card").first()).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => sessionId, { timeout: 30_000 }).not.toBeNull();
+
+    const response = await page.goto(`/c/${sessionId}`);
+    expect(response?.status()).toBe(200);
+
+    const body = await page.locator("body").innerText();
+    expect(body, "the shared page says the comparison does not exist").not.toContain("not here");
+    /* A snapshot of a comparison has prices on it. That is the whole object. */
+    expect(body.match(/\$\d+\.\d{2}/g)?.length ?? 0).toBeGreaterThan(1);
+
+    const rerun = await page.locator('a[href*="/?from="]').first().getAttribute("href");
+    expect(rerun, "re-running a snapshot must re-run the ranking it was taken under").toContain(
+      "mode=fastest",
+    );
+  });
+});

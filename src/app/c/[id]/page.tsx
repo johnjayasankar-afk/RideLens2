@@ -109,7 +109,15 @@ export default async function SharedComparison({ params }: { params: Promise<{ i
   const ranked = rankQuotes(session.quotes, session.rankingMode, "ALL");
   const from = session.pickup.formattedAddress.split(",")[0];
   const to = session.destination.formattedAddress.split(",")[0];
-  const live = `/?from=${session.pickup.lat},${session.pickup.lng},${encodeURIComponent(from)}&to=${session.destination.lat},${session.destination.lng},${encodeURIComponent(to)}`;
+  /*
+   * `mode` carried through, so re-running the comparison re-runs *this* one.
+   *
+   * The snapshot is ranked by `session.rankingMode` three lines above, and
+   * this link omitted it — so a reader looking at a board sorted by soonest
+   * pickup, who pressed "Run this comparison now", got a board sorted by
+   * price and a different order from the one they had just been shown.
+   */
+  const live = `/?from=${session.pickup.lat},${session.pickup.lng},${encodeURIComponent(from)}&to=${session.destination.lat},${session.destination.lng},${encodeURIComponent(to)}&mode=${session.rankingMode}`;
 
   return (
     <div className="shell snapshot">

@@ -32,11 +32,46 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /** Long enough to open a shared link and report a fare against it. */
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** The in-process cache. Bounded, because an instance can live a long time. */
-const cache = new MemoryTtlStore<QuoteSession>({ maxEntries: 500 });
-
-/** Insertion-ordered ids, so the admin page can list recent work from memory. */
-const recentIds: string[] = [];
+/**
+ * One cache per process, not one per module graph.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ Next compiles route handlers and React Server Components into separate   │
+ * │ server graphs, so a module-scope `new MemoryTtlStore()` is constructed   │
+ * │ TWICE in one process and neither copy ever sees the other's writes.      │
+ * │                                                                          │
+ * │ Measured against the running build, on one session id, seconds apart:    │
+ * │   GET /api/quotes/<id>        → 200, the whole 16 KB session             │
+ * │   GET /c/<id>                 → 200, rendering "This comparison is not   │
+ * │                                 here. This deployment has no database…"  │
+ * │   GET /c/<id>/opengraph-image → 200, a PNG of the real comparison        │
+ * │                                                                          │
+ * │ So every link the Share button has ever produced was a dead page under   │
+ * │ a correct thumbnail — and the page answers 200, which is why no status   │
+ * │ check ever caught it. The OG image works because it is a route handler,  │
+ * │ in the same graph as the writer; the page is an RSC, in the other.       │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * `globalThis` is the only scope both graphs share. This does not make a fleet
+ * of instances coherent — that is what Supabase is for, and
+ * `sessionsAreDurable()` still says so on the page itself — but it makes one
+ * process coherent, which is the difference between a share link that works on
+ * a single deployment and one that never works anywhere.
+ */
+interface SessionMemory {
+  cache: MemoryTtlStore<QuoteSession>;
+  recentIds: string[];
+}
+const MEMORY_KEY = "__ridelens_session_memory__" as const;
+const globalScope = globalThis as typeof globalThis & { [MEMORY_KEY]?: SessionMemory };
+const memory: SessionMemory = (globalScope[MEMORY_KEY] ??= {
+  /** Bounded, because an instance can live a long time. */
+  cache: new MemoryTtlStore<QuoteSession>({ maxEntries: 500 }),
+  /** Insertion-ordered ids, so the admin page can list recent work. */
+  recentIds: [],
+});
+const cache = memory.cache;
+const recentIds = memory.recentIds;
 
 function remember(session: QuoteSession): void {
   cache.set(session.id, session, SESSION_TTL_MS);
