@@ -52,15 +52,27 @@ const NEED = 3;
  */
 const ALLOWED = [
   /*
-   * Empty, and that is the point.
-   *
    * The first version of this list exempted anything whose class ended in
    * -track, meaning to let an unfilled remainder read as unfilled — and it
    * matched `axis-bar | axis-track`, which is a band against its ruler at
    * 2.13:1, the exact thing this file exists to find. An exemption written
-   * as a pattern exempts what it matches, not what it meant. If one is ever
-   * needed, write the pair out and say why it reads anyway.
+   * as a pattern exempts what it matches, not what it meant. So each one is
+   * written out in full.
    */
+  {
+    /*
+     * The wordmark's two dots against its own tile, 1.86:1.
+     *
+     * Found the day this guard learned to read pseudo-element fills, and it
+     * is a true reading of a thing SC 1.4.11 does not govern: the criterion
+     * exempts logotypes outright, the mark is `aria-hidden`, and it carries
+     * no information a reader has to resolve. Raising its contrast would
+     * mean redrawing the logo to satisfy a rule the logo is exempt from.
+     */
+    a: /^brand-mark::after$/,
+    b: /^brand-mark$/,
+    why: "the wordmark's own glyph: a logotype, which SC 1.4.11 exempts, and aria-hidden",
+  },
 ];
 
 const MODEL_VERSION = (readFileSync("src/lib/sources/ratecard/model-params.ts", "utf8").match(
@@ -186,6 +198,46 @@ const AUDIT = () => {
     }
   }
 
+  /*
+   * A fill drawn as a pseudo-element inside its own track.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ The scan below walks real elements, so a reading painted by `::after` │
+   * │ is invisible to it — and the price band under every card is exactly   │
+   * │ that: a 3px channel whose fill is a pseudo-element, which also puts   │
+   * │ it under the 6px floor that keeps cards-inside-sections out of the    │
+   * │ track pass. So the newest non-text reading in the product was the one │
+   * │ pair this guard could not see.                                        │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * Only `::after` and only where it actually paints: a pseudo-element with
+   * no background is not a reading. The height floor is 2px rather than 6,
+   * because a bar inside a ruler is allowed to be thin — that is what makes
+   * it a bar.
+   */
+  for (const el of document.querySelectorAll("*")) {
+    if ((el.className?.toString?.() || "").includes("maplibregl")) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 6 || r.height < 2 || r.height > 40) continue;
+    const after = getComputedStyle(el, "::after");
+    if (!after || after.content === "none") continue;
+    const fb = fillOf(el);
+    if (!fb) continue;
+    /* Composited over the track it sits on, the way every other pair here is:
+       a translucent fill reads against what is behind it, not in isolation. */
+    const raw = parse(after.backgroundColor);
+    const fa = raw && raw.a > 0.02 ? over(raw, fb) : null;
+    if (!fa) continue;
+    const L1 = lum(fa);
+    const L2 = lum(fb);
+    out.push({
+      kind: "in track",
+      ratio: +((Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05)).toFixed(2),
+      a: `${name(el)}::after`,
+      b: name(el),
+    });
+  }
+
   /* A fill inside the track it is measured on. */
   for (const el of document.querySelectorAll("*")) {
     if ((el.className?.toString?.() || "").includes("maplibregl")) continue;
@@ -298,7 +350,15 @@ for (const os of ["light", "dark"]) {
 }
 await browser.close();
 
-const exempt = (f) => ALLOWED.some((r) => r.a.test(f.a) || r.a.test(f.b));
+/*
+ * An exemption names a PAIR, and both halves have to match.
+ *
+ * This read `r.a.test(f.a) || r.a.test(f.b)`, which exempts anything either
+ * side of a pattern touches — the same shape as the `-track` regex that once
+ * let `axis-bar | axis-track` at 2.13:1 through this guard. One pattern
+ * against either side is a side exemption wearing a pair's clothes.
+ */
+const exempt = (f) => ALLOWED.some((r) => r.a.test(f.a) && r.b.test(f.b));
 const rows = [...worst.values()].sort((x, y) => x.ratio - y.ratio);
 const fails = rows.filter((f) => f.ratio < NEED && !exempt(f));
 

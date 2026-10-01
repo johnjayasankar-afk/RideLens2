@@ -2835,11 +2835,6 @@ h1.brand {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.per-mile {
-  margin: 5px 0 0;
-  font: 400 var(--t-2)/1.2 var(--font-mono);
-  letter-spacing: 0;
-}
 .hero-label {
   margin: 0;
   font-size: var(--t-4);
@@ -3731,9 +3726,6 @@ h1.admin-title {
   }
   .price {
     font-size: var(--t-8);
-  }
-  .per-mile {
-    margin: 0;
   }
   .route-summary {
     font-size: var(--t-4);
@@ -7900,5 +7892,64 @@ em {
   .comp-more {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+}
+
+/* ── The band ──────────────────────────────────────────────────────────────
+   One axis under every price. See the comment in `.price-block` for why it
+   replaced the per-mile line rather than joining it.
+
+   The track recipe comes from the material block above, so this row and the
+   Spread panel are the same physical object rather than two drawings of one
+   idea. Only the fill and the geometry are here. */
+.band {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--band-h);
+  margin-top: var(--s-3);
+  overflow: clip;
+  border-radius: var(--r-1);
+  background: var(--well);
+}
+.band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  /* The fallback draws an EMPTY track, which is the correct reading for "no
+     axis yet". A fallback of 1 would draw a full-width bar, which reads as
+     "this option spans the entire market" — a claim the app does not have. */
+  transform: translateX(var(--band-lo, 0%)) scaleX(var(--band-w, 0));
+  background: var(--ink-3);
+  /* Transform, not inset: auto-refresh re-prices every 55s and the six bands
+     re-seat together, so this has to be compositor-only. The blanket
+     reduced-motion rule kills the transition. */
+  transition: transform var(--dur-3) var(--ease);
+}
+.quote-card.hero .band::after {
+  background: var(--mint-fill);
+}
+/*
+ * The phone correction.
+ *
+ * Below 520 `.price-block` is a baseline flex row and the per-mile line sat
+ * *beside* the price — measured, the block is 54px at 390 against 44.8 at
+ * 1440. So "the band takes the slot the old line vacated" is true at 1440 and
+ * false at 390, which is the viewport with the least headroom. Wrapping
+ * explicitly with no row gap makes the band's contribution exactly
+ * `--band-h` + `--s-3` at both widths, so one piece of arithmetic covers the
+ * whole app.
+ */
+@media (max-width: 520px) {
+  .price-block {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .band {
+    flex-basis: 100%;
+  }
+  .skeleton-card .band {
+    grid-column: 1 / -1;
   }
 }

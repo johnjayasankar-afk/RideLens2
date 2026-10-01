@@ -21,6 +21,7 @@ import {
   computeFreshness,
   expiryCountdown,
 } from "@/lib/domain/freshness";
+import { buildPriceAxis, type AxisBar } from "@/lib/domain/price-axis";
 import { categoryLabel } from "@/lib/domain/taxonomy";
 import { comparePrices, rankQuotes } from "@/lib/domain/ranking";
 import { withTransition } from "@/lib/view-transition";
@@ -321,6 +322,7 @@ function QuoteCard({
   deltaMinor,
   deltaNote,
   waitDeltaSec,
+  band,
   index = 0,
   now,
   sessionId,
@@ -328,6 +330,14 @@ function QuoteCard({
 }: {
   quote: NormalizedQuote;
   hero?: boolean;
+  /**
+   * This option's place on the board's shared price axis.
+   *
+   * Undefined when `buildPriceAxis` declined — fewer than two usable quotes —
+   * and the channel then draws empty rather than full. See the band's own
+   * comment in `.price-block`.
+   */
+  band?: AxisBar;
   /**
    * How much dearer than the top pick — only ever the gap between bounds.
    *
@@ -343,29 +353,6 @@ function QuoteCard({
   animate?: boolean;
 }) {
   const handoff = quote.bookingHandoff;
-  /*
-   * The rate is a band, because the price is.
-   *
-   * ┌────────────────────────────────────────────────────────────────────────┐
-   * │ This divided `rankingPriceMinor` — the fabricated midpoint — by the    │
-   * │ distance, so a card reading "$83.28 to $90.22" three lines above then  │
-   * │ printed "$4.98/mi": a single-point rate for a price the product had    │
-   * │ just refused to state as a point. QUOTE_SEMANTICS.md:23 says the       │
-   * │ midpoint is ranking-only, and dividing it does not launder it.         │
-   * └────────────────────────────────────────────────────────────────────────┘
-   *
-   * Both bounds divided by the same distance is the same band in another
-   * unit, which states nothing the card does not already state. Where the
-   * band is a point — an upfront quote — the two ends agree and it renders
-   * as one figure on its own.
-   */
-  const miles =
-    quote.distanceMeters && quote.distanceMeters > 0 ? quote.distanceMeters / 1609.344 : null;
-  const perMile =
-    miles != null
-      ? { low: quote.priceMinMinor / 100 / miles, high: quote.priceMaxMinor / 100 / miles }
-      : null;
-
   const pickupSec = quote.pickupEtaSeconds;
   const waitLow = quote.metadata?.waitLowSeconds as number | undefined;
   const waitHigh = quote.metadata?.waitHighSeconds as number | undefined;
@@ -447,13 +434,55 @@ function QuoteCard({
               <CountingPrice quote={quote} animate={animate} />
             </span>
           </p>
-          {perMile != null ? (
-            <p className="per-mile muted">
-              {perMile.low.toFixed(2) === perMile.high.toFixed(2)
-                ? `$${perMile.low.toFixed(2)}/mi`
-                : `$${perMile.low.toFixed(2)}–$${perMile.high.toFixed(2)}/mi`}
-            </p>
-          ) : null}
+          {/*
+            Every price on one axis, under the price.
+
+            ┌──────────────────────────────────────────────────────────────┐
+            │ The product's thesis — these are intervals, not quotes, and   │
+            │ some of them overlap — was an argument you had to read, made  │
+            │ by a chart several thousand pixels below the decision. Six    │
+            │ bands on one axis are a single glance.                        │
+            └──────────────────────────────────────────────────────────────┘
+
+            Nothing is invented: it draws the low and the high that are
+            printed in words directly above it.
+
+            It takes the slot `.per-mile` had, and that line is gone rather
+            than moved. Distance is constant across every card on a board —
+            measured 17.4 miles on all six — so a per-mile figure was a
+            monotone rescale of the price beside it and could not reorder
+            anything. The card loses no information and gains its only
+            non-text reading.
+
+            `aria-hidden`: the figure above is the same reading in words, and
+            a screen reader should hear it once. The same bargain `.axis-bar`
+            strikes in the Spread panel.
+
+            Rendered unconditionally so the box exists on every card even when
+            `buildPriceAxis` returns null — fewer than two usable quotes —
+            where `--band-w` falls back to 0 and the channel is empty. That is
+            the correct reading for "no axis yet", and it keeps every card the
+            same height.
+
+            The 0.8% floor keeps a locked fare visible as a tick rather than
+            as nothing. Its *position* stays exact; only a sub-pixel width is
+            rounded up, and both bounds are printed above it either way.
+          */}
+          <span
+            className="band"
+            aria-hidden
+            style={
+              band
+                ? ({
+                    "--band-lo": `${(band.startFraction * 100).toFixed(3)}%`,
+                    "--band-w": Math.max(
+                      0.008,
+                      band.endFraction - band.startFraction,
+                    ).toFixed(4),
+                  } as React.CSSProperties)
+                : undefined
+            }
+          />
         </div>
       </header>
 
@@ -478,7 +507,20 @@ function QuoteCard({
 
       <div className="meta-chips">
         <span className="meta-chip">{categoryLabel(quote.normalizedCategory)}</span>
-        <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
+        {/*
+          The type, only when it is a claim the figure cannot make for itself.
+
+          Printed unconditionally this read "Range" on six cards out of six,
+          forty pixels from a price already printed as "$76.80 to $78.30" — a
+          chip restating the shape of the number beside it. But
+          QUOTE_SEMANTICS.md requires an upfront fare to be visibly a locked
+          amount, and makes a metered projection a third kind of claim, and
+          neither is legible from the figure alone. So it survives exactly
+          where it is the only thing saying something.
+        */}
+        {quote.priceType === "UPFRONT_QUOTE" || quote.priceType === "METERED_ESTIMATE" ? (
+          <span className="meta-chip">{quoteTypeLabel(quote.priceType)}</span>
+        ) : null}
         <span className={`meta-chip ${tone.className}`}>{tone.label}</span>
         {showWeather ? <span className="meta-chip market-chip is-rain">Weather lift</span> : null}
         {/*
@@ -841,6 +883,22 @@ export function QuoteResults({
 
   const everythingModeled = ranked.length > 0 && ranked.every((q) => provenanceOf(q).modeled);
   const rest = ranked.slice(1);
+  /*
+   * The ruler the Spread panel draws, drawn where the reader is already
+   * looking.
+   *
+   * `buildPriceAxis`, not a local min/max: the function carries a $1.00 floor
+   * on the span, and a hand-rolled axis silently omits it — so on a tightly
+   * clustered board the row would draw different fractions from the panel and
+   * the two would contradict each other. `ranked` is the same list the deck
+   * receives, so they cannot.
+   *
+   * No new module ships: price-axis.ts is already in the client bundle, via
+   * the deck's static import of the panel that draws it.
+   */
+  const axis = useMemo(() => buildPriceAxis(ranked), [ranked]);
+  const bandFor = (q: NormalizedQuote): AxisBar | undefined =>
+    axis?.bars.find((b) => b.quote.id === q.id);
 
   const agingQuotes = useMemo(() => {
     if (!hero) return false;
@@ -1515,6 +1573,13 @@ export function QuoteResults({
                   <div className="sk-line w60" />
                 </div>
                 <div className="sk-price" />
+                {/*
+                  The placeholder carries the band's box so the two
+                  silhouettes cannot drift. Literally the same class, so the
+                  geometry is written once: `--band-w` falls back to 0 and it
+                  paints an empty channel.
+                */}
+                <span className="band" aria-hidden />
               </div>
               <div className="sk-row">
                 <div className="sk-line" />
@@ -1574,6 +1639,7 @@ export function QuoteResults({
             sessionId={session?.id}
             quote={hero}
             hero
+            band={bandFor(hero)}
             index={0}
             now={now}
             animate={animateEntrance}
@@ -1630,6 +1696,7 @@ export function QuoteResults({
                 sessionId={session?.id}
                 key={`${q.provider}:${q.providerProductId || q.providerProductName}`}
                 quote={q}
+                band={bandFor(q)}
                 index={i + 1}
                 now={now}
                 animate={animateEntrance}
