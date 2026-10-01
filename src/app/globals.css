@@ -333,6 +333,66 @@
      group's `box-shadow: none` was written to stop, and it was right. */
   --lit-0: inset 0 1px 0 var(--lit-edge), 0 0 0 1px var(--lit-ring);
 
+  /*
+   * Where two rows of one enclosure meet.
+   *
+   * Four enclosures in this file are one box holding several rows, and all
+   * four draw the join as `border-top: 1px solid var(--line)` — a diagram of
+   * an edge rather than an edge. In dark `--line` is rgba(190,226,205,0.16):
+   * *lighter* than both slabs it divides, so the upper row's foot is the
+   * brightest thing about it, which is the opposite of what two stacked
+   * surfaces do under a lamp above them.
+   *
+   * The geometry stays a 1px border — removing it would shrink every row by a
+   * pixel and strand the forced-colors rule that names it. Only the colour
+   * changes, and a lip underneath catches the light.
+   */
+  --seam-line: var(--line);
+  --seam: inset 0 4px 5px -4px rgba(28, 51, 38, 0.11);
+
+  /*
+   * A channel cut into a surface, rather than a lighter rectangle drawn on it.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ Every chart track in the product is a recess drawn as a flat colour   │
+   * │ and a ring, and measured on the running build the flat colour does    │
+   * │ not survive contact with its own background: `.axis-track` is         │
+   * │ rgb(16,26,21) on the deck's rgb(18,28,22) in dark — 1.02:1 — and      │
+   * │ rgb(236,233,225) on rgb(241,239,233) in light, 1.06:1. The one panel  │
+   * │ whose entire job is to be a shared ruler had no visible ruler, in     │
+   * │ either scheme, and a chart whose scale cannot be seen is a chart the  │
+   * │ reader cannot check.                                                  │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * Shadow only. The background colour is untouched, so every ratio
+   * `fill-audit.mjs` measures — it reads computed `backgroundColor` — is
+   * exactly what it was, and the bands keep the separation it holds them to.
+   * The floor highlight stays at 1px because these tracks are 14px tall and a
+   * thicker inset on a 14px box reads as a pipe.
+   */
+  --well-1: inset 0 1px 2px rgba(28, 51, 38, 0.11), inset 0 -1px 0 var(--paper-hi);
+
+  /*
+   * The thinnest mark that reads as a *length* rather than a dot.
+   *
+   * Not a rung on an existing ladder: it is the first mark in the product
+   * that is neither text nor a chart inside the deck, and the leader's band
+   * on a typical route is about 2% of the axis — so it has to survive being
+   * narrow.
+   */
+  --band-h: 3px;
+
+  /*
+   * The interval between two sections of an argument.
+   *
+   * 48 was the top of the space ladder because the tallest thing in the file
+   * was a page margin, not a gap between one idea and the next. `--s-5` (12px)
+   * appears 122 times and `--s-8` through `--s-11` twenty times between them:
+   * the page has essentially one rhythm, and a reader cannot tell a structural
+   * gap from one that is merely a little larger.
+   */
+  --s-12: 64px;
+
   --fig-col: 11.5ch;
   /* The deck's one vertical: row names, and the first character of every
      caption under a chart, sit on it. */
@@ -510,6 +570,12 @@
     --lit-edge: rgba(190, 240, 215, 0.34);
     --lit-ring: rgba(76, 196, 146, 0.42);
     --lit-cast: rgba(43, 150, 110, 0.3);
+
+    /* Dark inverts the seam: the groove is the shadow and the lip above it
+       catches the lamp, where light cut the groove and lit the floor. */
+    --seam-line: rgba(0, 0, 0, 0.45);
+    --seam: inset 0 1px 0 rgba(190, 226, 205, 0.14);
+    --well-1: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(190, 226, 205, 0.08);
     --paper-lo: #17231c;
     --on-surface: #2a5642;
     --on-surface-ink: #e9f1ec;
@@ -594,6 +660,12 @@
   --lit-edge: rgba(190, 240, 215, 0.34);
   --lit-ring: rgba(76, 196, 146, 0.42);
   --lit-cast: rgba(43, 150, 110, 0.3);
+
+  /* Dark inverts the seam: the groove is the shadow and the lip above it
+     catches the lamp, where light cut the groove and lit the floor. */
+  --seam-line: rgba(0, 0, 0, 0.45);
+  --seam: inset 0 1px 0 rgba(190, 226, 205, 0.14);
+  --well-1: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(190, 226, 205, 0.08);
   --paper-lo: #17231c;
   --on-surface: #2a5642;
   --on-surface-ink: #e9f1ec;
@@ -7543,4 +7615,134 @@ em {
 .deck-panel .ret-leg.is-return {
   background: var(--mint-bg);
   border-radius: var(--r-2);
+}
+
+/* ── The material ──────────────────────────────────────────────────────────
+   ┌──────────────────────────────────────────────────────────────────────────┐
+   │ Appended, and that is load-bearing rather than lazy. Three of the four    │
+   │ rules below have to beat a later declaration at equal or higher           │
+   │ specificity: `.axis-track, .comp-bar, .tor-track` is re-declared at       │
+   │ :6931 at (0,1,0), and `.console .trip-stats > div` sets                   │
+   │ `box-shadow: none` at (0,3,0). Patched where each selector first appears, │
+   │ every one of these would have been dead on arrival.                       │
+   └──────────────────────────────────────────────────────────────────────────┘ */
+
+/*
+ * The rim this file argued for and never wrote.
+ *
+ * `--edge-grad` has been in the palette since the elevation work, under a
+ * comment calling it "the only one that is allowed to look expensive" and
+ * naming the four surfaces it is for. `grep -rn edge-grad src/` returned
+ * exactly one line: its own definition. The ladder stopped there because the
+ * mechanism changes — a perimeter whose brightness falls off down the box is
+ * a background, not a shadow, and a `box-shadow` list cannot hold one. So the
+ * rung is this rule rather than another value.
+ *
+ * Exactly the four surfaces that comment reserves it for. Not the quote list
+ * and not the map slot: if everything is machined, nothing is.
+ *
+ * `position: relative` is not optional. `.console`, `.deck` and `.cmdk` are
+ * all `position: static` with no positioned ancestor at all, so an absolutely
+ * positioned `::after` on any of them escapes to the initial containing block
+ * and frames the viewport. `.quote-card.hero` already has it, which is why
+ * the omission was easy to miss.
+ *
+ * `::after` is free on all four — only `.quote-card.hero::before` is taken —
+ * and an out-of-flow child is not a grid item, so none of these gains a
+ * column.
+ */
+.console,
+.deck,
+.cmdk {
+  position: relative;
+}
+.console::after,
+.quote-card.hero::after,
+.deck::after,
+.cmdk::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--edge-grad);
+  /* `mask` before `mask-composite`: the shorthand resets the composite to
+     `add`, and the frame fills solid rather than hollowing out. */
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/*
+ * The seam, lit on the side the light is actually on.
+ *
+ * Five rows divided by one hairline read as a wireframe of a list rather than
+ * a list. The border stays as the geometry and is only recoloured, so no row
+ * changes height and the forced-colors rule that names it still applies.
+ *
+ * The register's cells are included because `--paper-grad` exists so that
+ * "every row catches light at its own top edge", and the console's five cells
+ * are the one place that intent was lost: they sit past the gradient's 140px
+ * falloff and are flat `--paper`.
+ */
+.quote-list > .quote-card + .quote-card,
+.skeleton-card + .skeleton-card {
+  border-top-color: var(--seam-line);
+}
+.quote-list > .quote-card + .quote-card,
+.skeleton-card + .skeleton-card,
+.console .trip-stats > div {
+  box-shadow: var(--seam);
+}
+
+/*
+ * A track is a channel. See `--well-1` for what it measured before this.
+ *
+ * Merged with the existing inset ring rather than replacing it: the ring has
+ * to stay on the inner element or `fill-audit.mjs` loses the separation it
+ * holds the bands to. `.band` joins the list so the row above the fold and
+ * the ruler inside the Spread panel are literally the same object.
+ */
+.axis-track,
+.comp-bar,
+.tor-track,
+.band {
+  box-shadow:
+    var(--well-1),
+    inset 0 0 0 1px var(--line);
+}
+
+/*
+ * The door is cut into the card, not stuck onto it.
+ *
+ * Six 720×52 mint-ringed capsules are the loudest repeated object on a page
+ * about prices. The ring is not negotiable — it is the control's boundary and
+ * SC 1.4.11 wants 3:1 of it. What is negotiable is whether the control sits
+ * *on* the card or *in* it: five alternatives are slots milled into their
+ * rows, and the recommendation's door is the one that is lit.
+ *
+ * Chosen over the two proposals that shrank this control, because it changes
+ * no geometry at all: the 52px target, the full width and the skeleton's 52px
+ * stand-in are untouched, so there is no post-load shrink to reserve against
+ * a CLS budget with nothing left.
+ *
+ * (0,4,0): beats `.book` at (0,1,0) and never matches
+ * `.quote-card.hero .book` at (0,3,0), so the recommendation stays lit.
+ */
+.quote-list > .quote-card:not(.hero) .book {
+  background: var(--well);
+  box-shadow:
+    inset 0 0 0 1px var(--forest-2),
+    var(--well-1);
+}
+@media (hover: hover) and (pointer: fine) {
+  /* The recess fills in under the pointer, which is the correct physics. The
+     existing hover rule re-declares `box-shadow` at (0,1,0) and loses to the
+     rule above, so it is restated here rather than letting the recess survive
+     the press. */
+  .quote-list > .quote-card:not(.hero) .book:hover {
+    box-shadow: inset 0 0 0 1px var(--forest-2);
+  }
 }
