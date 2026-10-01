@@ -41,7 +41,10 @@
 import { readFileSync } from "node:fs";
 import { globSync } from "node:fs";
 
-const CSS = ["src/app/globals.css", "src/app/labs-glass.css"];
+/* One stylesheet now. labs-glass.css was the other, and it is gone: it
+   carried a second light model and tinted every chip at 50% with no backdrop
+   behind it. See the header of `.route-map-hud` in globals.css. */
+const CSS = ["src/app/globals.css"];
 const JS_GLOBS = ["src/**/*.{ts,tsx,js,jsx}"];
 
 /**
@@ -227,7 +230,7 @@ for (const file of CSS) {
      *     scheme blocks are exactly what set it;
      *   · rules that are already scoped to one scheme, by selector or by
      *     enclosing media query. A rule that only runs in dark cannot be
-     *     wrong in light. labs-glass.css writes its dark recipes this way.
+     *     wrong in light.
      *
      * And SCHEME_FIXED names the handful of rules whose colour is the same in
      * both schemes on purpose.
@@ -345,29 +348,23 @@ for (const pattern of JS_GLOBS) {
 }
 
 /*
- * Hooks: named, in a vendored stylesheet, on purpose.
+ * Hooks: a name a vendored stylesheet reads and a host app may set.
  *
  * ┌──────────────────────────────────────────────────────────────────────────┐
- * │ This check found --gl-drop the moment a *comment* in labs-ui.tsx stopped │
- * │ mentioning it — because the producer scan above matches any `--name` in  │
- * │ a JS file, including one inside a comment. A sentence is not a producer. │
- * │ The token was never defined; the prose was the only thing keeping the    │
- * │ check quiet, and it was quiet for the wrong reason.                      │
+ * │ This list exists because the check once found `--gl-drop` the moment a   │
+ * │ *comment* in labs-ui.tsx stopped mentioning it — the producer scan below │
+ * │ matches any `--name` in a JS file, including one inside prose. A         │
+ * │ sentence is not a producer. The token was never defined; the comment was │
+ * │ the only thing keeping the check quiet, and it was quiet for the wrong   │
+ * │ reason.                                                                  │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
- * labs-glass.css is shared across the Labs family and is vendored here. It
- * reads a handful of names a host app MAY set and otherwise falls back —
- * which is an API, not a defect, and only in that file. A name listed here
- * still fails if our own stylesheet reads it, because then it really is a
- * value nobody produces.
+ * Empty now: the vendored stylesheet that needed it is gone, and an exemption
+ * for a file that no longer exists is a hole kept open for nobody. The
+ * mechanism stays, because the next vendored sheet will want it and the
+ * reasoning above is the part that was expensive to learn.
  */
-const HOOKS = [
-  {
-    prop: "--gl-drop",
-    file: "src/app/labs-glass.css",
-    why: "labs-glass's drop-shadow hook: eight var() reads, all with a fallback, for a host app that wants a different one. RideLens does not.",
-  },
-];
+const HOOKS = [];
 const isHook = (use) =>
   use.hasFallback && HOOKS.some((h) => h.prop === use.prop && use.file.endsWith(h.file));
 

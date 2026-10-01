@@ -3,10 +3,8 @@ import Link from "next/link";
 import localFont from "next/font/local";
 import { appOrigin } from "@/lib/config";
 import "./globals.css";
-import "./labs-glass.css";
 import { headers } from "next/headers";
 
-import { LabsUI } from "@/components/labs-ui";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { EmbedAnnounce } from "@/components/embed-announce";
 
@@ -97,18 +95,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     /*
-     * data-labs-glass="auto" lets the glass material follow the scheme; it
-     * has had a dark variant all along and nothing was switching it on.
-     *
-     * suppressHydrationWarning because the script below writes data-theme
-     * onto this element before React sees it — which is the point.
+     * suppressHydrationWarning because the script below writes data-theme onto
+     * this element before React sees it — which is the point.
      */
-    <html
-      lang="en"
-      className={`${sans.variable} ${mono.variable}`}
-      data-labs-glass="auto"
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         {/*
           The basemap is the only third-party origin the browser talks to
@@ -177,7 +167,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         </header>
         <main id="main">{children}</main>
         <EmbedAnnounce />
-        <LabsUI />
         <footer className="site-footer">
           <div className="shell site-footer-inner">
             <p className="footer-brand brand">

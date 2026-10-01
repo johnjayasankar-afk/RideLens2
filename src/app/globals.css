@@ -828,9 +828,13 @@ code {
  * It is sticky, full width, at z-index 40, and it was running
  * blur(22px) saturate(1.6) over a dot grid — the single most expensive
  * surface in the app measured by frames it appears in, spent on a blur of a
- * flat ground and some dots. At 0.96 the page barely shows through anyway,
- * and the rim of light and the pointer sheen that make it feel like a
- * material are both `.gl--flat`, which costs nothing (see labs-ui.tsx).
+ * flat ground and some dots. At 0.96 the page barely shows through anyway.
+ *
+ * The rim of light that makes it read as a material used to come from a
+ * shared `.gl--flat` in labs-glass.css. That layer is gone — it brought a
+ * second light source this palette never agreed to, and tinted the bar at
+ * 50% with no backdrop-filter behind it, which is how the wordmark ended up
+ * showing through on a phone. The edge is this file's own now.
  */
 .topbar {
   position: sticky;
@@ -2048,20 +2052,29 @@ h1.brand {
   max-width: min(300px, 72%);
   padding: var(--s-5) var(--s-5);
   border-radius: var(--r-4);
-  /* The material comes from .gl--flat in labs-glass, which loads after this
-     file. Only the tint is ours: 0.94 rather than labs-glass's 0.68, because
-     that number is for a surface on a flat ground and this one is a readout
-     over a photograph of a city. The blur it replaces bought nothing at that
-     opacity and cost a backdrop-filter on the element that repaints whenever
-     the map pans.
-
-     Only the tint: every degrade arrives with the material. labs-glass takes
-     .gl--flat to 0.97 under prefers-reduced-transparency and to Canvas with
-     a real border under forced-colors, both with !important, which is why
-     .route-map-hud is no longer named in this file's own reduced-transparency
-     rule — an entry there would have been dead. */
-  --gl-rgb: var(--scrim-rgb);
-  --gl-tint: 0.94;
+  /*
+   * The app's own light, not a borrowed one.
+   *
+   * ┌──────────────────────────────────────────────────────────────────────┐
+   * │ This was dressed by `.gl--flat` from labs-glass.css, a shared        │
+   * │ stylesheet that loaded after this file and brought its own light     │
+   * │ model: a white top-left rim at 1.4px, a second inset from the        │
+   * │ bottom-right, and a ring in a green this palette does not use. Two   │
+   * │ light sources on one screen, and the other one was not ours.         │
+   * │                                                                      │
+   * │ The same layer was tinting every `.chip` at 50% white with no        │
+   * │ backdrop-filter — the exact pathology that made the topbar           │
+   * │ translucent — and it cost 1.9 KB gzipped to do it.                   │
+   * └──────────────────────────────────────────────────────────────────────┘
+   *
+   * `--lit-1` is this app's elevation: one top edge catching light, one ring,
+   * one cast below. The tint stays 0.94 because this is a readout over a
+   * photograph of a city rather than a surface on a flat ground, and a blur
+   * at that opacity bought nothing while costing a backdrop-filter on an
+   * element that repaints whenever the map pans.
+   */
+  background: rgba(var(--scrim-rgb), 0.94);
+  box-shadow: var(--lit-1);
   pointer-events: none;
 }
 .route-map-hud-row {
@@ -6867,6 +6880,10 @@ details[open] > summary::before {
   .topbar,
   .sticky-bar,
   .mobile-compare-bar,
+  /* Carried over from labs-glass, which took `.gl--flat` to 0.97 here. A
+     readout over a moving map is the surface that most needs to stay legible
+     when somebody has asked for less transparency. */
+  .route-map-hud,
   .route-map-overlay {
     background: var(--ground);
     -webkit-backdrop-filter: none;
@@ -7131,7 +7148,6 @@ details[open] > summary::before {
    │ High Contrast forces `box-shadow` to none. So every enclosure in the     │
    │ product loses its edge at the same instant: the option list, the         │
    │ console, the deck, the cards, the ledger, the palette, the map slot.     │
-   │ labs-glass's own rescue covers only the three elements wearing `.gl*`.   │
    │                                                                          │
    │ The constraint brief names six OS x choice scheme combinations. This is  │
    │ a seventh, and nobody had counted it.                                    │
@@ -7158,6 +7174,9 @@ details[open] > summary::before {
      trust page's register, its seven status pills, and the assistant. */
   .sources-list,
   .source-status,
+  /* Also carried over from labs-glass: forced-colors deletes box-shadow, so
+     an enclosure drawn only with one loses its edge entirely. */
+  .route-map-hud,
   .ask,
   .place-field input,
   .chip,
@@ -7184,12 +7203,14 @@ details[open] > summary::before {
   /*
    * `!important`, and it is the correct kind.
    *
-   * labs-ui dresses every `.chip` in `.gl--flat`, and labs-glass's own
-   * forced-colors block sets `background-color: Canvas !important` on it. So
-   * under Windows High Contrast the selected chip was Canvas with CanvasText
-   * — identical to the six unselected ones beside it, and which filter or
-   * ranking is active became unreadable. A selected state has to out-rank a
-   * material.
+   * The enclosure rule above sets `background: Canvas` on every surface, and
+   * a selected chip caught by it is Canvas on CanvasText — identical to the
+   * six unselected ones beside it, so which filter or ranking is active
+   * becomes unreadable. A selected state has to out-rank a material.
+   *
+   * (This originally fought labs-glass, which forced Canvas onto every
+   * `.chip` through the `.gl--flat` that labs-ui added to all of them. That
+   * layer is gone; the rule is still right, for the reason above.)
    */
   .chip.active {
     background: Highlight !important;
