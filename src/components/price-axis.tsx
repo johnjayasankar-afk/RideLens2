@@ -73,12 +73,16 @@ export function PriceAxis({
       </div>
 
       <ul className="axis-bars">
-        {axis.bars.map((bar) => {
+        {axis.bars.map((bar, i) => {
           const left = `${(bar.startFraction * 100).toFixed(2)}%`;
           const width = `${Math.max(1.5, (bar.endFraction - bar.startFraction) * 100).toFixed(2)}%`;
           const exact = bar.quote.priceMinMinor === bar.quote.priceMaxMinor;
           return (
-            <li className="axis-row" key={bar.quote.id}>
+            <li
+              className="axis-row"
+              key={bar.quote.id}
+              style={{ "--row": i } as React.CSSProperties}
+            >
               <span className="axis-name">{bar.quote.providerProductName}</span>
               <span className="axis-track">
                 <span

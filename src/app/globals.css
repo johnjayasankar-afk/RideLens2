@@ -4588,8 +4588,22 @@ h1.admin-title {
   bottom: 0;
   border-radius: 999px;
   background: var(--forest-2);
-  /* Each band draws itself in, left to right, in list order. */
+  /*
+   * Each band draws itself in, left to right — and now actually in list order.
+   *
+   * This comment claimed the order for a long time while every bar's
+   * `animation-delay` measured 0s, so six bands arrived together: a block
+   * appearing rather than a chart being drawn. The skeletons two thousand
+   * lines up are staggered for exactly this reason.
+   *
+   * A third of the shortest duration rung rather than a typed value, because
+   * the duration ladder is at 1 of 1 with no slack. `--row` must stay a bare
+   * number for the calc to resolve — React writes `{"--row": 3}` as `"3"`,
+   * which is right; an edit that writes `0px` collapses the stagger to zero
+   * and fails open rather than breaking the draw.
+   */
   animation: axis-draw var(--dur-4) var(--ease) both;
+  animation-delay: calc(var(--row, 0) * var(--dur-1) / 3);
   transform-origin: left center;
 }
 @keyframes axis-draw {
@@ -7191,16 +7205,39 @@ details[open] > summary::before {
    render that already recomputes the numeral beside it, so the two cannot
    disagree; linear, because a countdown that eases is lying about the rate.
    Unset when the tick is unknown, and then the bar is simply not drawn. */
-.console .market-pulse::after {
-  content: "";
+/*
+ * The countdown, on the console's own bezel.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ It lived inside `.market-pulse`, which is a horizontal scroller.         │
+ * │ Measured at 390px that strip is 705px of content in a 362px box — 343px, │
+ * │ 49%, permanently off-screen — so half the gauge was never visible and    │
+ * │ the length a reader could see depended on how far they had pushed the    │
+ * │ ticker. A gauge whose value moves with scroll position is not a gauge.   │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Its own element rather than a pseudo-element on `.console`: `--tick-left`
+ * is rewritten once a second, and on the grid container that holds the whole
+ * register that cost +0.007 of desktop CLS. Out of flow, a style change on it
+ * cannot move a sibling. Right origin, because the bar is counting *down* to the numeral it
+ * sits beside, and that numeral is at the right end of the strip — a mark
+ * that retracts toward its own label is the only direction that reads as
+ * time running out rather than as progress being made.
+ *
+ * Inset by one space rung at each end so it reads as an instrument's bezel
+ * rather than as the top border of the box.
+ */
+.console-tick {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 1px;
-  background: var(--forest-2);
+  top: 0;
+  right: var(--s-5);
+  left: var(--s-5);
+  z-index: 1;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--forest-2) 58%, var(--mint-fill));
   transform: scaleX(var(--tick-left, 0));
-  transform-origin: left center;
+  transform-origin: right center;
   transition: transform var(--dur-5) linear;
 }
 
@@ -7372,7 +7409,10 @@ details[open] > summary::before {
      pseudo-element: forced colours leaves a gradient alone, so they survive
      as the only mark still in the accent. Nothing else should. */
   .deck-indicator,
-  .console .market-pulse::after {
+  /* Moved with the gauge: this named the old pseudo-element explicitly, and a
+     forced-colors rule pointing at a selector that no longer paints is a rule
+     that silently stops applying. */
+  .console-tick {
     background: Highlight;
   }
   /* Charts and brand marks mean what their colours mean. */

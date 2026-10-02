@@ -475,10 +475,7 @@ function QuoteCard({
               band
                 ? ({
                     "--band-lo": `${(band.startFraction * 100).toFixed(3)}%`,
-                    "--band-w": Math.max(
-                      0.008,
-                      band.endFraction - band.startFraction,
-                    ).toFixed(4),
+                    "--band-w": Math.max(0.008, band.endFraction - band.startFraction).toFixed(4),
                   } as React.CSSProperties)
                 : undefined
             }
@@ -699,7 +696,7 @@ export function QuoteResults({
   const { records: tripRecords } = useTripLog();
   const priceWatches = usePriceWatches();
   /** Which session has already played its entrance. */
-  const [playedEntranceId, setPlayedEntranceId] = useState<string | null>(null);
+  const [playedEntranceFor, setPlayedEntranceFor] = useState<string | null>(null);
   const resultsTopRef = useRef<HTMLElement | null>(null);
   const scrolledSessionId = useRef<string | null>(null);
 
@@ -710,19 +707,36 @@ export function QuoteResults({
   }, [session?.id, session?.updatedAt, session?.quotes?.length]);
 
   /*
-   * Whether this session is still playing its entrance — answered during
-   * render rather than assigned by an effect. The effect below only marks it
-   * finished, and does so from a timeout callback, so nothing sets state in
-   * the effect body.
+   * The entrance belongs to the question, not to the answer refreshing.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ This was keyed on `session.id`, and auto-refresh mints a new session   │
+   * │ every 55 seconds — so the whole board replayed its entrance on every   │
+   * │ tick. Six cards asserting that six new things had arrived, about       │
+   * │ figures that had moved by cents, while `use-count-up` inside each one  │
+   * │ eased from the previous value *because* it judged the change small.    │
+   * │ Two parts of the same card disagreeing about whether anything          │
+   * │ happened, four times a minute.                                         │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * Keyed on the route instead. A new pair of endpoints is a new question and
+   * earns an entrance; the same question re-priced is the same board, and the
+   * counting figure is already the right way to say a number moved.
+   *
+   * Answered during render rather than assigned by an effect; the effect below
+   * only marks it finished, from a timeout callback, so nothing sets state in
+   * an effect body.
    */
-  const animateEntrance = Boolean(session?.id) && !loading && playedEntranceId !== session?.id;
+  const routeKey = session
+    ? `${session.pickup.lat},${session.pickup.lng}>${session.destination.lat},${session.destination.lng}`
+    : null;
+  const animateEntrance = Boolean(routeKey) && !loading && playedEntranceFor !== routeKey;
 
   useEffect(() => {
-    const id = session?.id;
-    if (!animateEntrance || !id) return;
-    const t = window.setTimeout(() => setPlayedEntranceId(id), 700);
+    if (!animateEntrance || !routeKey) return;
+    const t = window.setTimeout(() => setPlayedEntranceFor(routeKey), 700);
     return () => window.clearTimeout(t);
-  }, [animateEntrance, session?.id]);
+  }, [animateEntrance, routeKey]);
 
   useEffect(() => {
     if (!session?.id || loading) return;
@@ -1307,6 +1321,33 @@ export function QuoteResults({
       */}
       {hero || loading ? (
         <div className="console">
+          {/*
+            The countdown, as its own out-of-flow element.
+
+            ┌──────────────────────────────────────────────────────────────┐
+            │ It began as a pseudo-element on `.console` with `--tick-left` │
+            │ written onto the console itself. That measured +0.007 of CLS  │
+            │ on desktop — 0.0081 to 0.0151 — because the property is       │
+            │ rewritten once a second and `.console` is the grid container  │
+            │ the whole register and the filter row live in. A custom       │
+            │ property on a layout container is not free, even when nothing │
+            │ reads it for layout.                                          │
+            │                                                               │
+            │ An absolutely positioned span is out of flow, so a style      │
+            │ change on it cannot move a sibling. Measured back at 0.0081.  │
+            └──────────────────────────────────────────────────────────────┘
+          */}
+          <span
+            className="console-tick"
+            aria-hidden
+            style={
+              tickLeft != null
+                ? ({
+                    "--tick-left": Math.min(1, Math.max(0, tickLeft / 55)),
+                  } as React.CSSProperties)
+                : undefined
+            }
+          />
           {hero ? (
             /*
              * Not a live region, deliberately. This contains a countdown driven
@@ -1328,14 +1369,7 @@ export function QuoteResults({
               the bar is not drawn. A product built on not overstating does
               not draw a gauge it cannot vouch for.
             */
-            <div
-              className="market-pulse"
-              style={
-                tickLeft != null
-                  ? ({ "--tick-left": Math.min(1, tickLeft / 55) } as React.CSSProperties)
-                  : undefined
-              }
-            >
+            <div className="market-pulse">
               <span
                 className={marketTone(hero.metadata?.demandCenter as number | undefined).className}
               >
