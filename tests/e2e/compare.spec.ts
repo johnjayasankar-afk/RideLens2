@@ -862,3 +862,63 @@ test.describe("a comparison somebody was sent", () => {
     );
   });
 });
+
+/**
+ * The last screen before somebody leaves.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ `/book` with nothing on it rendered "Continue with Provider" — the query │
+ * │ parameter defaulted to the string "provider", so the handoff named a     │
+ * │ company that does not exist. And `/book?provider=uber&s=<dead-id>`       │
+ * │ rendered a live link to m.uber.com with a price of "—", under a          │
+ * │ disclaimer telling the reader to confirm a pickup and destination the    │
+ * │ page had never shown them.                                               │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * The link still goes out for a lost trip — somebody can still book — but the
+ * page has to stop implying the trip is attached to it.
+ */
+test.describe("the booking handoff", () => {
+  for (const [name, url] of [
+    ["with no provider", "/book"],
+    ["with a provider it does not know", "/book?provider=sometaxi"],
+  ] as const) {
+    test(`${name}, offers no link and says why`, async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator("h1")).toHaveText("Nothing to hand off");
+      const body = await page.locator("body").innerText();
+      expect(body, "there is no company called Provider").not.toContain("Continue with Provider");
+      /* No outbound handoff at all — not a dead one, not a generic one. */
+      const outbound = await page
+        .locator("a[href^='http']")
+        .evaluateAll((els) =>
+          els.map((e) => e.getAttribute("href") ?? "").filter((h) => !h.includes("johnjayasankar")),
+        );
+      expect(outbound).toEqual([]);
+    });
+  }
+
+  test("with a trip it cannot load, does not claim the trip is attached", async ({ page }) => {
+    await page.goto("/book?provider=uber&s=definitely-not-a-session");
+    await expect(page.locator("h1")).toHaveText("Continue with Uber");
+
+    /*
+     * Polled, because the lost state is only known once the session lookup
+     * comes back — the heading renders from the URL and is on screen first.
+     */
+    await expect
+      .poll(
+        async () => (await page.locator("body").innerText()).includes("no longer on this server"),
+        {
+          timeout: 20_000,
+        },
+      )
+      .toBe(true);
+
+    /* It may still offer the app. It may not pretend the trip went with it. */
+    const body = await page.locator("body").innerText();
+    expect(body, "told to confirm addresses it never showed").not.toContain(
+      "Confirm pickup, destination, and the final fare",
+    );
+  });
+});

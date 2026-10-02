@@ -32,9 +32,18 @@ function formatBand(q: {
 
 function BookInner() {
   const params = useSearchParams();
-  const providerRaw = (params.get("provider") || "provider").toLowerCase();
+  const providerRaw = (params.get("provider") || "").toLowerCase();
   const provider = asProvider(providerRaw);
-  const label = providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1);
+  /*
+   * There is no company called Provider.
+   *
+   * This defaulted the query parameter to the string "provider", so /book with
+   * nothing on it rendered the headline "Continue with Provider" above a logo
+   * placeholder — reproduced live. A handoff that cannot name where it is
+   * handing you off to is not a handoff.
+   */
+  const named = KNOWN.has(providerRaw);
+  const label = named ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : "";
   /*
    * Addresses arrive by session id, not in the query string.
    *
@@ -46,11 +55,27 @@ function BookInner() {
    */
   const sessionId = params.get("s") || "";
   const quoteId = params.get("q") || "";
+  /*
+   * Three states, not two.
+   *
+   * ┌────────────────────────────────────────────────────────────────────────┐
+   * │ `trip` alone could not tell "still loading" from "this trip is gone",  │
+   * │ so a dead session rendered the same screen as a slow one: a live link  │
+   * │ to the provider's home page, a price of "—", and a disclaimer telling  │
+   * │ the reader to "confirm pickup, destination and the final fare" about a │
+   * │ pickup and destination the page never showed them. Reproduced with     │
+   * │ /book?provider=uber&s=<dead-id>.                                       │
+   * └────────────────────────────────────────────────────────────────────────┘
+   *
+   * The link still goes out — somebody can book without it — but the page
+   * stops implying the trip is attached to it.
+   */
   const [trip, setTrip] = useState<{
     pickup: string;
     destination: string;
     price: string;
   } | null>(null);
+  const [lost, setLost] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -58,7 +83,10 @@ function BookInner() {
     void (async () => {
       try {
         const res = await fetch(`/api/quotes/${encodeURIComponent(sessionId)}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (live) setLost(true);
+          return;
+        }
         const body = await res.json();
         const s = body.session;
         const q = s?.quotes?.find((x: { id: string }) => x.id === quoteId) ?? s?.quotes?.[0];
@@ -69,7 +97,8 @@ function BookInner() {
           price: q ? formatBand(q) : "—",
         });
       } catch {
-        /* The handoff still works without the confirmation detail. */
+        /* The handoff still works without the detail — but it says so. */
+        if (live) setLost(true);
       }
     })();
     return () => {
@@ -113,6 +142,25 @@ function BookInner() {
     }
   };
 
+  if (!named) {
+    return (
+      <div className="shell book-shell">
+        <div className="status-brand" aria-hidden>
+          <span className="brand-mark" />
+        </div>
+        <p className="eyebrow">Booking handoff</p>
+        <h1 className="brand book-title">Nothing to hand off</h1>
+        <p className="banner warn" role="alert">
+          This link does not say which app it is for, so there is nowhere to send you. Open a
+          comparison and choose an option from it.
+        </p>
+        <button type="button" className="ghost book-back" onClick={goBack}>
+          Back to comparison
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="shell book-shell">
       <div className="status-brand" aria-hidden>
@@ -155,6 +203,11 @@ function BookInner() {
             the trip in the {label} app and confirm the final fare.
           </p>
         </div>
+      ) : lost ? (
+        <p className="muted book-disclaimer">
+          The trip this link was made for is no longer on this server, so {label} will open without
+          it. Enter the pickup and destination there, and confirm the fare before you ride.
+        </p>
       ) : (
         <p className="muted book-disclaimer">
           You’ll finish the request in the {label} app. Confirm pickup, destination, and the final
